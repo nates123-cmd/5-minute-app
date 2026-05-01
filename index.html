@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="5-Min Break" />
+  <meta name="theme-color" content="#F5F2EE" />
+  <link rel="manifest" href="data:application/json,%7B%22name%22%3A%225-Minute%20Break%22%2C%22short_name%22%3A%225-Min%20Break%22%2C%22start_url%22%3A%22.%2F%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23F5F2EE%22%2C%22theme_color%22%3A%22%23F5F2EE%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg%2520xmlns%3D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527%2520viewBox%3D%25270%25200%2520100%2520100%2527%253E%253Ccircle%2520cx%3D%252750%2527%2520cy%3D%252750%2527%2520r%3D%252750%2527%2520fill%3D%2527%2523A89880%2527%2F%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22any%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D" />
+  <title>5-Minute Break</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #F5F2EE;
+      --text:    #1C1C1C;
+      --muted:   #6B6560;
+      --accent:  #A89880;
+      --card-bg: #EDEBE7;
+      --border:  #D8D4CE;
+      --radius:  14px;
+      --font:    -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+      padding: 24px 20px;
+      max-width: 600px;
+      width: 100%;
+      margin: 0 auto;
+    }
+    .screen.active { display: flex; }
+
+    /* API Key screen */
+    #screen-apikey {
+      justify-content: center;
+      gap: 20px;
+      text-align: center;
+    }
+    #screen-apikey h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.5px; }
+    #screen-apikey p  { color: var(--muted); font-size: 0.95rem; line-height: 1.55; }
+    #screen-apikey input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--bg);
+      font-size: 1rem;
+      color: var(--text);
+      outline: none;
+    }
+    #screen-apikey input:focus { border-color: var(--accent); }
+
+    /* Home */
+    #screen-home { gap: 16px; }
+
+    .home-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding-top: 8px;
+    }
+    .home-header h1 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.4px; }
+    .home-header .tagline { font-size: 0.82rem; color: var(--muted); margin-top: 3px; }
+
+    .btn-settings {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 0.82rem;
+      cursor: pointer;
+      padding: 4px 0;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 24px;
+      border-radius: var(--radius);
+      font-size: 1rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s, transform 0.1s;
+      text-decoration: none;
+    }
+    .btn:active { transform: scale(0.97); }
+
+    .btn-primary {
+      background: var(--text);
+      color: var(--bg);
+      width: 100%;
+    }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-outline {
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--text);
+      width: 100%;
+    }
+
+    .btn-surprise {
+      background: var(--accent);
+      color: #fff;
+      width: 100%;
+      font-size: 1.05rem;
+      font-weight: 600;
+      padding: 16px 24px;
+      border-radius: var(--radius);
+      letter-spacing: -0.2px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn-surprise:active { transform: scale(0.97); }
+
+    /* Activity cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .activity-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 18px 16px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: border-color 0.15s, transform 0.1s;
+    }
+    .activity-card:active { transform: scale(0.97); border-color: var(--accent); }
+    .activity-card h3 { font-size: 0.92rem; font-weight: 600; margin-bottom: 5px; }
+    .activity-card p  { font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+
+    /* Activity screens */
+    .activity-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .btn-back {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.4rem;
+      cursor: pointer;
+      padding: 0;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .activity-title { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.3px; }
+
+    .framing {
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* AI content */
+    .ai-cards { display: flex; flex-direction: column; gap: 12px; margin-bottom: 16px; }
+
+    .ai-card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .ai-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 5px; }
+    .ai-card p  { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+    .ai-card a  {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    .btn-refresh {
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-bottom: 20px;
+    }
+
+    /* Stoic */
+    .stoic-author {
+      font-size: 0.8rem;
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+    blockquote {
+      border-left: 3px solid var(--accent);
+      padding: 12px 18px;
+      background: var(--card-bg);
+      border-radius: 0 var(--radius) var(--radius) 0;
+      font-size: 1rem;
+      line-height: 1.65;
+      font-style: italic;
+      margin-bottom: 14px;
+    }
+    .stoic-explanation {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-bottom: 20px;
+    }
+
+    /* Journal */
+    .journal-prompt {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .journal-prompt .question {
+      font-size: 1.15rem;
+      font-weight: 600;
+      margin-bottom: 10px;
+      letter-spacing: -0.2px;
+    }
+    .journal-prompt .instruction {
+      font-size: 0.87rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    /* Timer */
+    .timer-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      margin: auto 0;
+    }
+    .timer-svg { width: 180px; height: 180px; }
+    .timer-track { fill: none; stroke: var(--border); stroke-width: 8; }
+    .timer-bar {
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 8;
+      stroke-linecap: round;
+      transform-origin: 50% 50%;
+      transform: rotate(-90deg);
+      transition: stroke-dashoffset 1s linear;
+    }
+    .timer-text {
+      font-size: 2.2rem;
+      font-weight: 300;
+      fill: var(--text);
+      dominant-baseline: middle;
+      text-anchor: middle;
+      font-family: var(--font);
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.5; }
+    }
+    .timer-pulse .timer-bar { animation: pulse 1s ease-in-out infinite; }
+
+    /* Done */
+    #screen-done {
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      gap: 20px;
+    }
+    #screen-done h2 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.4px; }
+    #done-reflection { font-size: 1rem; color: var(--muted); line-height: 1.6; max-width: 320px; }
+
+    /* Skeleton */
+    .skeleton {
+      background: linear-gradient(90deg, var(--card-bg) 25%, var(--border) 50%, var(--card-bg) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.2s infinite;
+      border-radius: 8px;
+      height: 16px;
+      margin-bottom: 8px;
+    }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: calc(24px + env(safe-area-inset-bottom));
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--text);
+      color: var(--bg);
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 0.88rem;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.25s;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 100;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    .spacer { flex: 1; }
+
+    .activity-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: auto;
+      padding-top: 16px;
+    }
+  </style>
+</head>
+<body>
+
+<!-- API KEY SETUP -->
+<div id="screen-apikey" class="screen">
+  <h1>5-Minute Break</h1>
+  <p>A calm alternative to opening YouTube.<br>Paste your Anthropic API key to get started. It stays on your device.</p>
+  <input type="password" id="apikey-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
+  <button class="btn btn-primary" id="apikey-save">Get Started</button>
+  <p style="font-size:0.78rem;color:var(--muted)">Stored in localStorage — only sent to api.anthropic.com</p>
+</div>
+
+<!-- HOME -->
+<div id="screen-home" class="screen">
+  <div class="home-header">
+    <div>
+      <h1>5-Minute Break</h1>
+      <div class="tagline">Something better than YouTube</div>
+    </div>
+    <button class="btn-settings" id="btn-settings">API key</button>
+  </div>
+
+  <button class="btn-surprise" id="btn-surprise">Surprise Me</button>
+
+  <div class="cards-grid">
+    <div class="activity-card" data-activity="history">
+      <h3>History Rabbit Hole</h3>
+      <p>Dive into something genuinely fascinating</p>
+    </div>
+    <div class="activity-card" data-activity="cooking">
+      <h3>Cooking</h3>
+      <p>Learn a technique that changes how you cook</p>
+    </div>
+    <div class="activity-card" data-activity="stoic">
+      <h3>Stoic Passage</h3>
+      <p>A thought that might stick with you</p>
+    </div>
+    <div class="activity-card" data-activity="reading">
+      <h3>One-Page Read</h3>
+      <p>Open your book. Just one page.</p>
+    </div>
+    <div class="activity-card" data-activity="anki">
+      <h3>Anki Sprint</h3>
+      <p>10 cards max. Knowledge compounds.</p>
+    </div>
+    <div class="activity-card" data-activity="mindfulness">
+      <h3>Mindfulness</h3>
+      <p>5 minutes. Just breathe and notice.</p>
+    </div>
+    <div class="activity-card" data-activity="journal">
+      <h3>Journal Prompt</h3>
+      <p>One honest question. Three bullets.</p>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="screen-history" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">History Rabbit Hole</span>
+  </div>
+  <p class="framing">Pick a topic and fall in. Set the timer, then read.</p>
+  <div class="ai-cards" id="history-cards"></div>
+  <button class="btn-refresh" id="history-refresh">Refresh topics</button>
+  <div class="activity-actions">
+    <button class="btn btn-primary" id="history-timer-btn">Start 5-minute timer</button>
+  </div>
+</div>
+
+<!-- COOKING -->
+<div id="screen-cooking" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Cooking</span>
+  </div>
+  <p class="framing">A concept worth knowing — the kind that makes you cook differently.</p>
+  <div class="ai-cards" id="cooking-cards"></div>
+  <button class="btn-refresh" id="cooking-refresh">Refresh concepts</button>
+  <div class="activity-actions">
+    <button class="btn btn-primary" id="cooking-timer-btn">Start 5-minute timer</button>
+  </div>
+</div>
+
+<!-- STOIC -->
+<div id="screen-stoic" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Stoic Passage</span>
+  </div>
+  <div id="stoic-content"></div>
+  <div class="activity-actions">
+    <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>
+    <button class="btn btn-primary" id="stoic-timer-btn">Start 5-minute timer</button>
+  </div>
+</div>
+
+<!-- READING -->
+<div id="screen-reading" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">One-Page Read</span>
+  </div>
+  <p class="framing">Open your book. Read one page. Stop mid-page on purpose — it makes it easier to start again next time.</p>
+  <div class="spacer"></div>
+  <div class="activity-actions">
+    <a class="btn btn-outline" href="kindle://">Open Kindle</a><!-- TODO: specific Kindle deep link -->
+    <button class="btn btn-primary" id="reading-timer-btn">Start 5-minute timer</button>
+  </div>
+</div>
+
+<!-- ANKI -->
+<div id="screen-anki" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Anki Sprint</span>
+  </div>
+  <p class="framing">10 cards max. Close when the timer ends. Knowledge compounds quietly.</p>
+  <div class="spacer"></div>
+  <div class="activity-actions">
+    <a class="btn btn-outline" href="anki://">Open Anki</a><!-- TODO: specific Anki deck deep link -->
+    <button class="btn btn-primary" id="anki-timer-btn">Start 5-minute timer</button>
+  </div>
+</div>
+
+<!-- MINDFULNESS -->
+<div id="screen-mindfulness" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Mindfulness</span>
+  </div>
+  <p class="framing">5 minutes. Just breathe and notice. No goal. No assessment. Just this.</p>
+  <div class="spacer"></div>
+  <div class="activity-actions">
+    <a class="btn btn-outline" href="wakingup://">Open Waking Up</a><!-- TODO: specific 5-min deep link -->
+    <button class="btn btn-primary" id="mindfulness-timer-btn">Start 5-minute timer</button>
+  </div>
+</div>
+
+<!-- JOURNAL -->
+<div id="screen-journal" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Journal Prompt</span>
+  </div>
+  <div class="journal-prompt">
+    <div class="question">What am I avoiding right now?</div>
+    <div class="instruction">Write 3 bullets — what's the smallest next step for each?</div>
+  </div>
+  <div class="activity-actions">
+    <button class="btn btn-outline" id="journal-notion-btn">Copy &amp; Open Notion</button><!-- TODO: specific Notion page deep link -->
+    <button class="btn btn-primary" id="journal-timer-btn">Start 5-minute timer</button>
+  </div>
+</div>
+
+<!-- TIMER -->
+<div id="screen-timer" class="screen" style="justify-content:center;align-items:center;gap:32px;position:relative;">
+  <div class="activity-header" style="position:absolute;top:24px;left:20px;right:20px;">
+    <button class="btn-back" data-back="activity">←</button>
+    <span class="activity-title" id="timer-activity-label"></span>
+  </div>
+  <div class="timer-wrap" id="timer-wrap">
+    <svg class="timer-svg" viewBox="0 0 200 200">
+      <circle class="timer-track" cx="100" cy="100" r="88"/>
+      <circle class="timer-bar" id="timer-bar" cx="100" cy="100" r="88"/>
+      <text class="timer-text" id="timer-display" x="100" y="100">5:00</text>
+    </svg>
+  </div>
+  <button class="btn btn-outline" id="timer-pause-btn" style="width:140px;">Pause</button>
+</div>
+
+<!-- DONE -->
+<div id="screen-done" class="screen">
+  <h2>Time's up.</h2>
+  <p id="done-reflection"></p>
+  <button class="btn btn-primary" id="done-home-btn" style="width:180px;">Back to home</button>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+const TIMER_DURATION  = 5 * 60;
+const CIRCUMFERENCE   = 2 * Math.PI * 88;
+
+const REFLECTIONS = {
+  history:     'What surprised you most about what you just read?',
+  cooking:     'Is there a technique you want to try this week?',
+  stoic:       'What would it look like to actually live by that passage today?',
+  reading:     'What\'s one thing you want to remember from that page?',
+  anki:        'Which card felt most uncertain? Worth a closer look.',
+  mindfulness: 'Notice anything that was harder to let go of?',
+  journal:     'Which bullet felt most charged? That\'s probably the important one.',
+};
+
+let currentActivity = null;
+let previousScreen  = 'home';
+let timerInterval   = null;
+let timerRemaining  = TIMER_DURATION;
+let timerPaused     = false;
+let stoicData       = null;
+
+// ── Routing ──────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// ── API Key ───────────────────────────────────
+function getApiKey() { return localStorage.getItem('anthropic_api_key') || ''; }
+function saveApiKey(k) { localStorage.setItem('anthropic_api_key', k.trim()); }
+
+document.getElementById('apikey-save').addEventListener('click', () => {
+  const v = document.getElementById('apikey-input').value.trim();
+  if (!v.startsWith('sk-')) {
+    alert('That doesn\'t look like an Anthropic API key (should start with sk-ant-…)');
+    return;
+  }
+  saveApiKey(v);
+  showScreen('home');
+});
+
+document.getElementById('btn-settings').addEventListener('click', () => {
+  document.getElementById('apikey-input').value = getApiKey();
+  showScreen('apikey');
+});
+
+// ── Claude API ────────────────────────────────
+async function callClaude(userPrompt) {
+  const key = getApiKey();
+  if (!key) throw new Error('No API key');
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
+      'content-type': 'application/json',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: 'You are a helpful assistant. Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble. Just the raw JSON object or array.',
+      messages: [{ role: 'user', content: userPrompt }],
+    }),
+  });
+
+  if (!res.ok) throw new Error('API error ' + res.status);
+  const data = await res.json();
+  return JSON.parse(data.content[0].text.trim());
+}
+
+// ── Toast ─────────────────────────────────────
+function showToast(msg, duration = 2500) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ── Timer ─────────────────────────────────────
+const timerBar     = document.getElementById('timer-bar');
+const timerDisplay = document.getElementById('timer-display');
+const timerWrap    = document.getElementById('timer-wrap');
+const pauseBtn     = document.getElementById('timer-pause-btn');
+
+timerBar.style.strokeDasharray  = CIRCUMFERENCE;
+timerBar.style.strokeDashoffset = 0;
+
+function formatTime(secs) {
+  const m = Math.floor(secs / 60).toString().padStart(2, '0');
+  const s = (secs % 60).toString().padStart(2, '0');
+  return m + ':' + s;
+}
+
+function updateTimerVisuals(remaining) {
+  const fraction = remaining / TIMER_DURATION;
+  timerBar.style.strokeDashoffset = CIRCUMFERENCE * (1 - fraction);
+  timerDisplay.textContent = formatTime(remaining);
+  if (remaining <= 10 && remaining > 0) {
+    timerWrap.classList.add('timer-pulse');
+  } else {
+    timerWrap.classList.remove('timer-pulse');
+  }
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerRemaining = TIMER_DURATION;
+  timerPaused    = false;
+  pauseBtn.textContent = 'Pause';
+  updateTimerVisuals(timerRemaining);
+  timerInterval = setInterval(() => {
+    if (timerPaused) return;
+    timerRemaining--;
+    updateTimerVisuals(timerRemaining);
+    if (timerRemaining <= 0) {
+      clearInterval(timerInterval);
+      timerWrap.classList.remove('timer-pulse');
+      showDoneScreen();
+    }
+  }, 1000);
+}
+
+pauseBtn.addEventListener('click', () => {
+  timerPaused = !timerPaused;
+  pauseBtn.textContent = timerPaused ? 'Resume' : 'Pause';
+});
+
+function launchTimer(activity, fromScreen) {
+  currentActivity = activity;
+  previousScreen  = fromScreen;
+  const card = document.querySelector('[data-activity="' + activity + '"] h3');
+  document.getElementById('timer-activity-label').textContent = card ? card.textContent : activity;
+  showScreen('timer');
+  startTimer();
+}
+
+document.querySelector('#screen-timer .btn-back').addEventListener('click', () => {
+  clearInterval(timerInterval);
+  showScreen(previousScreen);
+});
+
+// ── Done ──────────────────────────────────────
+function showDoneScreen() {
+  document.getElementById('done-reflection').textContent =
+    REFLECTIONS[currentActivity] || 'How do you feel?';
+  showScreen('done');
+}
+
+document.getElementById('done-home-btn').addEventListener('click', () => showScreen('home'));
+
+// ── Navigate to activity ──────────────────────
+function navigateToActivity(a) {
+  currentActivity = a;
+  showScreen(a);
+  if (a === 'history')  loadHistory();
+  if (a === 'cooking')  loadCooking();
+  if (a === 'stoic')    loadStoic();
+}
+
+document.querySelectorAll('.activity-card').forEach(card => {
+  card.addEventListener('click', () => navigateToActivity(card.dataset.activity));
+});
+
+document.getElementById('btn-surprise').addEventListener('click', () => {
+  const list = ['history','cooking','stoic','reading','anki','mindfulness','journal'];
+  navigateToActivity(list[Math.floor(Math.random() * list.length)]);
+});
+
+// ── Back buttons ──────────────────────────────
+document.querySelectorAll('.btn-back[data-back]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const dest = btn.dataset.back;
+    if (dest === 'home') {
+      clearInterval(timerInterval);
+      showScreen('home');
+    } else if (dest === 'activity') {
+      clearInterval(timerInterval);
+      showScreen(previousScreen || 'home');
+    }
+  });
+});
+
+// ── Timer launch buttons ──────────────────────
+[
+  ['history-timer-btn',     'history'],
+  ['cooking-timer-btn',     'cooking'],
+  ['stoic-timer-btn',       'stoic'],
+  ['reading-timer-btn',     'reading'],
+  ['anki-timer-btn',        'anki'],
+  ['mindfulness-timer-btn', 'mindfulness'],
+  ['journal-timer-btn',     'journal'],
+].forEach(([id, activity]) => {
+  document.getElementById(id).addEventListener('click', () => launchTimer(activity, activity));
+});
+
+// ── Helpers ───────────────────────────────────
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function skeletonCards(n) {
+  return Array.from({ length: n }, () =>
+    '<div class="ai-card"><div class="skeleton"></div><div class="skeleton" style="width:70%"></div></div>'
+  ).join('');
+}
+
+// ── History ───────────────────────────────────
+async function loadHistory() {
+  const container = document.getElementById('history-cards');
+  container.innerHTML = skeletonCards(4);
+  try {
+    const topics = await callClaude(
+      'Generate 4 genuinely fascinating historical topics — the kind a curious person would fall into for hours. For each, give a title and one punchy sentence explaining why it\'s interesting. Return JSON: [{title, hook, wikipediaSlug}]'
+    );
+    container.innerHTML = topics.map(t =>
+      '<div class="ai-card">' +
+        '<h4>' + esc(t.title) + '</h4>' +
+        '<p>' + esc(t.hook) + '</p>' +
+        '<a href="https://en.wikipedia.org/wiki/' + encodeURIComponent(t.wikipediaSlug) + '" target="_blank" rel="noopener">Read on Wikipedia →</a>' +
+      '</div>'
+    ).join('');
+  } catch(e) {
+    container.innerHTML = fallbackHistory();
+  }
+}
+
+function fallbackHistory() {
+  return [
+    { title: 'The Antikythera Mechanism', hook: 'A 2,000-year-old Greek device that computed astronomical positions — we couldn\'t explain its gear trains for a century.', slug: 'Antikythera_mechanism' },
+    { title: 'The Dancing Plague of 1518', hook: 'Hundreds of people in Strasbourg danced uncontrollably for days — some died of exhaustion — and no one knows why.', slug: 'Dancing_Plague_of_1518' },
+    { title: 'Operation Mincemeat', hook: 'The British fooled Nazi high command by floating a corpse with fake invasion plans off the coast of Spain.', slug: 'Operation_Mincemeat' },
+    { title: 'The Library of Ashurbanipal', hook: 'A 7th-century BC Assyrian king assembled one of the ancient world\'s greatest libraries — and it preserved the Epic of Gilgamesh.', slug: 'Library_of_Ashurbanipal' },
+  ].map(t =>
+    '<div class="ai-card">' +
+      '<h4>' + esc(t.title) + '</h4>' +
+      '<p>' + esc(t.hook) + '</p>' +
+      '<a href="https://en.wikipedia.org/wiki/' + t.slug + '" target="_blank" rel="noopener">Read on Wikipedia →</a>' +
+    '</div>'
+  ).join('');
+}
+
+document.getElementById('history-refresh').addEventListener('click', loadHistory);
+
+// ── Cooking ───────────────────────────────────
+async function loadCooking() {
+  const container = document.getElementById('cooking-cards');
+  container.innerHTML = skeletonCards(3);
+  try {
+    const items = await callClaude(
+      'Generate 3 interesting cooking science or technique concepts — the kind that make you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible. For each give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
+    );
+    container.innerHTML = items.map(i =>
+      '<div class="ai-card">' +
+        '<h4>' + esc(i.title) + '</h4>' +
+        '<p>' + esc(i.explanation) + '</p>' +
+        '<a href="https://www.seriouseats.com/search?q=' + encodeURIComponent(i.seriousEatsQuery) + '" target="_blank" rel="noopener">Read more on Serious Eats →</a>' +
+      '</div>'
+    ).join('');
+  } catch(e) {
+    container.innerHTML = fallbackCooking();
+  }
+}
+
+function fallbackCooking() {
+  return [
+    { title: 'The Maillard Reaction', explanation: 'At around 280°F+, amino acids and sugars react to create hundreds of flavor compounds — that\'s why seared meat tastes nothing like boiled meat. Without it you\'re just cooking hot and wet.', query: 'maillard reaction browning' },
+    { title: 'Dry Brining', explanation: 'Dry brining draws moisture out of meat, dissolves the salt, and lets it reabsorb — seasoning from the inside out. Wet brining adds water and dilutes flavor; dry brining concentrates it.', query: 'dry brine technique' },
+    { title: 'Emulsification', explanation: 'Fat and water don\'t mix — unless you have an emulsifier like lecithin (egg yolk) bridging them. That\'s the whole secret of mayo, hollandaise, and a silky pan sauce.', query: 'emulsification sauce' },
+  ].map(i =>
+    '<div class="ai-card">' +
+      '<h4>' + esc(i.title) + '</h4>' +
+      '<p>' + esc(i.explanation) + '</p>' +
+      '<a href="https://www.seriouseats.com/search?q=' + encodeURIComponent(i.query) + '" target="_blank" rel="noopener">Read more on Serious Eats →</a>' +
+    '</div>'
+  ).join('');
+}
+
+document.getElementById('cooking-refresh').addEventListener('click', loadCooking);
+
+// ── Stoic ─────────────────────────────────────
+async function loadStoic() {
+  const container = document.getElementById('stoic-content');
+  container.innerHTML =
+    '<div class="skeleton" style="height:12px;width:120px;margin-bottom:12px"></div>' +
+    '<div class="ai-card"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton" style="width:60%"></div></div>' +
+    '<div style="margin-top:12px"><div class="skeleton" style="height:12px"></div><div class="skeleton" style="height:12px;width:80%"></div></div>';
+  try {
+    stoicData = await callClaude(
+      'Give me a Stoic passage from Marcus Aurelius, Epictetus, or Seneca. Choose something genuinely thought-provoking, not the most commonly quoted ones. Return JSON: {author, passage, explanation}'
+    );
+    renderStoic(stoicData);
+  } catch(e) {
+    stoicData = {
+      author: 'Marcus Aurelius',
+      passage: 'The impediment to action advances action. What stands in the way becomes the way.',
+      explanation: 'Obstacles aren\'t detours from your path — they are the path. The resistance you\'re experiencing is the exact material from which growth is made. Marcus used this idea daily as emperor to reframe every setback as the work itself.',
+    };
+    renderStoic(stoicData);
+  }
+}
+
+function renderStoic(d) {
+  document.getElementById('stoic-content').innerHTML =
+    '<div class="stoic-author">' + esc(d.author) + '</div>' +
+    '<blockquote>' + esc(d.passage) + '</blockquote>' +
+    '<p class="stoic-explanation">' + esc(d.explanation) + '</p>';
+}
+
+document.getElementById('stoic-journal-btn').addEventListener('click', async () => {
+  if (!stoicData) return;
+  const text = '"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation;
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  showToast('Copied — opening Notion');
+  setTimeout(() => { window.location.href = 'notion://'; }, 600); // TODO: specific Notion page deep link
+});
+
+// ── Journal ───────────────────────────────────
+document.getElementById('journal-notion-btn').addEventListener('click', async () => {
+  const text = 'What am I avoiding right now?\n\nWrite 3 bullets — what\'s the smallest next step for each?';
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  showToast('Copied — opening Notion');
+  setTimeout(() => { window.location.href = 'notion://'; }, 600); // TODO: specific Notion page deep link
+});
+
+// ── Init ──────────────────────────────────────
+showScreen(getApiKey() ? 'home' : 'apikey');
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+}
+</script>
+</body>
+</html>
