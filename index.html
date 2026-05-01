@@ -172,6 +172,18 @@
       gap: 12px;
       margin-bottom: 8px;
     }
+    .btn-new-act {
+      background: none;
+      border: none;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 0;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
     .btn-back {
       background: none;
       border: none;
@@ -266,6 +278,72 @@
       line-height: 1.5;
     }
 
+    /* Single-item AI display */
+    .ai-single {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .ai-single .tag {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 10px;
+    }
+    .ai-single .word-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      margin-bottom: 4px;
+    }
+    .ai-single .pronunciation {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+    .ai-single .main-text {
+      font-size: 1rem;
+      font-weight: 600;
+      line-height: 1.55;
+      margin-bottom: 10px;
+    }
+    .ai-single .sub-text {
+      font-size: 0.88rem;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .ai-single .example {
+      font-size: 0.85rem;
+      color: var(--muted);
+      font-style: italic;
+      margin-top: 10px;
+      line-height: 1.5;
+    }
+    .toggle-btn {
+      background: none;
+      border: 1.5px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+      padding: 8px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+      margin-right: 8px;
+    }
+    .toggle-reveal {
+      margin-top: 10px;
+      padding: 10px 14px;
+      background: var(--bg);
+      border-radius: 10px;
+      font-size: 0.88rem;
+      color: var(--text);
+      line-height: 1.5;
+    }
+
     /* Done */
     #screen-done {
       justify-content: center;
@@ -339,9 +417,7 @@
   </div>
 
   <div class="duration-row">
-    <button class="btn-duration" data-duration="30s">30 sec</button>
     <button class="btn-duration" data-duration="1min">1 min</button>
-    <button class="btn-duration" data-duration="2min">2 min</button>
     <button class="btn-duration" data-duration="5min">5 min</button>
   </div>
 
@@ -373,6 +449,54 @@
     <div class="activity-card" data-activity="journal">
       <h3>Journal Prompt</h3>
       <p>One honest question. Three bullets.</p>
+    </div>
+    <div class="activity-card" data-activity="fun-fact">
+      <h3>Fun Fact</h3>
+      <p>Something that makes you say "wait, really?"</p>
+    </div>
+    <div class="activity-card" data-activity="introspection">
+      <h3>Introspection</h3>
+      <p>One question that cuts through the noise.</p>
+    </div>
+    <div class="activity-card" data-activity="mental-math">
+      <h3>Mental Math</h3>
+      <p>A problem worth the focus.</p>
+    </div>
+    <div class="activity-card" data-activity="new-word">
+      <h3>New Word</h3>
+      <p>An obscure word that earns its place.</p>
+    </div>
+    <div class="activity-card" data-activity="new-term">
+      <h3>New Term</h3>
+      <p>A concept from any field worth knowing.</p>
+    </div>
+    <div class="activity-card" data-activity="finance-term">
+      <h3>Finance Term</h3>
+      <p>Understand money and markets better.</p>
+    </div>
+    <div class="activity-card" data-activity="geography-fact">
+      <h3>Geography Fact</h3>
+      <p>A place that makes you rethink the map.</p>
+    </div>
+    <div class="activity-card" data-activity="logical-fallacy">
+      <h3>Logical Fallacy</h3>
+      <p>Spot bad arguments before they land.</p>
+    </div>
+    <div class="activity-card" data-activity="on-this-day">
+      <h3>On This Day</h3>
+      <p>Something that happened today in history.</p>
+    </div>
+    <div class="activity-card" data-activity="thought-experiment">
+      <h3>Thought Experiment</h3>
+      <p>A question with no easy answer.</p>
+    </div>
+    <div class="activity-card" data-activity="etymology">
+      <h3>Etymology</h3>
+      <p>Where a word actually came from.</p>
+    </div>
+    <div class="activity-card" data-activity="cognitive-bias">
+      <h3>Cognitive Bias</h3>
+      <p>How your brain tricks you — and how to catch it.</p>
     </div>
   </div>
 </div>
@@ -478,6 +602,163 @@
   </div>
 </div>
 
+<!-- FUN FACT -->
+<div id="screen-fun-fact" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Fun Fact</span>
+  </div>
+  <div id="fun-fact-content"></div>
+  <button class="btn-refresh" id="fun-fact-refresh">New fact</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- INTROSPECTION -->
+<div id="screen-introspection" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Introspection</span>
+  </div>
+  <div id="introspection-content"></div>
+  <button class="btn-refresh" id="introspection-refresh">New question</button>
+  <div class="activity-actions">
+    <button class="btn btn-outline" id="introspection-notion-btn">Copy &amp; Open Notion</button>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- MENTAL MATH -->
+<div id="screen-mental-math" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Mental Math</span>
+  </div>
+  <div id="mental-math-content"></div>
+  <button class="btn-refresh" id="mental-math-refresh">New problem</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- NEW WORD -->
+<div id="screen-new-word" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">New Word</span>
+  </div>
+  <div id="new-word-content"></div>
+  <button class="btn-refresh" id="new-word-refresh">New word</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- NEW TERM -->
+<div id="screen-new-term" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">New Term</span>
+  </div>
+  <div id="new-term-content"></div>
+  <button class="btn-refresh" id="new-term-refresh">New term</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- FINANCE TERM -->
+<div id="screen-finance-term" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Finance Term</span>
+  </div>
+  <div id="finance-term-content"></div>
+  <button class="btn-refresh" id="finance-term-refresh">New term</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- GEOGRAPHY FACT -->
+<div id="screen-geography-fact" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Geography Fact</span>
+  </div>
+  <div id="geography-fact-content"></div>
+  <button class="btn-refresh" id="geography-fact-refresh">New fact</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- LOGICAL FALLACY -->
+<div id="screen-logical-fallacy" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Logical Fallacy</span>
+  </div>
+  <div id="logical-fallacy-content"></div>
+  <button class="btn-refresh" id="logical-fallacy-refresh">New fallacy</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- ON THIS DAY -->
+<div id="screen-on-this-day" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">On This Day</span>
+  </div>
+  <div id="on-this-day-content"></div>
+  <button class="btn-refresh" id="on-this-day-refresh">Another event</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- THOUGHT EXPERIMENT -->
+<div id="screen-thought-experiment" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Thought Experiment</span>
+  </div>
+  <div id="thought-experiment-content"></div>
+  <button class="btn-refresh" id="thought-experiment-refresh">New experiment</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- ETYMOLOGY -->
+<div id="screen-etymology" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Etymology</span>
+  </div>
+  <div id="etymology-content"></div>
+  <button class="btn-refresh" id="etymology-refresh">New word</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- COGNITIVE BIAS -->
+<div id="screen-cognitive-bias" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Cognitive Bias</span>
+  </div>
+  <div id="cognitive-bias-content"></div>
+  <button class="btn-refresh" id="cognitive-bias-refresh">New bias</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
 <!-- DONE -->
 <div id="screen-done" class="screen">
   <h2>Time's up.</h2>
@@ -496,10 +777,12 @@ let stoicData        = null;
 let selectedDuration = '5min';
 
 const DURATION_ACTIVITIES = {
-  '30s':  ['stoic', 'journal'],
-  '1min': ['stoic', 'journal', 'mindfulness'],
-  '2min': ['stoic', 'journal', 'mindfulness', 'anki', 'cooking'],
-  '5min': ['history', 'cooking', 'stoic', 'reading', 'anki', 'mindfulness', 'journal'],
+  '1min': ['fun-fact','stoic','introspection','mental-math','new-word','new-term',
+           'finance-term','geography-fact','logical-fallacy','on-this-day',
+           'thought-experiment','etymology','cognitive-bias','journal','mindfulness'],
+  '5min': ['history','cooking','stoic','reading','anki','mindfulness','journal',
+           'fun-fact','introspection','new-word','new-term','finance-term',
+           'thought-experiment','cognitive-bias'],
 };
 
 // ── Routing ──────────────────────────────────
@@ -571,10 +854,22 @@ document.getElementById('done-home-btn').addEventListener('click', () => showScr
 function navigateToActivity(a) {
   currentActivity = a;
   showScreen(a);
-  if (a === 'history')  loadHistory();
-  if (a === 'cooking')  loadCooking();
-  if (a === 'stoic')    loadStoic();
-  const showTimer = selectedDuration === '2min' || selectedDuration === '5min';
+  if (a === 'history')           loadHistory();
+  if (a === 'cooking')           loadCooking();
+  if (a === 'stoic')             loadStoic();
+  if (a === 'fun-fact')          loadFunFact();
+  if (a === 'introspection')     loadIntrospection();
+  if (a === 'mental-math')       loadMentalMath();
+  if (a === 'new-word')          loadNewWord();
+  if (a === 'new-term')          loadNewTerm();
+  if (a === 'finance-term')      loadFinanceTerm();
+  if (a === 'geography-fact')    loadGeographyFact();
+  if (a === 'logical-fallacy')   loadLogicalFallacy();
+  if (a === 'on-this-day')       loadOnThisDay();
+  if (a === 'thought-experiment') loadThoughtExperiment();
+  if (a === 'etymology')         loadEtymology();
+  if (a === 'cognitive-bias')    loadCognitiveBias();
+  const showTimer = selectedDuration === '5min';
   document.querySelectorAll('.timer-action').forEach(el => el.classList.toggle('hidden', !showTimer));
 }
 
@@ -773,6 +1068,181 @@ document.getElementById('journal-notion-btn').addEventListener('click', async ()
   try { await navigator.clipboard.writeText(text); } catch(e) {}
   showToast('Copied — opening Notion');
   setTimeout(() => { window.location.href = 'notion://'; }, 600); // TODO: specific Notion page deep link
+});
+
+// ── Shared loader helper ─────────────────────
+function skel() {
+  return '<div class="ai-single"><div class="skeleton" style="width:60%;margin-bottom:12px"></div><div class="skeleton"></div><div class="skeleton" style="width:80%"></div></div>';
+}
+
+function makeLoader(slug, prompt, render, fallbackData) {
+  const seen = [];
+  async function load() {
+    const container = document.getElementById(slug + '-content');
+    container.innerHTML = skel();
+    try {
+      const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join(', ') + '.' : '';
+      const data = await callClaude(prompt(exclude));
+      seen.push(data.name || data.word || data.term || data.fact || data.question || data.event || data.title || '');
+      container.innerHTML = render(data);
+    } catch(e) {
+      container.innerHTML = render(fallbackData);
+    }
+  }
+  return load;
+}
+
+// ── Fun Fact ──────────────────────────────────
+const loadFunFact = makeLoader(
+  'fun-fact',
+  (ex) => 'Give me one genuinely surprising, specific fun fact — the kind that makes someone say "wait, really?" Not a common one.' + ex + ' Return JSON: {fact, context}',
+  (d) => '<div class="ai-single"><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>',
+  { fact: 'A day on Venus is longer than a year on Venus.', context: 'Venus rotates so slowly that it completes an orbit around the Sun before it finishes one full spin on its own axis — making its day (243 Earth days) longer than its year (225 Earth days).' }
+);
+document.getElementById('fun-fact-refresh').addEventListener('click', loadFunFact);
+
+// ── Introspection ─────────────────────────────
+let introspectionData = null;
+const loadIntrospection = makeLoader(
+  'introspection',
+  (ex) => 'Give me a single introspective question that cuts through surface thinking and gets at something real. Not therapy-speak.' + ex + ' Return JSON: {question, prompt}',
+  (d) => {
+    introspectionData = d;
+    return '<div class="ai-single"><div class="main-text">' + esc(d.question) + '</div><div class="sub-text">' + esc(d.prompt) + '</div></div>';
+  },
+  { question: 'What would you do differently if no one would ever find out?', prompt: 'Write for 60 seconds without stopping. Don\'t edit.' }
+);
+document.getElementById('introspection-refresh').addEventListener('click', loadIntrospection);
+document.getElementById('introspection-notion-btn').addEventListener('click', async () => {
+  if (!introspectionData) return;
+  const text = introspectionData.question + '\n\n' + introspectionData.prompt;
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  showToast('Copied — opening Notion');
+  setTimeout(() => { window.location.href = 'notion://'; }, 600);
+});
+
+// ── Mental Math ───────────────────────────────
+const loadMentalMath = makeLoader(
+  'mental-math',
+  (ex) => 'Give me a mental math problem — interesting enough to be satisfying, hard enough to require focus but solvable in under a minute.' + ex + ' Return JSON: {problem, hint, answer}',
+  (d) => {
+    return '<div class="ai-single">' +
+      '<div class="main-text">' + esc(d.problem) + '</div>' +
+      '<div>' +
+        '<button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show hint\'?\'Hide hint\':\'Show hint\'">Show hint</button>' +
+        '<div class="toggle-reveal hidden">' + esc(d.hint) + '</div>' +
+      '</div>' +
+      '<div>' +
+        '<button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show answer\'?\'Hide answer\':\'Show answer\'">Show answer</button>' +
+        '<div class="toggle-reveal hidden">' + esc(d.answer) + '</div>' +
+      '</div>' +
+    '</div>';
+  },
+  { problem: 'A bat and ball cost $1.10 together. The bat costs $1.00 more than the ball. How much does the ball cost?', hint: 'Don\'t go with your first instinct.', answer: '5 cents. (The ball is $0.05, the bat is $1.05, total $1.10.)' }
+);
+document.getElementById('mental-math-refresh').addEventListener('click', loadMentalMath);
+
+// ── New Word ──────────────────────────────────
+const loadNewWord = makeLoader(
+  'new-word',
+  (ex) => 'Give me an interesting, obscure but real English word that\'s actually useful or evocative.' + ex + ' Return JSON: {word, pronunciation, partOfSpeech, definition, example}',
+  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.word) + '</div><div class="pronunciation">' + esc(d.pronunciation) + ' · ' + esc(d.partOfSpeech) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">"' + esc(d.example) + '"</div></div>',
+  { word: 'Sonder', pronunciation: '/ˈsɒndər/', partOfSpeech: 'noun', definition: 'The realization that each passerby has a life as vivid and complex as your own.', example: 'Standing in the airport, she felt a wave of sonder watching the crowds rush past.' }
+);
+document.getElementById('new-word-refresh').addEventListener('click', loadNewWord);
+
+// ── New Term ──────────────────────────────────
+const loadNewTerm = makeLoader(
+  'new-term',
+  (ex) => 'Give me an interesting term or concept from any field (philosophy, economics, psychology, science) that\'s genuinely useful for thinking about the world.' + ex + ' Return JSON: {term, field, definition, whyItMatters}',
+  (d) => '<div class="ai-single"><div class="tag">' + esc(d.field) + '</div><div class="word-title">' + esc(d.term) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.whyItMatters) + '</div></div>',
+  { term: 'Overton Window', field: 'Political Science', definition: 'The range of policies politically acceptable to the mainstream public at any given time.', whyItMatters: 'Understanding it explains why ideas that seem radical today often become mainstream policy within a generation — and how advocates deliberately shift it.' }
+);
+document.getElementById('new-term-refresh').addEventListener('click', loadNewTerm);
+
+// ── Finance Term ──────────────────────────────
+const loadFinanceTerm = makeLoader(
+  'finance-term',
+  (ex) => 'Give me an interesting finance or economics term that\'s useful for understanding money and markets. Not basic ones like inflation or compound interest.' + ex + ' Return JSON: {term, definition, whyItMatters, example}',
+  (d) => '<div class="ai-single"><div class="tag">Finance</div><div class="word-title">' + esc(d.term) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.whyItMatters) + ' ' + esc(d.example) + '</div></div>',
+  { term: 'Yield Curve Inversion', definition: 'When short-term government bonds pay higher interest than long-term ones — the opposite of normal.', whyItMatters: 'It has preceded every US recession since 1955.', example: 'When the 2-year Treasury yield exceeds the 10-year, investors expect rates to fall — usually because a slowdown is coming.' }
+);
+document.getElementById('finance-term-refresh').addEventListener('click', loadFinanceTerm);
+
+// ── Geography Fact ────────────────────────────
+const loadGeographyFact = makeLoader(
+  'geography-fact',
+  (ex) => 'Give me a specific, surprising geographical fact about a place — something that makes you see the world differently.' + ex + ' Return JSON: {fact, location, context}',
+  (d) => '<div class="ai-single"><div class="tag">' + esc(d.location) + '</div><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>',
+  { fact: 'Canada has more lakes than the rest of the world combined.', location: 'Canada', context: 'With over 2 million lakes covering about 9% of its land area, Canada holds roughly 60% of the world\'s freshwater lakes — a legacy of glacial retreat after the last ice age.' }
+);
+document.getElementById('geography-fact-refresh').addEventListener('click', loadGeographyFact);
+
+// ── Logical Fallacy ───────────────────────────
+const loadLogicalFallacy = makeLoader(
+  'logical-fallacy',
+  (ex) => 'Give me a logical fallacy with a clear definition and a realistic everyday example. Not a famous one like ad hominem or straw man.' + ex + ' Return JSON: {name, definition, example}',
+  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.example) + '</div></div>',
+  { name: 'Appeal to Nature', definition: 'Assuming something is good because it\'s natural, or bad because it\'s artificial.', example: '"This supplement is 100% natural, so it must be safe." (Arsenic and cyanide are also natural.)' }
+);
+document.getElementById('logical-fallacy-refresh').addEventListener('click', loadLogicalFallacy);
+
+// ── On This Day ───────────────────────────────
+const loadOnThisDay = makeLoader(
+  'on-this-day',
+  (ex) => {
+    const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    return 'Give me one genuinely interesting historical event that happened on ' + today + '.' + ex + ' Return JSON: {event, year, context}';
+  },
+  (d) => '<div class="ai-single"><div class="tag">' + esc(String(d.year)) + '</div><div class="main-text">' + esc(d.event) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>',
+  { event: 'The Library of Congress was established.', year: 1800, context: 'Founded with an initial purchase of 740 books and 3 maps, it is now the largest library in the world with over 170 million items.' }
+);
+document.getElementById('on-this-day-refresh').addEventListener('click', loadOnThisDay);
+
+// ── Thought Experiment ────────────────────────
+const loadThoughtExperiment = makeLoader(
+  'thought-experiment',
+  (ex) => 'Give me a classic or lesser-known thought experiment — its name, setup, and the core question it raises.' + ex + ' Return JSON: {name, setup, question}',
+  (d) => '<div class="ai-single"><div class="tag">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.setup) + '</div><div class="main-text" style="margin-top:14px">' + esc(d.question) + '</div></div>',
+  { name: 'The Ship of Theseus', setup: 'The ship of the hero Theseus was kept in a harbour as a monument. As planks decayed they were replaced one by one, until eventually every single part had been replaced.', question: 'Is it still the same ship? And if not — at what point did it stop being?' }
+);
+document.getElementById('thought-experiment-refresh').addEventListener('click', loadThoughtExperiment);
+
+// ── Etymology ─────────────────────────────────
+const loadEtymology = makeLoader(
+  'etymology',
+  (ex) => 'Give me the etymology of an interesting common English word — where it came from and how it evolved. Not a word whose origin most people already know.' + ex + ' Return JSON: {word, origin, journey, modernMeaning}',
+  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.word) + '</div><div class="tag">' + esc(d.origin) + '</div><div class="sub-text">' + esc(d.journey) + '</div><div class="example">' + esc(d.modernMeaning) + '</div></div>',
+  { word: 'Salary', origin: 'Latin: salarium', journey: 'From "sal" (salt). Roman soldiers were sometimes paid in salt, or given an allowance to buy it — salt was that valuable as a preservative.', modernMeaning: 'Today we just mean a fixed regular payment for work, with no thought of seasoning.' }
+);
+document.getElementById('etymology-refresh').addEventListener('click', loadEtymology);
+
+// ── Cognitive Bias ────────────────────────────
+const loadCognitiveBias = makeLoader(
+  'cognitive-bias',
+  (ex) => 'Give me a cognitive bias with a clear definition, a realistic everyday example, and a one-line antidote.' + ex + ' Return JSON: {name, definition, example, antidote}',
+  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.example) + '</div><div class="sub-text" style="margin-top:10px;font-style:italic">Antidote: ' + esc(d.antidote) + '</div></div>',
+  { name: 'Sunk Cost Fallacy', definition: 'Continuing an endeavour because of past investment (time, money, effort) rather than future value.', example: 'Finishing a bad movie because you\'ve already watched an hour. Or staying in a bad job because you\'ve already given it 3 years.', antidote: 'Ask: "If I were starting fresh today, would I choose this?" If no, walk away.' }
+);
+document.getElementById('cognitive-bias-refresh').addEventListener('click', loadCognitiveBias);
+
+// ── "New activity" button ─────────────────────
+const ACTIVITY_SCREENS = ['history','cooking','stoic','reading','anki','mindfulness','journal',
+  'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
+  'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias'];
+
+ACTIVITY_SCREENS.forEach(id => {
+  const header = document.querySelector('#screen-' + id + ' .activity-header');
+  if (!header) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn-new-act';
+  btn.textContent = 'New activity';
+  btn.addEventListener('click', () => {
+    const list = DURATION_ACTIVITIES[selectedDuration] || DURATION_ACTIVITIES['5min'];
+    const choices = list.filter(a => a !== currentActivity);
+    navigateToActivity(choices[Math.floor(Math.random() * choices.length)]);
+  });
+  header.appendChild(btn);
 });
 
 // ── Init ──────────────────────────────────────
