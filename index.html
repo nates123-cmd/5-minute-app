@@ -518,14 +518,17 @@ async function callClaude(userPrompt) {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-6',
       max_tokens: 1000,
       system: 'You are a helpful assistant. Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble. Just the raw JSON object or array.',
       messages: [{ role: 'user', content: userPrompt }],
     }),
   });
 
-  if (!res.ok) throw new Error('API error ' + res.status);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error('API ' + res.status + ': ' + errText);
+  }
   const data = await res.json();
   return JSON.parse(data.content[0].text.trim());
 }
@@ -583,14 +586,19 @@ function skeletonCards(n) {
 }
 
 // ── History ───────────────────────────────────
+const seenHistoryTitles = [];
+
 async function loadHistory() {
   const container = document.getElementById('history-cards');
   container.innerHTML = skeletonCards(4);
   try {
-    const seed = Math.random().toString(36).slice(2, 7);
+    const exclude = seenHistoryTitles.length
+      ? ' Do NOT include any of these topics: ' + seenHistoryTitles.join(', ') + '.'
+      : '';
     const topics = await callClaude(
-      'Generate 4 genuinely fascinating historical topics — the kind a curious person would fall into for hours. For each, give a title and one punchy sentence explaining why it\'s interesting. Pick different topics every time (seed: ' + seed + '). Return JSON: [{title, hook, wikipediaSlug}]'
+      'Generate 4 genuinely fascinating historical topics — the kind a curious person would fall into for hours. For each, give a title and one punchy sentence explaining why it\'s interesting.' + exclude + ' Return JSON: [{title, hook, wikipediaSlug}]'
     );
+    topics.forEach(t => seenHistoryTitles.push(t.title));
     container.innerHTML = topics.map(t =>
       '<div class="ai-card">' +
         '<h4>' + esc(t.title) + '</h4>' +
@@ -599,7 +607,7 @@ async function loadHistory() {
       '</div>'
     ).join('');
   } catch(e) {
-    container.innerHTML = fallbackHistory();
+    container.innerHTML = '<div class="ai-card"><p style="color:red;font-size:0.8rem">' + esc(e.message) + '</p></div>';
   }
 }
 
@@ -621,14 +629,19 @@ function fallbackHistory() {
 document.getElementById('history-refresh').addEventListener('click', loadHistory);
 
 // ── Cooking ───────────────────────────────────
+const seenCookingTitles = [];
+
 async function loadCooking() {
   const container = document.getElementById('cooking-cards');
   container.innerHTML = skeletonCards(3);
   try {
-    const seed = Math.random().toString(36).slice(2, 7);
+    const exclude = seenCookingTitles.length
+      ? ' Do NOT include any of these concepts: ' + seenCookingTitles.join(', ') + '.'
+      : '';
     const items = await callClaude(
-      'Generate 3 interesting cooking science or technique concepts — the kind that make you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible. Pick different concepts every time (seed: ' + seed + '). For each give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
+      'Generate 3 interesting cooking science or technique concepts — the kind that make you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible.' + exclude + ' For each give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
     );
+    items.forEach(i => seenCookingTitles.push(i.title));
     container.innerHTML = items.map(i =>
       '<div class="ai-card">' +
         '<h4>' + esc(i.title) + '</h4>' +
