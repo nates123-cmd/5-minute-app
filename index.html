@@ -431,6 +431,7 @@
     <span class="activity-title">Stoic Passage</span>
   </div>
   <div id="stoic-content"></div>
+  <button class="btn-refresh" id="stoic-refresh">New passage</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>
     <button class="btn btn-primary" id="stoic-timer-btn">Start 5-minute timer</button>
@@ -485,10 +486,11 @@
     <button class="btn-back" data-back="home">←</button>
     <span class="activity-title">Journal Prompt</span>
   </div>
-  <div class="journal-prompt">
-    <div class="question">What am I avoiding right now?</div>
-    <div class="instruction">Write 3 bullets — what's the smallest next step for each?</div>
+  <div class="journal-prompt" id="journal-prompt-box">
+    <div class="question" id="journal-question">What am I avoiding right now?</div>
+    <div class="instruction" id="journal-instruction">Write 3 bullets — what's the smallest next step for each?</div>
   </div>
+  <button class="btn-refresh" id="journal-refresh">New prompt</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="journal-notion-btn">Copy &amp; Open Notion</button><!-- TODO: specific Notion page deep link -->
     <button class="btn btn-primary" id="journal-timer-btn">Start 5-minute timer</button>
@@ -741,8 +743,9 @@ async function loadHistory() {
   const container = document.getElementById('history-cards');
   container.innerHTML = skeletonCards(4);
   try {
+    const seed = Math.random().toString(36).slice(2, 7);
     const topics = await callClaude(
-      'Generate 4 genuinely fascinating historical topics — the kind a curious person would fall into for hours. For each, give a title and one punchy sentence explaining why it\'s interesting. Return JSON: [{title, hook, wikipediaSlug}]'
+      'Generate 4 genuinely fascinating historical topics — the kind a curious person would fall into for hours. For each, give a title and one punchy sentence explaining why it\'s interesting. Pick different topics every time (seed: ' + seed + '). Return JSON: [{title, hook, wikipediaSlug}]'
     );
     container.innerHTML = topics.map(t =>
       '<div class="ai-card">' +
@@ -778,8 +781,9 @@ async function loadCooking() {
   const container = document.getElementById('cooking-cards');
   container.innerHTML = skeletonCards(3);
   try {
+    const seed = Math.random().toString(36).slice(2, 7);
     const items = await callClaude(
-      'Generate 3 interesting cooking science or technique concepts — the kind that make you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible. For each give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
+      'Generate 3 interesting cooking science or technique concepts — the kind that make you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible. Pick different concepts every time (seed: ' + seed + '). For each give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
     );
     container.innerHTML = items.map(i =>
       '<div class="ai-card">' +
@@ -817,8 +821,9 @@ async function loadStoic() {
     '<div class="ai-card"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton" style="width:60%"></div></div>' +
     '<div style="margin-top:12px"><div class="skeleton" style="height:12px"></div><div class="skeleton" style="height:12px;width:80%"></div></div>';
   try {
+    const seed = Math.random().toString(36).slice(2, 7);
     stoicData = await callClaude(
-      'Give me a Stoic passage from Marcus Aurelius, Epictetus, or Seneca. Choose something genuinely thought-provoking, not the most commonly quoted ones. Return JSON: {author, passage, explanation}'
+      'Give me a Stoic passage from Marcus Aurelius, Epictetus, or Seneca. Choose something genuinely thought-provoking, not the most commonly quoted ones. Pick a different passage every time (seed: ' + seed + '). Return JSON: {author, passage, explanation}'
     );
     renderStoic(stoicData);
   } catch(e) {
@@ -838,6 +843,8 @@ function renderStoic(d) {
     '<p class="stoic-explanation">' + esc(d.explanation) + '</p>';
 }
 
+document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
+
 document.getElementById('stoic-journal-btn').addEventListener('click', async () => {
   if (!stoicData) return;
   const text = '"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation;
@@ -847,8 +854,32 @@ document.getElementById('stoic-journal-btn').addEventListener('click', async () 
 });
 
 // ── Journal ───────────────────────────────────
+const JOURNAL_PROMPTS = [
+  { question: 'What am I avoiding right now?', instruction: 'Write 3 bullets — what\'s the smallest next step for each?' },
+  { question: 'What would I do if I wasn\'t afraid of looking stupid?', instruction: 'Write freely for 5 minutes. Don\'t edit.' },
+  { question: 'What\'s draining me that I haven\'t admitted yet?', instruction: 'Name it plainly. Then write one thing you could do or let go of.' },
+  { question: 'What do I keep telling myself I\'ll do "someday"?', instruction: 'Pick one. What would the first 10 minutes look like?' },
+  { question: 'Who do I want to be in 5 years?', instruction: 'Write 3 specific behaviours that person has. Do you have them now?' },
+  { question: 'What am I tolerating that I shouldn\'t be?', instruction: '3 bullets. Star the one that matters most.' },
+  { question: 'What did I do well this week that I haven\'t acknowledged?', instruction: 'Write it down. Sit with it for a moment before moving on.' },
+];
+
+let journalIndex = 0;
+
+function setJournalPrompt(idx) {
+  const p = JOURNAL_PROMPTS[idx];
+  document.getElementById('journal-question').textContent = p.question;
+  document.getElementById('journal-instruction').textContent = p.instruction;
+}
+
+document.getElementById('journal-refresh').addEventListener('click', () => {
+  journalIndex = (journalIndex + 1) % JOURNAL_PROMPTS.length;
+  setJournalPrompt(journalIndex);
+});
+
 document.getElementById('journal-notion-btn').addEventListener('click', async () => {
-  const text = 'What am I avoiding right now?\n\nWrite 3 bullets — what\'s the smallest next step for each?';
+  const p = JOURNAL_PROMPTS[journalIndex];
+  const text = p.question + '\n\n' + p.instruction;
   try { await navigator.clipboard.writeText(text); } catch(e) {}
   showToast('Copied — opening Notion');
   setTimeout(() => { window.location.href = 'notion://'; }, 600); // TODO: specific Notion page deep link
