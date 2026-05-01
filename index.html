@@ -122,19 +122,29 @@
       width: 100%;
     }
 
-    .btn-surprise {
-      background: var(--accent);
-      color: #fff;
-      width: 100%;
-      font-size: 1.05rem;
-      font-weight: 600;
-      padding: 16px 24px;
-      border-radius: var(--radius);
-      letter-spacing: -0.2px;
-      border: none;
-      cursor: pointer;
+    .duration-row {
+      display: flex;
+      gap: 10px;
     }
-    .btn-surprise:active { transform: scale(0.97); }
+    .btn-duration {
+      flex: 1;
+      padding: 12px 0;
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .btn-duration:active { transform: scale(0.96); }
+    .btn-duration.selected {
+      background: var(--text);
+      color: var(--bg);
+      border-color: var(--text);
+    }
+    .hidden { display: none !important; }
 
     /* Activity cards */
     .cards-grid {
@@ -328,7 +338,12 @@
     <button class="btn-settings" id="btn-settings">API key</button>
   </div>
 
-  <button class="btn-surprise" id="btn-surprise">Surprise Me</button>
+  <div class="duration-row">
+    <button class="btn-duration" data-duration="30s">30 sec</button>
+    <button class="btn-duration" data-duration="1min">1 min</button>
+    <button class="btn-duration" data-duration="2min">2 min</button>
+    <button class="btn-duration" data-duration="5min">5 min</button>
+  </div>
 
   <div class="cards-grid">
     <div class="activity-card" data-activity="history">
@@ -372,7 +387,7 @@
   <div class="ai-cards" id="history-cards"></div>
   <button class="btn-refresh" id="history-refresh">Refresh topics</button>
   <div class="activity-actions">
-    <a class="btn btn-primary" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
 
@@ -386,7 +401,7 @@
   <div class="ai-cards" id="cooking-cards"></div>
   <button class="btn-refresh" id="cooking-refresh">Refresh concepts</button>
   <div class="activity-actions">
-    <a class="btn btn-primary" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
 
@@ -400,7 +415,7 @@
   <button class="btn-refresh" id="stoic-refresh">New passage</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>
-    <a class="btn btn-primary" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
 
@@ -414,7 +429,7 @@
   <div class="spacer"></div>
   <div class="activity-actions">
     <a class="btn btn-outline" href="kindle://">Open Kindle</a><!-- TODO: specific Kindle deep link -->
-    <a class="btn btn-primary" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
 
@@ -428,7 +443,7 @@
   <div class="spacer"></div>
   <div class="activity-actions">
     <a class="btn btn-outline" href="anki://">Open Anki</a><!-- TODO: specific Anki deck deep link -->
-    <a class="btn btn-primary" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
 
@@ -442,7 +457,7 @@
   <div class="spacer"></div>
   <div class="activity-actions">
     <a class="btn btn-outline" href="wakingup://">Open Waking Up</a><!-- TODO: specific 5-min deep link -->
-    <a class="btn btn-primary" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
 
@@ -459,7 +474,7 @@
   <button class="btn-refresh" id="journal-refresh">New prompt</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="journal-notion-btn">Copy &amp; Open Notion</button><!-- TODO: specific Notion page deep link -->
-    <a class="btn btn-primary" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
 
@@ -476,8 +491,16 @@
 <script>
 'use strict';
 
-let currentActivity = null;
-let stoicData       = null;
+let currentActivity  = null;
+let stoicData        = null;
+let selectedDuration = '5min';
+
+const DURATION_ACTIVITIES = {
+  '30s':  ['stoic', 'journal'],
+  '1min': ['stoic', 'journal', 'mindfulness'],
+  '2min': ['stoic', 'journal', 'mindfulness', 'anki', 'cooking'],
+  '5min': ['history', 'cooking', 'stoic', 'reading', 'anki', 'mindfulness', 'journal'],
+};
 
 // ── Routing ──────────────────────────────────
 function showScreen(id) {
@@ -551,15 +574,25 @@ function navigateToActivity(a) {
   if (a === 'history')  loadHistory();
   if (a === 'cooking')  loadCooking();
   if (a === 'stoic')    loadStoic();
+  const showTimer = selectedDuration === '2min' || selectedDuration === '5min';
+  document.querySelectorAll('.timer-action').forEach(el => el.classList.toggle('hidden', !showTimer));
 }
 
 document.querySelectorAll('.activity-card').forEach(card => {
-  card.addEventListener('click', () => navigateToActivity(card.dataset.activity));
+  card.addEventListener('click', () => {
+    selectedDuration = '5min';
+    navigateToActivity(card.dataset.activity);
+  });
 });
 
-document.getElementById('btn-surprise').addEventListener('click', () => {
-  const list = ['history','cooking','stoic','reading','anki','mindfulness','journal'];
-  navigateToActivity(list[Math.floor(Math.random() * list.length)]);
+document.querySelectorAll('.btn-duration').forEach(btn => {
+  btn.addEventListener('click', () => {
+    selectedDuration = btn.dataset.duration;
+    document.querySelectorAll('.btn-duration').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    const list = DURATION_ACTIVITIES[selectedDuration];
+    navigateToActivity(list[Math.floor(Math.random() * list.length)]);
+  });
 });
 
 // ── Back buttons ──────────────────────────────
