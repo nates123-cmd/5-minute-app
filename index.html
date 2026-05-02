@@ -857,6 +857,7 @@ function navigateToActivity(a) {
   if (a === 'history')           loadHistory();
   if (a === 'cooking')           loadCooking();
   if (a === 'stoic')             loadStoic();
+  if (a === 'journal')           loadJournal();
   if (a === 'fun-fact')          loadFunFact();
   if (a === 'introspection')     loadIntrospection();
   if (a === 'mental-math')       loadMentalMath();
@@ -1039,32 +1040,34 @@ document.getElementById('stoic-journal-btn').addEventListener('click', async () 
 });
 
 // ── Journal ───────────────────────────────────
-const JOURNAL_PROMPTS = [
-  { question: 'What am I avoiding right now?', instruction: 'Write 3 bullets — what\'s the smallest next step for each?' },
-  { question: 'What would I do if I wasn\'t afraid of looking stupid?', instruction: 'Write freely for 5 minutes. Don\'t edit.' },
-  { question: 'What\'s draining me that I haven\'t admitted yet?', instruction: 'Name it plainly. Then write one thing you could do or let go of.' },
-  { question: 'What do I keep telling myself I\'ll do "someday"?', instruction: 'Pick one. What would the first 10 minutes look like?' },
-  { question: 'Who do I want to be in 5 years?', instruction: 'Write 3 specific behaviours that person has. Do you have them now?' },
-  { question: 'What am I tolerating that I shouldn\'t be?', instruction: '3 bullets. Star the one that matters most.' },
-  { question: 'What did I do well this week that I haven\'t acknowledged?', instruction: 'Write it down. Sit with it for a moment before moving on.' },
-];
+let journalData = null;
+const seenJournalQuestions = [];
 
-let journalIndex = 0;
-
-function setJournalPrompt(idx) {
-  const p = JOURNAL_PROMPTS[idx];
-  document.getElementById('journal-question').textContent = p.question;
-  document.getElementById('journal-instruction').textContent = p.instruction;
+async function loadJournal() {
+  const container = document.getElementById('journal-prompt-box');
+  document.getElementById('journal-question').textContent = '...';
+  document.getElementById('journal-instruction').textContent = '';
+  try {
+    const exclude = seenJournalQuestions.length
+      ? ' Do not repeat any of these: ' + seenJournalQuestions.join('; ') + '.'
+      : '';
+    journalData = await callClaude(
+      'Give me a single introspective journal prompt — the kind that cuts through surface thinking and gets at something real. Not therapy-speak, not vague positivity.' + exclude + ' Return JSON: {question, instruction} where instruction is a short concrete writing direction (e.g. "Write 3 bullets — smallest next step for each").'
+    );
+    seenJournalQuestions.push(journalData.question);
+    document.getElementById('journal-question').textContent = journalData.question;
+    document.getElementById('journal-instruction').textContent = journalData.instruction;
+  } catch(e) {
+    journalData = { question: 'What am I avoiding right now?', instruction: 'Write 3 bullets — what\'s the smallest next step for each?' };
+    document.getElementById('journal-question').textContent = journalData.question;
+    document.getElementById('journal-instruction').textContent = journalData.instruction;
+  }
 }
 
-document.getElementById('journal-refresh').addEventListener('click', () => {
-  journalIndex = (journalIndex + 1) % JOURNAL_PROMPTS.length;
-  setJournalPrompt(journalIndex);
-});
+document.getElementById('journal-refresh').addEventListener('click', loadJournal);
 
 document.getElementById('journal-notion-btn').addEventListener('click', async () => {
-  const p = JOURNAL_PROMPTS[journalIndex];
-  const text = p.question + '\n\n' + p.instruction;
+  const text = (journalData ? journalData.question : 'What am I avoiding right now?') + '\n\n' + (journalData ? journalData.instruction : '');
   try { await navigator.clipboard.writeText(text); } catch(e) {}
   showToast('Copied — opening Notion');
   setTimeout(() => { window.location.href = 'notion://'; }, 600); // TODO: specific Notion page deep link
