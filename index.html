@@ -343,6 +343,20 @@
       color: var(--text);
       line-height: 1.5;
     }
+    .selector-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .btn-selector {
+      padding: 7px 14px;
+      border-radius: 30px;
+      background: var(--card-bg);
+      border: 1.5px solid var(--border);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+    .btn-selector:active { transform: scale(0.95); }
+    .btn-selector.selected { background: var(--accent); color: #fff; border-color: var(--accent); }
 
     /* Done */
     #screen-done {
@@ -417,8 +431,14 @@
   </div>
 
   <div class="duration-row">
-    <button class="btn-duration" data-duration="1min">1 min</button>
-    <button class="btn-duration" data-duration="5min">5 min</button>
+    <button class="btn-duration" data-bucket="1min">1 min</button>
+    <button class="btn-duration" data-bucket="5min">5 min</button>
+  </div>
+  <div class="duration-row">
+    <button class="btn-duration" data-bucket="reflection">Reflection</button>
+    <button class="btn-duration" data-bucket="informational">Informational</button>
+    <button class="btn-duration" data-bucket="activity">Activity</button>
+    <button class="btn-duration" data-bucket="random">Random</button>
   </div>
 
   <div class="cards-grid">
@@ -497,6 +517,10 @@
     <div class="activity-card" data-activity="cognitive-bias">
       <h3>Cognitive Bias</h3>
       <p>How your brain tricks you — and how to catch it.</p>
+    </div>
+    <div class="activity-card" data-activity="brain-teaser">
+      <h3>Brain Teaser</h3>
+      <p>Fermi estimates, logic puzzles, lateral thinking.</p>
     </div>
   </div>
 </div>
@@ -635,6 +659,20 @@
     <button class="btn-back" data-back="home">←</button>
     <span class="activity-title">Mental Math</span>
   </div>
+  <div class="selector-row" id="math-difficulty-row">
+    <button class="btn-selector selected" data-diff="easy">Easy</button>
+    <button class="btn-selector" data-diff="medium">Medium</button>
+    <button class="btn-selector" data-diff="hard">Hard</button>
+  </div>
+  <div class="selector-row" id="math-type-row">
+    <button class="btn-selector selected" data-type="any">Any</button>
+    <button class="btn-selector" data-type="arithmetic">Arithmetic</button>
+    <button class="btn-selector" data-type="percentages">Percentages</button>
+    <button class="btn-selector" data-type="fractions">Fractions</button>
+    <button class="btn-selector" data-type="sequences">Sequences</button>
+    <button class="btn-selector" data-type="estimation">Estimation</button>
+    <button class="btn-selector" data-type="real-world">Real-world</button>
+  </div>
   <div id="mental-math-content"></div>
   <button class="btn-refresh" id="mental-math-refresh">New problem</button>
   <div class="activity-actions">
@@ -759,6 +797,19 @@
   </div>
 </div>
 
+<!-- BRAIN TEASER -->
+<div id="screen-brain-teaser" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Brain Teaser</span>
+  </div>
+  <div id="brain-teaser-content"></div>
+  <button class="btn-refresh" id="brain-teaser-refresh">New teaser</button>
+  <div class="activity-actions">
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
 <!-- DONE -->
 <div id="screen-done" class="screen">
   <h2>Time's up.</h2>
@@ -775,14 +826,24 @@
 let currentActivity  = null;
 let stoicData        = null;
 let selectedDuration = '5min';
+const searchTerms    = {};
 
 const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','introspection','mental-math','new-word','new-term',
            'finance-term','geography-fact','logical-fallacy','on-this-day',
-           'thought-experiment','etymology','cognitive-bias','journal','mindfulness'],
+           'thought-experiment','etymology','cognitive-bias','journal','mindfulness','brain-teaser'],
   '5min': ['history','cooking','stoic','reading','anki','mindfulness','journal',
-           'fun-fact','introspection','new-word','new-term','finance-term',
-           'thought-experiment','cognitive-bias'],
+           'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
+           'thought-experiment','cognitive-bias','brain-teaser'],
+  'reflection':   ['stoic','mindfulness','journal','introspection'],
+  'informational':['history','cooking','fun-fact','new-word','new-term','finance-term',
+                   'geography-fact','logical-fallacy','cognitive-bias','etymology',
+                   'on-this-day','thought-experiment'],
+  'activity':     ['mental-math','brain-teaser','anki','reading'],
+  'random':       ['history','cooking','stoic','reading','anki','mindfulness','journal',
+                   'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
+                   'geography-fact','logical-fallacy','on-this-day','thought-experiment',
+                   'etymology','cognitive-bias','brain-teaser'],
 };
 
 // ── Routing ──────────────────────────────────
@@ -870,6 +931,7 @@ function navigateToActivity(a) {
   if (a === 'thought-experiment') loadThoughtExperiment();
   if (a === 'etymology')         loadEtymology();
   if (a === 'cognitive-bias')    loadCognitiveBias();
+  if (a === 'brain-teaser')      loadBrainTeaser();
   const showTimer = selectedDuration === '5min';
   document.querySelectorAll('.timer-action').forEach(el => el.classList.toggle('hidden', !showTimer));
 }
@@ -883,7 +945,7 @@ document.querySelectorAll('.activity-card').forEach(card => {
 
 document.querySelectorAll('.btn-duration').forEach(btn => {
   btn.addEventListener('click', () => {
-    selectedDuration = btn.dataset.duration;
+    selectedDuration = btn.dataset.bucket;
     document.querySelectorAll('.btn-duration').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
     const list = DURATION_ACTIVITIES[selectedDuration];
@@ -919,15 +981,15 @@ const seenHistoryTitles = [];
 
 async function loadHistory() {
   const container = document.getElementById('history-cards');
-  container.innerHTML = skeletonCards(4);
+  container.innerHTML = skeletonCards(1);
   try {
     const exclude = seenHistoryTitles.length
       ? ' Do NOT include any of these topics: ' + seenHistoryTitles.join(', ') + '.'
       : '';
     const topics = await callClaude(
-      'Generate 4 genuinely fascinating historical topics — the kind a curious person would fall into for hours. For each, give a title and one punchy sentence explaining why it\'s interesting.' + exclude + ' Return JSON: [{title, hook, wikipediaSlug}]'
+      'Generate 1 genuinely fascinating historical topic — the kind a curious person would fall into for hours. Give a title and one punchy sentence explaining why it\'s interesting.' + exclude + ' Return JSON: [{title, hook, wikipediaSlug}]'
     );
-    topics.forEach(t => seenHistoryTitles.push(t.title));
+    topics.forEach(t => { seenHistoryTitles.push(t.title); searchTerms['history'] = t.title; });
     container.innerHTML = topics.map(t =>
       '<div class="ai-card">' +
         '<h4>' + esc(t.title) + '</h4>' +
@@ -962,15 +1024,15 @@ const seenCookingTitles = [];
 
 async function loadCooking() {
   const container = document.getElementById('cooking-cards');
-  container.innerHTML = skeletonCards(3);
+  container.innerHTML = skeletonCards(1);
   try {
     const exclude = seenCookingTitles.length
       ? ' Do NOT include any of these concepts: ' + seenCookingTitles.join(', ') + '.'
       : '';
     const items = await callClaude(
-      'Generate 3 interesting cooking science or technique concepts — the kind that make you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible.' + exclude + ' For each give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
+      'Generate 1 interesting cooking science or technique concept — the kind that makes you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible.' + exclude + ' Give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
     );
-    items.forEach(i => seenCookingTitles.push(i.title));
+    items.forEach(i => { seenCookingTitles.push(i.title); searchTerms['cooking'] = i.title; });
     container.innerHTML = items.map(i =>
       '<div class="ai-card">' +
         '<h4>' + esc(i.title) + '</h4>' +
@@ -1086,7 +1148,9 @@ function makeLoader(slug, prompt, render, fallbackData) {
     try {
       const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join(', ') + '.' : '';
       const data = await callClaude(prompt(exclude));
-      seen.push(data.name || data.word || data.term || data.fact || data.question || data.event || data.title || '');
+      const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || '';
+      seen.push(key);
+      searchTerms[slug] = key;
       container.innerHTML = render(data);
     } catch(e) {
       container.innerHTML = render(fallbackData);
@@ -1125,24 +1189,57 @@ document.getElementById('introspection-notion-btn').addEventListener('click', as
 });
 
 // ── Mental Math ───────────────────────────────
-const loadMentalMath = makeLoader(
-  'mental-math',
-  (ex) => 'Give me a mental math problem — interesting enough to be satisfying, hard enough to require focus but solvable in under a minute.' + ex + ' Return JSON: {problem, hint, answer}',
-  (d) => {
-    return '<div class="ai-single">' +
-      '<div class="main-text">' + esc(d.problem) + '</div>' +
-      '<div>' +
-        '<button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show hint\'?\'Hide hint\':\'Show hint\'">Show hint</button>' +
-        '<div class="toggle-reveal hidden">' + esc(d.hint) + '</div>' +
-      '</div>' +
-      '<div>' +
-        '<button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show answer\'?\'Hide answer\':\'Show answer\'">Show answer</button>' +
-        '<div class="toggle-reveal hidden">' + esc(d.answer) + '</div>' +
-      '</div>' +
-    '</div>';
-  },
-  { problem: 'A bat and ball cost $1.10 together. The bat costs $1.00 more than the ball. How much does the ball cost?', hint: 'Don\'t go with your first instinct.', answer: '5 cents. (The ball is $0.05, the bat is $1.05, total $1.10.)' }
-);
+let mathDifficulty = 'easy';
+let mathType = 'any';
+const seenMathProblems = [];
+
+function renderMathProblem(d) {
+  return '<div class="ai-single">' +
+    '<div class="main-text">' + esc(d.problem) + '</div>' +
+    '<div><button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show hint\'?\'Hide hint\':\'Show hint\'">Show hint</button>' +
+    '<div class="toggle-reveal hidden">' + esc(d.hint) + '</div></div>' +
+    '<div><button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show answer\'?\'Hide answer\':\'Show answer\'">Show answer</button>' +
+    '<div class="toggle-reveal hidden">' + esc(d.answer) + '</div></div>' +
+  '</div>';
+}
+
+async function loadMentalMath() {
+  const container = document.getElementById('mental-math-content');
+  container.innerHTML = skel();
+  try {
+    const typeClause = mathType === 'any' ? '' : ' Problem type: ' + mathType + '.';
+    const exclude = seenMathProblems.length ? ' Do not repeat: ' + seenMathProblems.join('; ') + '.' : '';
+    const d = await callClaude(
+      'Give me a ' + mathDifficulty + ' mental math problem.' + typeClause +
+      ' Difficulty guide — easy: quick single-step (e.g. 15% of 80); medium: 2–3 steps or a number trick (e.g. 17×12); hard: multi-step or requires insight (e.g. what % increase from 40 to 55?).' +
+      ' Solvable in your head — no pen needed.' + exclude +
+      ' Return JSON: {problem, hint, answer}'
+    );
+    seenMathProblems.push(d.problem.slice(0, 60));
+    container.innerHTML = renderMathProblem(d);
+  } catch(e) {
+    container.innerHTML = renderMathProblem({ problem: 'A bat and ball cost $1.10 together. The bat costs $1.00 more than the ball. How much does the ball cost?', hint: 'Don\'t go with your first instinct.', answer: '5 cents. (Ball = $0.05, bat = $1.05, total = $1.10.)' });
+  }
+}
+
+document.querySelectorAll('[data-diff]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    mathDifficulty = btn.dataset.diff;
+    document.querySelectorAll('[data-diff]').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    loadMentalMath();
+  });
+});
+
+document.querySelectorAll('[data-type]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    mathType = btn.dataset.type;
+    document.querySelectorAll('[data-type]').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    loadMentalMath();
+  });
+});
+
 document.getElementById('mental-math-refresh').addEventListener('click', loadMentalMath);
 
 // ── New Word ──────────────────────────────────
@@ -1220,6 +1317,19 @@ const loadEtymology = makeLoader(
 );
 document.getElementById('etymology-refresh').addEventListener('click', loadEtymology);
 
+// ── Brain Teaser ──────────────────────────────
+const loadBrainTeaser = makeLoader(
+  'brain-teaser',
+  (ex) => 'Give me a brain teaser — draw from Fermi estimation, logic puzzles, lateral thinking, or real-world reasoning. Not straightforward arithmetic. Examples of the style: "How many golf balls fit in a school bus?", "A snail climbs 3ft up a 10ft wall each day and slides 2ft back — how many days to escape?", "A stock drops 20% then rises 25% — are you up or down overall?" Make it genuinely interesting.' + ex + ' Return JSON: {problem, hint, answer}',
+  (d) => '<div class="ai-single"><div class="main-text">' + esc(d.problem) + '</div>' +
+    '<div><button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show hint\'?\'Hide hint\':\'Show hint\'">Show hint</button>' +
+    '<div class="toggle-reveal hidden">' + esc(d.hint) + '</div></div>' +
+    '<div><button class="toggle-btn" onclick="this.nextElementSibling.classList.toggle(\'hidden\');this.textContent=this.textContent===\'Show answer\'?\'Hide answer\':\'Show answer\'">Show answer</button>' +
+    '<div class="toggle-reveal hidden">' + esc(d.answer) + '</div></div></div>',
+  { problem: 'A snail climbs 3ft up a 10ft wall each day and slides back 2ft at night. How many days to reach the top?', hint: 'Think about what happens on the final day.', answer: '8 days. Each day nets 1ft (days 1–7 = 7ft). On day 8 it climbs 3ft from 7ft, reaching the top before sliding back.' }
+);
+document.getElementById('brain-teaser-refresh').addEventListener('click', loadBrainTeaser);
+
 // ── Cognitive Bias ────────────────────────────
 const loadCognitiveBias = makeLoader(
   'cognitive-bias',
@@ -1229,10 +1339,66 @@ const loadCognitiveBias = makeLoader(
 );
 document.getElementById('cognitive-bias-refresh').addEventListener('click', loadCognitiveBias);
 
+// ── "Ask Claude" + "Journal about it" on informational screens ───────────────
+const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
+  'finance-term','geography-fact','logical-fallacy','cognitive-bias','etymology',
+  'on-this-day','thought-experiment'];
+
+const INFORMATIONAL_CONTENT_IDS = {
+  'history': 'history-cards', 'cooking': 'cooking-cards',
+  'fun-fact': 'fun-fact-content', 'new-word': 'new-word-content',
+  'new-term': 'new-term-content', 'finance-term': 'finance-term-content',
+  'geography-fact': 'geography-fact-content', 'logical-fallacy': 'logical-fallacy-content',
+  'cognitive-bias': 'cognitive-bias-content', 'etymology': 'etymology-content',
+  'on-this-day': 'on-this-day-content', 'thought-experiment': 'thought-experiment-content',
+};
+
+INFORMATIONAL_SCREENS.forEach(id => {
+  const actions = document.querySelector('#screen-' + id + ' .activity-actions');
+  if (!actions) return;
+
+  function getContentText() {
+    const el = document.getElementById(INFORMATIONAL_CONTENT_IDS[id]);
+    return el ? el.innerText.trim() : '';
+  }
+
+  const googleBtn = document.createElement('a');
+  googleBtn.className = 'btn btn-outline';
+  googleBtn.textContent = 'Google it';
+  googleBtn.target = '_blank';
+  googleBtn.rel = 'noopener';
+  googleBtn.addEventListener('click', () => {
+    const q = searchTerms[id] || getContentText().split('\n')[0];
+    googleBtn.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+  });
+
+  const claudeBtn = document.createElement('button');
+  claudeBtn.className = 'btn btn-outline';
+  claudeBtn.textContent = 'Ask Claude';
+  claudeBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(getContentText()); } catch(e) {}
+    showToast('Copied — opening Claude');
+    setTimeout(() => { window.location.href = 'claude://'; }, 600);
+  });
+
+  const journalBtn = document.createElement('button');
+  journalBtn.className = 'btn btn-outline';
+  journalBtn.textContent = 'Journal about it';
+  journalBtn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(getContentText()); } catch(e) {}
+    showToast('Copied — opening Notion');
+    setTimeout(() => { window.location.href = 'notion://'; }, 600);
+  });
+
+  actions.insertBefore(googleBtn, actions.firstChild);
+  actions.insertBefore(claudeBtn, googleBtn.nextSibling);
+  actions.insertBefore(journalBtn, claudeBtn.nextSibling);
+});
+
 // ── "New activity" button ─────────────────────
 const ACTIVITY_SCREENS = ['history','cooking','stoic','reading','anki','mindfulness','journal',
   'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
-  'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias'];
+  'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
 
 ACTIVITY_SCREENS.forEach(id => {
   const header = document.querySelector('#screen-' + id + ' .activity-header');
