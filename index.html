@@ -605,9 +605,9 @@
     <button class="btn-back" data-back="home">←</button>
     <span class="activity-title">Cooking</span>
   </div>
-  <p class="framing">A concept worth knowing — the kind that makes you cook differently.</p>
+  <p class="framing">A recipe, technique, or pairing — something worth trying next time you cook.</p>
   <div class="ai-cards" id="cooking-cards"></div>
-  <button class="btn-refresh" id="cooking-refresh">Refresh concepts</button>
+  <button class="btn-refresh" id="cooking-refresh">New idea</button>
   <div class="activity-actions">
     <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
@@ -1217,29 +1217,75 @@ async function loadCooking() {
   const container = document.getElementById('cooking-cards');
   container.innerHTML = skeletonCards(1);
   try {
-    const exclude = seenCookingTitles.length
-      ? ' Do NOT include any of these concepts: ' + seenCookingTitles.join(', ') + '.'
-      : '';
-    const liked    = getLiked('cooking').slice(-8);
-    const disliked = getDisliked('cooking').slice(-8);
-    const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
-                      (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
-    const items = await callClaude(
-      'Generate 1 interesting cooking science or technique concept — the kind that makes you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible.' + exclude + ratingCtx + ' Give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
-    );
-    items.forEach(i => { seenCookingTitles.push(i.title); searchTerms['cooking'] = i.title; });
-    container.innerHTML = items.map(i =>
-      '<div class="ai-card">' +
-        '<h4>' + esc(i.title) + '</h4>' +
-        '<p>' + esc(i.explanation) + '</p>' +
-        '<a href="https://www.seriouseats.com/search?q=' + encodeURIComponent(i.seriousEatsQuery) + '" target="_blank" rel="noopener">Read more on Serious Eats →</a>' +
-      '</div>'
-    ).join('');
+    const type = ['recipe', 'technique', 'pairing'][Math.floor(Math.random() * 3)];
+    let title = '', sourceUrl = '', html = '';
+
+    if (type === 'recipe') {
+      let meal, attempts = 0;
+      do {
+        const res = await fetch('https://www.themealdb.com/api/json/v1/1/random.php');
+        meal = (await res.json()).meals[0];
+        attempts++;
+      } while (seenCookingTitles.includes(meal.strMeal) && attempts < 5);
+
+      const ingredients = [];
+      for (let i = 1; i <= 20; i++) {
+        const ing = meal['strIngredient' + i];
+        const meas = meal['strMeasure' + i];
+        if (ing && ing.trim()) ingredients.push((meas ? meas.trim() + ' ' : '') + ing.trim());
+      }
+      title = meal.strMeal;
+      sourceUrl = meal.strSource || '';
+      html = '<div class="ai-card">' +
+        '<div class="tag">Recipe · ' + esc(meal.strArea || meal.strCategory) + '</div>' +
+        '<h4>' + esc(title) + '</h4>' +
+        '<p style="font-size:0.8rem;color:var(--muted);line-height:1.6;margin-bottom:8px">' +
+          esc(ingredients.slice(0, 6).join(' · ')) + (ingredients.length > 6 ? ' · …' : '') +
+        '</p>' +
+        (sourceUrl ? '<a href="' + esc(sourceUrl) + '" target="_blank" rel="noopener">Full recipe →</a>' : '') +
+      '</div>';
+
+    } else {
+      const exclude = seenCookingTitles.length ? ' Do not repeat: ' + seenCookingTitles.join(', ') + '.' : '';
+      const liked    = getLiked('cooking').slice(-8);
+      const disliked = getDisliked('cooking').slice(-8);
+      const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
+                        (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
+
+      if (type === 'technique') {
+        const d = await callClaude(
+          'Give me one cooking technique that meaningfully improves results — the kind a home cook might overlook. Nothing obvious like "season your food".' + exclude + ratingCtx +
+          ' Return JSON: {title, what, why, how}'
+        );
+        title = d.title;
+        html = '<div class="ai-card">' +
+          '<div class="tag">Technique</div>' +
+          '<h4>' + esc(d.title) + '</h4>' +
+          '<p>' + esc(d.what) + ' ' + esc(d.why) + '</p>' +
+          '<p style="margin-top:8px;font-size:0.82rem;color:var(--muted)">' + esc(d.how) + '</p>' +
+        '</div>';
+      } else {
+        const d = await callClaude(
+          'Give me one surprising or underrated flavor pairing — two ingredients that work remarkably well together.' + exclude + ratingCtx +
+          ' Return JSON: {ingredients, why, dish}'
+        );
+        title = d.ingredients;
+        html = '<div class="ai-card">' +
+          '<div class="tag">Pairing</div>' +
+          '<h4>' + esc(d.ingredients) + '</h4>' +
+          '<p>' + esc(d.why) + '</p>' +
+          '<p style="margin-top:8px;font-size:0.82rem;color:var(--muted)">Try it: ' + esc(d.dish) + '</p>' +
+        '</div>';
+      }
+    }
+
+    seenCookingTitles.push(title);
+    searchTerms['cooking'] = title;
+    container.innerHTML = html;
     const cCard = container.querySelector('.ai-card');
     if (cCard) {
-      const seUrl = 'https://www.seriouseats.com/search?q=' + encodeURIComponent(items[0].seriousEatsQuery);
-      cCard.insertAdjacentHTML('beforeend', cardFooter('cooking', items[0].title, seUrl));
-      addSwipeListener(cCard, 'cooking', items[0].title, loadCooking);
+      cCard.insertAdjacentHTML('beforeend', cardFooter('cooking', title, sourceUrl));
+      addSwipeListener(cCard, 'cooking', title, loadCooking);
     }
   } catch(e) {
     container.innerHTML = fallbackCooking();
@@ -1247,17 +1293,12 @@ async function loadCooking() {
 }
 
 function fallbackCooking() {
-  return [
-    { title: 'The Maillard Reaction', explanation: 'At around 280°F+, amino acids and sugars react to create hundreds of flavor compounds — that\'s why seared meat tastes nothing like boiled meat. Without it you\'re just cooking hot and wet.', query: 'maillard reaction browning' },
-    { title: 'Dry Brining', explanation: 'Dry brining draws moisture out of meat, dissolves the salt, and lets it reabsorb — seasoning from the inside out. Wet brining adds water and dilutes flavor; dry brining concentrates it.', query: 'dry brine technique' },
-    { title: 'Emulsification', explanation: 'Fat and water don\'t mix — unless you have an emulsifier like lecithin (egg yolk) bridging them. That\'s the whole secret of mayo, hollandaise, and a silky pan sauce.', query: 'emulsification sauce' },
-  ].map(i =>
-    '<div class="ai-card">' +
-      '<h4>' + esc(i.title) + '</h4>' +
-      '<p>' + esc(i.explanation) + '</p>' +
-      '<a href="https://www.seriouseats.com/search?q=' + encodeURIComponent(i.query) + '" target="_blank" rel="noopener">Read more on Serious Eats →</a>' +
-    '</div>'
-  ).join('');
+  return '<div class="ai-card">' +
+    '<div class="tag">Technique</div>' +
+    '<h4>The Maillard Reaction</h4>' +
+    '<p>At ~280°F+, amino acids and sugars react to create hundreds of flavor compounds — why seared meat tastes nothing like boiled meat.</p>' +
+    '<p style="margin-top:8px;font-size:0.82rem;color:var(--muted)">Get your pan ripping hot and dry before adding food. Moisture kills the reaction.</p>' +
+  '</div>';
 }
 
 document.getElementById('cooking-refresh').addEventListener('click', loadCooking);
