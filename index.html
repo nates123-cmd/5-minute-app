@@ -1658,6 +1658,36 @@ function updateSavedCount() {
   document.getElementById('btn-saved').textContent = n ? 'Saved (' + n + ')' : 'Saved';
 }
 
+// ── App icon ──────────────────────────────────
+(function generateIcon() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 180; canvas.height = 180;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#1C1C1C';
+  ctx.fillRect(0, 0, 180, 180);
+
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 78px -apple-system, BlinkMacSystemFont, sans-serif';
+
+  const fiveW = ctx.measureText('5').width;
+  const mW    = ctx.measureText('M').width;
+  const gap   = 3;
+  const x = (180 - fiveW - gap - mW) / 2;
+  const y = 91;
+
+  ctx.fillStyle = '#F5F2EE';
+  ctx.fillText('5', x, y);
+  ctx.fillStyle = '#A89880';
+  ctx.fillText('M', x + fiveW + gap, y);
+
+  const link = document.createElement('link');
+  link.rel = 'apple-touch-icon';
+  link.href = canvas.toDataURL('image/png');
+  document.head.appendChild(link);
+})();
+
 // ── Init ──────────────────────────────────────
 showScreen(getApiKey() ? 'home' : 'apikey');
 updateSavedCount();
