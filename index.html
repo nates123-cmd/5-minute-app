@@ -1443,7 +1443,7 @@ document.getElementById('introspection-notion-btn').addEventListener('click', as
 // ── Mental Math ───────────────────────────────
 let mathDifficulty = 'easy';
 let mathType = 'any';
-const seenMathProblems = [];
+const seenMathProblems = getDismissed('mental-math');
 
 function renderMathProblem(d) {
   return '<div class="ai-single">' +
@@ -1461,13 +1461,15 @@ async function loadMentalMath() {
   try {
     const typeClause = mathType === 'any' ? '' : ' Problem type: ' + mathType + '.';
     const exclude = seenMathProblems.length ? ' Do not repeat: ' + seenMathProblems.join('; ') + '.' : '';
+    const seed = Math.random().toString(36).slice(2, 7);
     const d = await callClaude(
       'Give me a ' + mathDifficulty + ' mental math problem.' + typeClause +
       ' Difficulty guide — easy: quick single-step (e.g. 15% of 80); medium: 2–3 steps or a number trick (e.g. 17×12); hard: multi-step or requires insight (e.g. what % increase from 40 to 55?).' +
       ' Solvable in your head — no pen needed.' + exclude +
-      ' Return JSON: {problem, hint, answer}'
+      ' (seed: ' + seed + ') Return JSON: {problem, hint, answer}'
     );
     seenMathProblems.push(d.problem.slice(0, 60));
+    addDismissed('mental-math', d.problem.slice(0, 60));
     container.innerHTML = renderMathProblem(d);
   } catch(e) {
     container.innerHTML = renderMathProblem({ problem: 'A bat and ball cost $1.10 together. The bat costs $1.00 more than the ball. How much does the ball cost?', hint: 'Don\'t go with your first instinct.', answer: '5 cents. (Ball = $0.05, bat = $1.05, total = $1.10.)' });
