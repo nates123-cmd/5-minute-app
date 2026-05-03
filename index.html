@@ -210,6 +210,7 @@
       background: var(--card-bg);
       border-radius: var(--radius);
       padding: 16px;
+      transition: transform 0.3s ease, opacity 0.3s ease;
     }
     .ai-card h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 5px; }
     .ai-card p  { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
@@ -278,12 +279,68 @@
       line-height: 1.5;
     }
 
+    /* Card footer (thumbs + bookmark) */
+    .card-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .card-actions .swipe-hint {
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-right: auto;
+    }
+    .btn-thumb, .btn-bookmark {
+      background: none;
+      border: 1.5px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      color: var(--muted);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-thumb.active-up   { background: #d4edda; border-color: #5cb85c; }
+    .btn-thumb.active-down { background: #f8d7da; border-color: #d9534f; }
+    .btn-bookmark.saved    { color: var(--accent); border-color: var(--accent); }
+
+    /* Saved screen */
+    #screen-saved { gap: 16px; }
+    .saved-item {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .saved-item-body { flex: 1; min-width: 0; }
+    .saved-item-title { font-size: 0.93rem; font-weight: 600; margin-bottom: 4px; }
+    .saved-item-meta  { font-size: 0.78rem; color: var(--muted); }
+    .saved-item-meta a { color: var(--accent); text-decoration: none; }
+    .btn-unsave {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 1.2rem;
+      cursor: pointer;
+      padding: 0;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .saved-empty { color: var(--muted); font-size: 0.93rem; text-align: center; margin-top: 40px; line-height: 1.7; }
+
     /* Single-item AI display */
     .ai-single {
       background: var(--card-bg);
       border-radius: var(--radius);
       padding: 20px;
       margin-bottom: 16px;
+      transition: transform 0.3s ease, opacity 0.3s ease;
     }
     .ai-single .tag {
       display: inline-block;
@@ -427,7 +484,10 @@
       <h1>5-Minute Break</h1>
       <div class="tagline">Something better than YouTube</div>
     </div>
-    <button class="btn-settings" id="btn-settings">API key</button>
+    <div style="display:flex;gap:12px;align-items:center">
+      <button class="btn-settings" id="btn-saved">Saved</button>
+      <button class="btn-settings" id="btn-settings">API key</button>
+    </div>
   </div>
 
   <div class="duration-row">
@@ -810,6 +870,15 @@
   </div>
 </div>
 
+<!-- SAVED -->
+<div id="screen-saved" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Saved</span>
+  </div>
+  <div id="saved-list"></div>
+</div>
+
 <!-- DONE -->
 <div id="screen-done" class="screen">
   <h2>Time's up.</h2>
@@ -827,6 +896,118 @@ let currentActivity  = null;
 let stoicData        = null;
 let selectedDuration = '5min';
 const searchTerms    = {};
+
+// ── Persistent storage helpers ────────────────
+function getDismissed(slug) {
+  try { return JSON.parse(localStorage.getItem('dismissed_' + slug) || '[]'); } catch(e) { return []; }
+}
+function addDismissed(slug, id) {
+  const arr = getDismissed(slug);
+  if (!arr.includes(id)) { arr.push(id); localStorage.setItem('dismissed_' + slug, JSON.stringify(arr)); }
+}
+function getLiked(slug)    { try { return JSON.parse(localStorage.getItem('liked_' + slug) || '[]'); } catch(e) { return []; } }
+function getDisliked(slug) { try { return JSON.parse(localStorage.getItem('disliked_' + slug) || '[]'); } catch(e) { return []; } }
+function setRating(slug, id, rating) {
+  const addKey = rating > 0 ? 'liked_' : 'disliked_';
+  const remKey = rating > 0 ? 'disliked_' : 'liked_';
+  let a = JSON.parse(localStorage.getItem(addKey + slug) || '[]');
+  let r = JSON.parse(localStorage.getItem(remKey + slug) || '[]');
+  if (!a.includes(id)) a.push(id);
+  r = r.filter(x => x !== id);
+  localStorage.setItem(addKey + slug, JSON.stringify(a));
+  localStorage.setItem(remKey + slug, JSON.stringify(r));
+}
+function clearRating(slug, id) {
+  ['liked_','disliked_'].forEach(prefix => {
+    const a = JSON.parse(localStorage.getItem(prefix + slug) || '[]').filter(x => x !== id);
+    localStorage.setItem(prefix + slug, JSON.stringify(a));
+  });
+}
+function getBookmarks() { try { return JSON.parse(localStorage.getItem('bookmarks') || '[]'); } catch(e) { return []; } }
+function saveBookmark(b) {
+  const arr = getBookmarks().filter(x => x.id !== b.id);
+  arr.unshift(b);
+  localStorage.setItem('bookmarks', JSON.stringify(arr));
+}
+function removeBookmark(id) {
+  localStorage.setItem('bookmarks', JSON.stringify(getBookmarks().filter(x => x.id !== id)));
+}
+function isBookmarked(id) { return getBookmarks().some(x => x.id === id); }
+
+// ── Swipe-to-dismiss ──────────────────────────
+function addSwipeListener(cardEl, slug, identifier, reloadFn) {
+  let startX = 0;
+  cardEl.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX;
+    cardEl.style.transition = 'none';
+  }, { passive: true });
+  cardEl.addEventListener('touchmove', e => {
+    const dx = Math.max(0, e.touches[0].clientX - startX);
+    cardEl.style.transform = 'translateX(' + dx + 'px)';
+    cardEl.style.opacity = String(Math.max(0, 1 - dx / 250));
+  }, { passive: true });
+  cardEl.addEventListener('touchend', e => {
+    const dx = e.changedTouches[0].clientX - startX;
+    cardEl.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+    if (dx > 80) {
+      cardEl.style.transform = 'translateX(110%)';
+      cardEl.style.opacity = '0';
+      addDismissed(slug, identifier);
+      setTimeout(reloadFn, 320);
+    } else {
+      cardEl.style.transform = '';
+      cardEl.style.opacity = '';
+    }
+  });
+}
+
+// ── Card footer (thumbs + bookmark) ──────────
+function cardFooter(slug, identifier, url) {
+  const liked      = getLiked(slug).includes(identifier);
+  const disliked   = getDisliked(slug).includes(identifier);
+  const bookmarked = isBookmarked(slug + '__' + identifier);
+  return '<div class="card-actions">' +
+    '<span class="swipe-hint">← swipe to dismiss</span>' +
+    '<button class="btn-thumb' + (liked    ? ' active-up'   : '') + '" data-thumb="up"   data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👍</button>' +
+    '<button class="btn-thumb' + (disliked ? ' active-down' : '') + '" data-thumb="down" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👎</button>' +
+    '<button class="btn-bookmark' + (bookmarked ? ' saved' : '') + '" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">🔖</button>' +
+  '</div>';
+}
+
+// ── Thumb + bookmark event delegation ────────
+document.addEventListener('click', e => {
+  const thumb = e.target.closest('[data-thumb]');
+  if (thumb) {
+    const slug = thumb.dataset.slug, id = thumb.dataset.id, dir = thumb.dataset.thumb;
+    const rating = dir === 'up' ? 1 : -1;
+    const cur = getLiked(slug).includes(id) ? 1 : getDisliked(slug).includes(id) ? -1 : 0;
+    const actions = thumb.closest('.card-actions');
+    if (cur === rating) {
+      clearRating(slug, id);
+      thumb.classList.remove('active-up', 'active-down');
+    } else {
+      setRating(slug, id, rating);
+      actions.querySelectorAll('[data-thumb]').forEach(b => b.classList.remove('active-up', 'active-down'));
+      thumb.classList.add(dir === 'up' ? 'active-up' : 'active-down');
+    }
+    return;
+  }
+  const bm = e.target.closest('.btn-bookmark');
+  if (bm) {
+    const bmId = bm.dataset.slug + '__' + bm.dataset.id;
+    if (isBookmarked(bmId)) {
+      removeBookmark(bmId);
+      bm.classList.remove('saved');
+    } else {
+      const card = bm.closest('.ai-card, .ai-single');
+      const titleEl = card ? (card.querySelector('h4') || card.querySelector('.word-title') || card.querySelector('.main-text')) : null;
+      const title = titleEl ? titleEl.innerText.trim() : bm.dataset.id;
+      saveBookmark({ id: bmId, slug: bm.dataset.slug, title, url: bm.dataset.url, savedAt: Date.now() });
+      bm.classList.add('saved');
+    }
+    updateSavedCount();
+  }
+});
 
 const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','introspection','mental-math','new-word','new-term',
@@ -977,7 +1158,7 @@ function skeletonCards(n) {
 }
 
 // ── History ───────────────────────────────────
-const seenHistoryTitles = [];
+const seenHistoryTitles = getDismissed('history');
 
 async function loadHistory() {
   const container = document.getElementById('history-cards');
@@ -986,8 +1167,12 @@ async function loadHistory() {
     const exclude = seenHistoryTitles.length
       ? ' Do NOT include any of these topics: ' + seenHistoryTitles.join(', ') + '.'
       : '';
+    const liked    = getLiked('history').slice(-8);
+    const disliked = getDisliked('history').slice(-8);
+    const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
+                      (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
     const topics = await callClaude(
-      'Generate 1 genuinely fascinating historical topic — the kind a curious person would fall into for hours. Give a title and one punchy sentence explaining why it\'s interesting.' + exclude + ' Return JSON: [{title, hook, wikipediaSlug}]'
+      'Generate 1 genuinely fascinating historical topic — the kind a curious person would fall into for hours. Give a title and one punchy sentence explaining why it\'s interesting.' + exclude + ratingCtx + ' Return JSON: [{title, hook, wikipediaSlug}]'
     );
     topics.forEach(t => { seenHistoryTitles.push(t.title); searchTerms['history'] = t.title; });
     container.innerHTML = topics.map(t =>
@@ -997,6 +1182,12 @@ async function loadHistory() {
         '<a href="https://en.wikipedia.org/wiki/' + encodeURIComponent(t.wikipediaSlug) + '" target="_blank" rel="noopener">Read on Wikipedia →</a>' +
       '</div>'
     ).join('');
+    const hCard = container.querySelector('.ai-card');
+    if (hCard) {
+      const wikiUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(topics[0].wikipediaSlug);
+      hCard.insertAdjacentHTML('beforeend', cardFooter('history', topics[0].title, wikiUrl));
+      addSwipeListener(hCard, 'history', topics[0].title, loadHistory);
+    }
   } catch(e) {
     container.innerHTML = '<div class="ai-card"><p style="color:red;font-size:0.8rem">' + esc(e.message) + '</p></div>';
   }
@@ -1020,7 +1211,7 @@ function fallbackHistory() {
 document.getElementById('history-refresh').addEventListener('click', loadHistory);
 
 // ── Cooking ───────────────────────────────────
-const seenCookingTitles = [];
+const seenCookingTitles = getDismissed('cooking');
 
 async function loadCooking() {
   const container = document.getElementById('cooking-cards');
@@ -1029,8 +1220,12 @@ async function loadCooking() {
     const exclude = seenCookingTitles.length
       ? ' Do NOT include any of these concepts: ' + seenCookingTitles.join(', ') + '.'
       : '';
+    const liked    = getLiked('cooking').slice(-8);
+    const disliked = getDisliked('cooking').slice(-8);
+    const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
+                      (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
     const items = await callClaude(
-      'Generate 1 interesting cooking science or technique concept — the kind that makes you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible.' + exclude + ' Give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
+      'Generate 1 interesting cooking science or technique concept — the kind that makes you cook better and understand why things work. Think Modernist Cuisine level curiosity but accessible.' + exclude + ratingCtx + ' Give a title, 2-sentence explanation, and a search keyword for Serious Eats. Return JSON: [{title, explanation, seriousEatsQuery}]'
     );
     items.forEach(i => { seenCookingTitles.push(i.title); searchTerms['cooking'] = i.title; });
     container.innerHTML = items.map(i =>
@@ -1040,6 +1235,12 @@ async function loadCooking() {
         '<a href="https://www.seriouseats.com/search?q=' + encodeURIComponent(i.seriousEatsQuery) + '" target="_blank" rel="noopener">Read more on Serious Eats →</a>' +
       '</div>'
     ).join('');
+    const cCard = container.querySelector('.ai-card');
+    if (cCard) {
+      const seUrl = 'https://www.seriouseats.com/search?q=' + encodeURIComponent(items[0].seriousEatsQuery);
+      cCard.insertAdjacentHTML('beforeend', cardFooter('cooking', items[0].title, seUrl));
+      addSwipeListener(cCard, 'cooking', items[0].title, loadCooking);
+    }
   } catch(e) {
     container.innerHTML = fallbackCooking();
   }
@@ -1141,17 +1342,27 @@ function skel() {
 }
 
 function makeLoader(slug, prompt, render, fallbackData) {
-  const seen = [];
+  const seen = getDismissed(slug);
   async function load() {
     const container = document.getElementById(slug + '-content');
     container.innerHTML = skel();
     try {
       const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join(', ') + '.' : '';
-      const data = await callClaude(prompt(exclude));
+      const liked    = getLiked(slug).slice(-8);
+      const disliked = getDisliked(slug).slice(-8);
+      const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
+                        (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
+      const data = await callClaude(prompt(exclude + ratingCtx));
       const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || '';
       seen.push(key);
       searchTerms[slug] = key;
       container.innerHTML = render(data);
+      const card = container.querySelector('.ai-single') || container.querySelector('.ai-card');
+      if (card) {
+        const url = card.querySelector('a') ? card.querySelector('a').href : '';
+        card.insertAdjacentHTML('beforeend', cardFooter(slug, key, url));
+        addSwipeListener(card, slug, key, load);
+      }
     } catch(e) {
       container.innerHTML = render(fallbackData);
     }
@@ -1414,8 +1625,42 @@ ACTIVITY_SCREENS.forEach(id => {
   header.appendChild(btn);
 });
 
+// ── Saved screen ──────────────────────────────
+function renderSaved() {
+  const items = getBookmarks();
+  const el = document.getElementById('saved-list');
+  if (!items.length) {
+    el.innerHTML = '<p class="saved-empty">Nothing saved yet.<br>Tap 🔖 on any card to save it.</p>';
+    return;
+  }
+  el.innerHTML = items.map(b =>
+    '<div class="saved-item">' +
+      '<div class="saved-item-body">' +
+        '<div class="saved-item-title">' + esc(b.title) + '</div>' +
+        '<div class="saved-item-meta">' + esc(b.slug) +
+          (b.url ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener">Open →</a>' : '') +
+        '</div>' +
+      '</div>' +
+      '<button class="btn-unsave" data-remove="' + esc(b.id) + '">×</button>' +
+    '</div>'
+  ).join('');
+}
+
+document.getElementById('saved-list').addEventListener('click', e => {
+  const btn = e.target.closest('[data-remove]');
+  if (btn) { removeBookmark(btn.dataset.remove); updateSavedCount(); renderSaved(); }
+});
+
+document.getElementById('btn-saved').addEventListener('click', () => { renderSaved(); showScreen('saved'); });
+
+function updateSavedCount() {
+  const n = getBookmarks().length;
+  document.getElementById('btn-saved').textContent = n ? 'Saved (' + n + ')' : 'Saved';
+}
+
 // ── Init ──────────────────────────────────────
 showScreen(getApiKey() ? 'home' : 'apikey');
+updateSavedCount();
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
