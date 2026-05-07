@@ -528,6 +528,10 @@
       <h3>Stoic Passage</h3>
       <p>A thought that might stick with you</p>
     </div>
+    <div class="activity-card" data-activity="stoic-reminder">
+      <h3>Stoic Reminder</h3>
+      <p>A gut-check from the fundamentals.</p>
+    </div>
     <div class="activity-card" data-activity="reading">
       <h3>One-Page Read</h3>
       <p>Open your book. Just one page.</p>
@@ -642,6 +646,19 @@
   <div class="activity-actions">
     <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>
     <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- STOIC REMINDER -->
+<div id="screen-stoic-reminder" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Stoic Reminder</span>
+  </div>
+  <div id="stoic-reminder-content"></div>
+  <button class="btn-refresh" id="stoic-reminder-refresh">New reminder</button>
+  <div class="activity-actions">
+    <button class="btn btn-outline" id="stoic-reminder-journal-btn">Journal about it</button>
   </div>
 </div>
 
@@ -1050,18 +1067,18 @@ document.addEventListener('click', e => {
 });
 
 const DURATION_ACTIVITIES = {
-  '1min': ['fun-fact','stoic','introspection','mental-math','new-word','new-term',
+  '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
            'finance-term','geography-fact','logical-fallacy','on-this-day',
            'thought-experiment','etymology','cognitive-bias','journal','mindfulness','brain-teaser'],
   '5min': ['history','cooking','stoic','reading','anki','mindfulness','journal',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
            'thought-experiment','cognitive-bias','brain-teaser'],
-  'reflection':   ['stoic','mindfulness','journal','introspection'],
+  'reflection':   ['stoic','stoic-reminder','mindfulness','journal','introspection'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment'],
   'activity':     ['mental-math','brain-teaser','anki','reading'],
-  'random':       ['history','cooking','stoic','reading','anki','mindfulness','journal',
+  'random':       ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','journal',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser'],
@@ -1153,6 +1170,7 @@ function navigateToActivity(a) {
   if (a === 'etymology')         loadEtymology();
   if (a === 'cognitive-bias')    loadCognitiveBias();
   if (a === 'brain-teaser')      loadBrainTeaser();
+  if (a === 'stoic-reminder')    loadStoicReminder();
   const showTimer = selectedDuration === '5min';
   document.querySelectorAll('.timer-action').forEach(el => el.classList.toggle('hidden', !showTimer));
 }
@@ -1636,6 +1654,34 @@ const loadCognitiveBias = makeLoader(
 );
 document.getElementById('cognitive-bias-refresh').addEventListener('click', loadCognitiveBias);
 
+// ── Stoic Reminder ────────────────────────────
+let stoicReminderData = null;
+const seenStoicReminders = [];
+
+const loadStoicReminder = makeLoader(
+  'stoic-reminder',
+  (ex) => 'Give me a short stoic gut-check reminder — the kind that reorients you toward virtue and away from anxiety. Draw from core stoic principles: dichotomy of control, the sage ideal, memento mori, amor fati, present focus. Examples of the tone: "What would the idealized sage do right now?", "Is this in your control — or are you borrowing trouble?", "What virtue does this moment call for?" Make it punchy and direct.' + ex + ' Return JSON: {reminder, principle, context}',
+  (d) => {
+    stoicReminderData = d;
+    return '<div class="ai-single">' +
+      '<div class="tag">' + esc(d.principle) + '</div>' +
+      '<div class="main-text" style="font-size:1.2rem;line-height:1.5;margin-bottom:12px">' + esc(d.reminder) + '</div>' +
+      '<div class="sub-text">' + esc(d.context) + '</div>' +
+    '</div>';
+  },
+  { reminder: 'What would the idealized sage do right now?', principle: 'The Sage Ideal', context: 'The Stoics used the figure of the sage — a person of perfect wisdom and virtue — as a compass. Not to be perfect, but to have a direction.' }
+);
+
+document.getElementById('stoic-reminder-refresh').addEventListener('click', loadStoicReminder);
+
+document.getElementById('stoic-reminder-journal-btn').addEventListener('click', async () => {
+  if (!stoicReminderData) return;
+  const text = stoicReminderData.reminder + '\n\n' + stoicReminderData.context;
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  showToast('Copied — opening Notion');
+  setTimeout(() => { window.location.href = 'notion://'; }, 600);
+});
+
 // ── Anki helpers ──────────────────────────────
 function formatAnkiCard(id) {
   const d = ankiData[id];
@@ -1753,7 +1799,7 @@ INFORMATIONAL_SCREENS.forEach(id => {
 });
 
 // ── "New activity" button ─────────────────────
-const ACTIVITY_SCREENS = ['history','cooking','stoic','reading','anki','mindfulness','journal',
+const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','journal',
   'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
   'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
 
