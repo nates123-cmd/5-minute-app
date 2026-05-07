@@ -317,7 +317,10 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 12px;
+      cursor: pointer;
+      transition: opacity 0.15s;
     }
+    .saved-item:active { opacity: 0.7; }
     .saved-item-body { flex: 1; min-width: 0; }
     .saved-item-title { font-size: 0.93rem; font-weight: 600; margin-bottom: 4px; }
     .saved-item-meta  { font-size: 0.78rem; color: var(--muted); }
@@ -972,6 +975,7 @@ let stoicData        = null;
 let selectedDuration = '5min';
 const searchTerms    = {};
 const ankiData       = {};
+const currentCardState = {}; // { [slug]: { html, identifier, url } } — for saved replay
 
 // ── Persistent storage helpers ────────────────
 function getDismissed(slug) {
@@ -1078,7 +1082,9 @@ document.addEventListener('click', e => {
       const card = bm.closest('.ai-card, .ai-single');
       const titleEl = card ? (card.querySelector('h4') || card.querySelector('.word-title') || card.querySelector('.main-text')) : null;
       const title = titleEl ? titleEl.innerText.trim() : bm.dataset.id;
-      saveBookmark({ id: bmId, slug: bm.dataset.slug, title, url: bm.dataset.url, savedAt: Date.now() });
+      const cs = currentCardState[bm.dataset.slug] || {};
+      saveBookmark({ id: bmId, slug: bm.dataset.slug, title, url: bm.dataset.url, savedAt: Date.now(),
+                     cardHtml: cs.html || '', identifier: bm.dataset.id });
       bm.classList.add('saved');
     }
     updateSavedCount();
@@ -1169,27 +1175,29 @@ function showToast(msg, duration = 2500) {
 document.getElementById('done-home-btn').addEventListener('click', () => showScreen('home'));
 
 // ── Navigate to activity ──────────────────────
-function navigateToActivity(a) {
+function navigateToActivity(a, skipLoad = false) {
   currentActivity = a;
   showScreen(a);
-  if (a === 'history')           loadHistory();
-  if (a === 'cooking')           loadCooking();
-  if (a === 'stoic')             loadStoic();
-  if (a === 'journal')           loadJournal();
-  if (a === 'fun-fact')          loadFunFact();
-  if (a === 'introspection')     loadIntrospection();
-  if (a === 'mental-math')       loadMentalMath();
-  if (a === 'new-word')          loadNewWord();
-  if (a === 'new-term')          loadNewTerm();
-  if (a === 'finance-term')      loadFinanceTerm();
-  if (a === 'geography-fact')    loadGeographyFact();
-  if (a === 'logical-fallacy')   loadLogicalFallacy();
-  if (a === 'on-this-day')       loadOnThisDay();
-  if (a === 'thought-experiment') loadThoughtExperiment();
-  if (a === 'etymology')         loadEtymology();
-  if (a === 'cognitive-bias')    loadCognitiveBias();
-  if (a === 'brain-teaser')      loadBrainTeaser();
-  if (a === 'stoic-reminder')    loadStoicReminder();
+  if (!skipLoad) {
+    if (a === 'history')           loadHistory();
+    if (a === 'cooking')           loadCooking();
+    if (a === 'stoic')             loadStoic();
+    if (a === 'journal')           loadJournal();
+    if (a === 'fun-fact')          loadFunFact();
+    if (a === 'introspection')     loadIntrospection();
+    if (a === 'mental-math')       loadMentalMath();
+    if (a === 'new-word')          loadNewWord();
+    if (a === 'new-term')          loadNewTerm();
+    if (a === 'finance-term')      loadFinanceTerm();
+    if (a === 'geography-fact')    loadGeographyFact();
+    if (a === 'logical-fallacy')   loadLogicalFallacy();
+    if (a === 'on-this-day')       loadOnThisDay();
+    if (a === 'thought-experiment') loadThoughtExperiment();
+    if (a === 'etymology')         loadEtymology();
+    if (a === 'cognitive-bias')    loadCognitiveBias();
+    if (a === 'brain-teaser')      loadBrainTeaser();
+    if (a === 'stoic-reminder')    loadStoicReminder();
+  }
   const showTimer = selectedDuration === '5min';
   document.querySelectorAll('.timer-action').forEach(el => el.classList.toggle('hidden', !showTimer));
 }
@@ -1265,6 +1273,7 @@ async function loadHistory() {
     const hCard = container.querySelector('.ai-card');
     if (hCard) {
       const wikiUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(topics[0].wikipediaSlug);
+      currentCardState['history'] = { html: container.innerHTML, identifier: topics[0].title, url: wikiUrl };
       hCard.insertAdjacentHTML('beforeend', cardFooter('history', topics[0].title, wikiUrl));
       addSwipeListener(hCard, 'history', topics[0].title, loadHistory);
     }
@@ -1364,6 +1373,7 @@ async function loadCooking() {
     container.innerHTML = html;
     const cCard = container.querySelector('.ai-card');
     if (cCard) {
+      currentCardState['cooking'] = { html: container.innerHTML, identifier: title, url: sourceUrl };
       cCard.insertAdjacentHTML('beforeend', cardFooter('cooking', title, sourceUrl));
       addSwipeListener(cCard, 'cooking', title, loadCooking);
     }
@@ -1481,6 +1491,7 @@ function makeLoader(slug, prompt, render, fallbackData) {
       const card = container.querySelector('.ai-single') || container.querySelector('.ai-card');
       if (card) {
         const url = card.querySelector('a') ? card.querySelector('a').href : '';
+        currentCardState[slug] = { html: container.innerHTML, identifier: key, url };
         card.insertAdjacentHTML('beforeend', cardFooter(slug, key, url));
         addSwipeListener(card, slug, key, load);
       }
@@ -1836,6 +1847,32 @@ ACTIVITY_SCREENS.forEach(id => {
   header.appendChild(btn);
 });
 
+// ── Card replay (saved → original screen) ─────
+const LOADERS = {
+  'history': () => loadHistory(), 'cooking': () => loadCooking(), 'stoic': () => loadStoic(),
+  'journal': () => loadJournal(), 'fun-fact': () => loadFunFact(), 'introspection': () => loadIntrospection(),
+  'mental-math': () => loadMentalMath(), 'new-word': () => loadNewWord(), 'new-term': () => loadNewTerm(),
+  'finance-term': () => loadFinanceTerm(), 'geography-fact': () => loadGeographyFact(),
+  'logical-fallacy': () => loadLogicalFallacy(), 'on-this-day': () => loadOnThisDay(),
+  'thought-experiment': () => loadThoughtExperiment(), 'etymology': () => loadEtymology(),
+  'cognitive-bias': () => loadCognitiveBias(), 'brain-teaser': () => loadBrainTeaser(),
+  'stoic-reminder': () => loadStoicReminder(),
+};
+
+function replayCard(b) {
+  navigateToActivity(b.slug, true);
+  const container = document.getElementById(b.slug + '-content') || document.getElementById(b.slug + '-cards');
+  if (!container || !b.cardHtml) { navigateToActivity(b.slug); return; }
+  container.innerHTML = b.cardHtml;
+  const card = container.querySelector('.ai-single, .ai-card');
+  if (card) {
+    const stale = card.querySelector('.card-actions');
+    if (stale) stale.remove();
+    card.insertAdjacentHTML('beforeend', cardFooter(b.slug, b.identifier, b.url));
+    addSwipeListener(card, b.slug, b.identifier, LOADERS[b.slug] || (() => {}));
+  }
+}
+
 // ── Saved screen ──────────────────────────────
 function renderSaved() {
   const items = getBookmarks();
@@ -1844,12 +1881,12 @@ function renderSaved() {
     el.innerHTML = '<p class="saved-empty">Nothing saved yet.<br>Tap 🔖 on any card to save it.</p>';
     return;
   }
-  el.innerHTML = items.map(b =>
-    '<div class="saved-item">' +
+  el.innerHTML = items.map((b, i) =>
+    '<div class="saved-item" data-idx="' + i + '">' +
       '<div class="saved-item-body">' +
         '<div class="saved-item-title">' + esc(b.title) + '</div>' +
         '<div class="saved-item-meta">' + esc(b.slug) +
-          (b.url ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener">Open →</a>' : '') +
+          (b.url ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open →</a>' : '') +
         '</div>' +
       '</div>' +
       '<button class="btn-unsave" data-remove="' + esc(b.id) + '">×</button>' +
@@ -1859,7 +1896,13 @@ function renderSaved() {
 
 document.getElementById('saved-list').addEventListener('click', e => {
   const btn = e.target.closest('[data-remove]');
-  if (btn) { removeBookmark(btn.dataset.remove); updateSavedCount(); renderSaved(); }
+  if (btn) { removeBookmark(btn.dataset.remove); updateSavedCount(); renderSaved(); return; }
+  if (e.target.tagName === 'A') return; // let "Open →" links through
+  const item = e.target.closest('.saved-item');
+  if (item) {
+    const b = getBookmarks()[parseInt(item.dataset.idx)];
+    if (b) replayCard(b);
+  }
 });
 
 document.getElementById('btn-saved').addEventListener('click', () => { renderSaved(); showScreen('saved'); });
