@@ -1477,6 +1477,8 @@ function fallbackCooking() {
 document.getElementById('cooking-refresh').addEventListener('click', loadCooking);
 
 // ── Stoic ─────────────────────────────────────
+const seenStoicPassages = getDismissed('stoic');
+
 async function loadStoic() {
   const container = document.getElementById('stoic-content');
   container.innerHTML =
@@ -1484,9 +1486,14 @@ async function loadStoic() {
     '<div class="ai-card"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton" style="width:60%"></div></div>' +
     '<div style="margin-top:12px"><div class="skeleton" style="height:12px"></div><div class="skeleton" style="height:12px;width:80%"></div></div>';
   try {
+    const exclude = seenStoicPassages.length ? ' Do not repeat any of these: ' + seenStoicPassages.join('; ') + '.' : '';
+    const liked    = getLiked('stoic').slice(-8);
+    const disliked = getDisliked('stoic').slice(-8);
+    const ratingCtx = (liked.length ? ' More like these authors/themes: ' + liked.join(', ') + '.' : '') +
+                      (disliked.length ? ' Avoid similar to: ' + disliked.join(', ') + '.' : '');
     const seed = Math.random().toString(36).slice(2, 7);
     stoicData = await callClaude(
-      'Give me a Stoic passage from Marcus Aurelius, Epictetus, or Seneca. Choose something genuinely thought-provoking, not the most commonly quoted ones. Pick a different passage every time (seed: ' + seed + '). Return JSON: {author, passage, explanation}'
+      'Give me a Stoic passage from Marcus Aurelius, Epictetus, or Seneca. Choose something genuinely thought-provoking, not the most commonly quoted ones. Pick a different passage every time (seed: ' + seed + ').' + exclude + ratingCtx + ' Return JSON: {author, passage, explanation}'
     );
     renderStoic(stoicData);
   } catch(e) {
@@ -1500,10 +1507,20 @@ async function loadStoic() {
 }
 
 function renderStoic(d) {
-  document.getElementById('stoic-content').innerHTML =
-    '<div class="stoic-author">' + esc(d.author) + '</div>' +
-    '<blockquote>' + esc(d.passage) + '</blockquote>' +
-    '<p class="stoic-explanation">' + esc(d.explanation) + '</p>';
+  const container = document.getElementById('stoic-content');
+  const key = d.author + ' — ' + d.passage.slice(0, 60);
+  seenStoicPassages.push(key);
+  searchTerms['stoic'] = key;
+  container.innerHTML =
+    '<div class="ai-card">' +
+      '<div class="stoic-author">' + esc(d.author) + '</div>' +
+      '<blockquote>' + esc(d.passage) + '</blockquote>' +
+      '<p class="stoic-explanation">' + esc(d.explanation) + '</p>' +
+    '</div>';
+  const card = container.querySelector('.ai-card');
+  currentCardState['stoic'] = { html: container.innerHTML, identifier: key, url: '' };
+  card.insertAdjacentHTML('beforeend', cardFooter('stoic', key, ''));
+  addSwipeListener(card, 'stoic', key, loadStoic);
 }
 
 document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
@@ -1567,7 +1584,7 @@ function makeLoader(slug, prompt, render, fallbackData) {
       const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
                         (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
       const data = await callClaude(prompt(exclude + ratingCtx));
-      const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || '';
+      const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || data.problem || data.reminder || '';
       seen.push(key);
       searchTerms[slug] = key;
       container.innerHTML = render(data);
