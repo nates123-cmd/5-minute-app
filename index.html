@@ -1295,8 +1295,8 @@ document.querySelectorAll('.activity-card').forEach(card => {
 document.querySelectorAll('.btn-duration').forEach(btn => {
   btn.addEventListener('click', () => {
     const bucket = btn.dataset.bucket;
-    if (bucket === '1min') { window.location.href = 'shortcuts://run-shortcut?name=1%20minute%20timer'; return; }
-    if (bucket === '5min') { window.location.href = 'shortcuts://run-shortcut?name=5%20minute%20timer'; return; }
+    if (bucket === '1min') { startTimer(1); return; }
+    if (bucket === '5min') { startTimer(5); return; }
     selectedDuration = bucket;
     document.querySelectorAll('.btn-duration').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
