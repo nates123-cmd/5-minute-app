@@ -977,6 +977,17 @@ const searchTerms    = {};
 const ankiData       = {};
 const currentCardState = {}; // { [slug]: { html, identifier, url } } — for saved replay
 
+// ── Notion routing constants ───────────────────
+const AREA_COOKING   = 'https://www.notion.so/2ed706a32fa58041891bd645481cf059';
+const AREA_LEARNINGS = 'https://www.notion.so/2e2706a32fa580d397cae65539b3adf2';
+
+async function journalToNotion(type, payload) {
+  try { await navigator.clipboard.writeText(JSON.stringify(payload)); } catch(e) {}
+  showToast('Copied — opening Shortcuts');
+  const name = type === 'stoic' ? 'Stoic%20Journal' : 'Notes%20to%20Notion';
+  setTimeout(() => { window.location.href = 'shortcuts://run-shortcut?name=' + name; }, 600);
+}
+
 // ── Persistent storage helpers ────────────────
 function getDismissed(slug) {
   try { return JSON.parse(localStorage.getItem('dismissed_' + slug) || '[]'); } catch(e) { return []; }
@@ -1427,10 +1438,10 @@ document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
 
 document.getElementById('stoic-journal-btn').addEventListener('click', async () => {
   if (!stoicData) return;
-  const text = '"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation;
-  try { await navigator.clipboard.writeText(text); } catch(e) {}
-  showToast('Copied — opening Notion');
-  setTimeout(() => { window.location.href = 'notion://'; }, 600); // TODO: specific Notion page deep link
+  journalToNotion('stoic', {
+    title: stoicData.author,
+    content: '"' + stoicData.passage + '"\n\n' + stoicData.explanation,
+  });
 });
 
 // ── Journal ───────────────────────────────────
@@ -1461,10 +1472,10 @@ async function loadJournal() {
 document.getElementById('journal-refresh').addEventListener('click', loadJournal);
 
 document.getElementById('journal-notion-btn').addEventListener('click', async () => {
-  const text = (journalData ? journalData.question : 'What am I avoiding right now?') + '\n\n' + (journalData ? journalData.instruction : '');
-  try { await navigator.clipboard.writeText(text); } catch(e) {}
-  showToast('Copied — opening Notion');
-  setTimeout(() => { window.location.href = 'notion://'; }, 600); // TODO: specific Notion page deep link
+  journalToNotion('stoic', {
+    title: journalData ? journalData.question : 'Journal',
+    content: (journalData ? journalData.question + '\n\n' + journalData.instruction : ''),
+  });
 });
 
 // ── Shared loader helper ─────────────────────
@@ -1525,10 +1536,10 @@ const loadIntrospection = makeLoader(
 document.getElementById('introspection-refresh').addEventListener('click', loadIntrospection);
 document.getElementById('introspection-notion-btn').addEventListener('click', async () => {
   if (!introspectionData) return;
-  const text = introspectionData.question + '\n\n' + introspectionData.prompt;
-  try { await navigator.clipboard.writeText(text); } catch(e) {}
-  showToast('Copied — opening Notion');
-  setTimeout(() => { window.location.href = 'notion://'; }, 600);
+  journalToNotion('stoic', {
+    title: introspectionData.question,
+    content: introspectionData.question + '\n\n' + introspectionData.prompt,
+  });
 });
 
 // ── Mental Math ───────────────────────────────
@@ -1706,10 +1717,10 @@ document.getElementById('stoic-reminder-refresh').addEventListener('click', load
 
 document.getElementById('stoic-reminder-journal-btn').addEventListener('click', async () => {
   if (!stoicReminderData) return;
-  const text = stoicReminderData.reminder + '\n\n' + stoicReminderData.context;
-  try { await navigator.clipboard.writeText(text); } catch(e) {}
-  showToast('Copied — opening Notion');
-  setTimeout(() => { window.location.href = 'notion://'; }, 600);
+  journalToNotion('stoic', {
+    title: stoicReminderData.principle,
+    content: stoicReminderData.reminder + '\n\n' + stoicReminderData.context,
+  });
 });
 
 // ── Anki helpers ──────────────────────────────
@@ -1818,9 +1829,9 @@ INFORMATIONAL_SCREENS.forEach(id => {
   journalBtn.className = 'btn btn-outline';
   journalBtn.textContent = 'Journal about it';
   journalBtn.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(getContentText()); } catch(e) {}
-    showToast('Copied — opening Notion');
-    setTimeout(() => { window.location.href = 'notion://'; }, 600);
+    const title = searchTerms[id] || getContentText().split('\n')[0];
+    const area = id === 'cooking' ? AREA_COOKING : AREA_LEARNINGS;
+    journalToNotion('notes', { title, content: getContentText(), area });
   });
 
   actions.insertBefore(googleBtn, actions.firstChild);
