@@ -544,6 +544,10 @@
       <h3>Mindfulness</h3>
       <p>5 minutes. Just breathe and notice.</p>
     </div>
+    <div class="activity-card" data-activity="breathe">
+      <h3>Breathe</h3>
+      <p>Just breathe. That's it.</p>
+    </div>
     <div class="activity-card" data-activity="journal">
       <h3>Journal Prompt</h3>
       <p>One honest question. Three bullets.</p>
@@ -699,7 +703,22 @@
   <p class="framing">5 minutes. Just breathe and notice. No goal. No assessment. Just this.</p>
   <div class="spacer"></div>
   <div class="activity-actions">
-    <a class="btn btn-outline" href="wakingup://">Open Waking Up</a><!-- TODO: specific 5-min deep link -->
+    <a class="btn btn-outline" href="wakingup://">Open Waking Up</a>
+    <a class="btn btn-outline timer-action" href="shortcuts://run-shortcut?name=1%20minute%20timer">Start 1-minute timer</a>
+    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+  </div>
+</div>
+
+<!-- BREATHE -->
+<div id="screen-breathe" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Breathe</span>
+  </div>
+  <p class="framing">Close your eyes. Breathe in slowly. Breathe out slowly. Nothing else needed.</p>
+  <div class="spacer"></div>
+  <div class="activity-actions">
+    <a class="btn btn-outline timer-action" href="shortcuts://run-shortcut?name=1%20minute%20timer">Start 1-minute timer</a>
     <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
   </div>
 </div>
@@ -1069,16 +1088,16 @@ document.addEventListener('click', e => {
 const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
            'finance-term','geography-fact','logical-fallacy','on-this-day',
-           'thought-experiment','etymology','cognitive-bias','journal','mindfulness','brain-teaser'],
-  '5min': ['history','cooking','stoic','reading','anki','mindfulness','journal',
+           'thought-experiment','etymology','cognitive-bias','journal','mindfulness','breathe','brain-teaser'],
+  '5min': ['history','cooking','stoic','reading','anki','mindfulness','breathe','journal',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
            'thought-experiment','cognitive-bias','brain-teaser'],
-  'reflection':   ['stoic','stoic-reminder','mindfulness','journal','introspection'],
+  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment'],
   'activity':     ['mental-math','brain-teaser','anki','reading'],
-  'random':       ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','journal',
+  'random':       ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','breathe','journal',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser'],
@@ -1799,7 +1818,7 @@ INFORMATIONAL_SCREENS.forEach(id => {
 });
 
 // ── "New activity" button ─────────────────────
-const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','journal',
+const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','breathe','journal',
   'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
   'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
 
