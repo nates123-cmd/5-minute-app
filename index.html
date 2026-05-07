@@ -336,6 +336,25 @@
       line-height: 1;
     }
     .saved-empty { color: var(--muted); font-size: 0.93rem; text-align: center; margin-top: 40px; line-height: 1.7; }
+    /* Timer modal */
+    .timer-modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 500;
+    }
+    .timer-modal.hidden { display: none; }
+    .timer-modal-box {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      padding: 36px 28px;
+      text-align: center;
+      max-width: 300px;
+      width: 88%;
+    }
+    .timer-modal-icon { font-size: 2.8rem; margin-bottom: 14px; }
+    .timer-modal-msg  { font-size: 1.15rem; font-weight: 600; margin-bottom: 8px; }
+    .timer-modal-sub  { font-size: 0.85rem; color: var(--muted); margin-bottom: 28px; }
 
     /* Single-item AI display */
     .ai-single {
@@ -624,7 +643,7 @@
   <div class="ai-cards" id="history-cards"></div>
   <button class="btn-refresh" id="history-refresh">Refresh topics</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -638,7 +657,7 @@
   <div class="ai-cards" id="cooking-cards"></div>
   <button class="btn-refresh" id="cooking-refresh">New idea</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -652,7 +671,7 @@
   <button class="btn-refresh" id="stoic-refresh">New passage</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -679,7 +698,7 @@
   <div class="spacer"></div>
   <div class="activity-actions">
     <a class="btn btn-outline" href="kindle://">Open Kindle</a><!-- TODO: specific Kindle deep link -->
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -693,7 +712,7 @@
   <div class="spacer"></div>
   <div class="activity-actions">
     <a class="btn btn-outline" href="anki://">Open Anki</a><!-- TODO: specific Anki deck deep link -->
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -707,8 +726,8 @@
   <div class="spacer"></div>
   <div class="activity-actions">
     <a class="btn btn-outline" href="wakingup://">Open Waking Up</a>
-    <a class="btn btn-outline timer-action" href="shortcuts://run-shortcut?name=1%20minute%20timer">Start 1-minute timer</a>
-    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-outline timer-action" data-timer="1">Start 1-minute timer</button>
+    <button class="btn btn-primary timer-action" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -721,8 +740,8 @@
   <p class="framing">Close your eyes. Breathe in slowly. Breathe out slowly. Nothing else needed.</p>
   <div class="spacer"></div>
   <div class="activity-actions">
-    <a class="btn btn-outline timer-action" href="shortcuts://run-shortcut?name=1%20minute%20timer">Start 1-minute timer</a>
-    <a class="btn btn-primary timer-action" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-outline timer-action" data-timer="1">Start 1-minute timer</button>
+    <button class="btn btn-primary timer-action" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -739,7 +758,7 @@
   <button class="btn-refresh" id="journal-refresh">New prompt</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="journal-notion-btn">Copy &amp; Open Notion</button><!-- TODO: specific Notion page deep link -->
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -752,7 +771,7 @@
   <div id="fun-fact-content"></div>
   <button class="btn-refresh" id="fun-fact-refresh">New fact</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -766,7 +785,7 @@
   <button class="btn-refresh" id="introspection-refresh">New question</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="introspection-notion-btn">Copy &amp; Open Notion</button>
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -793,7 +812,7 @@
   <div id="mental-math-content"></div>
   <button class="btn-refresh" id="mental-math-refresh">New problem</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -806,7 +825,7 @@
   <div id="new-word-content"></div>
   <button class="btn-refresh" id="new-word-refresh">New word</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -819,7 +838,7 @@
   <div id="new-term-content"></div>
   <button class="btn-refresh" id="new-term-refresh">New term</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -832,7 +851,7 @@
   <div id="finance-term-content"></div>
   <button class="btn-refresh" id="finance-term-refresh">New term</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -845,7 +864,7 @@
   <div id="geography-fact-content"></div>
   <button class="btn-refresh" id="geography-fact-refresh">New fact</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -858,7 +877,7 @@
   <div id="logical-fallacy-content"></div>
   <button class="btn-refresh" id="logical-fallacy-refresh">New fallacy</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -871,7 +890,7 @@
   <div id="on-this-day-content"></div>
   <button class="btn-refresh" id="on-this-day-refresh">Another event</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -884,7 +903,7 @@
   <div id="thought-experiment-content"></div>
   <button class="btn-refresh" id="thought-experiment-refresh">New experiment</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -897,7 +916,7 @@
   <div id="etymology-content"></div>
   <button class="btn-refresh" id="etymology-refresh">New word</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -910,7 +929,7 @@
   <div id="cognitive-bias-content"></div>
   <button class="btn-refresh" id="cognitive-bias-refresh">New bias</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -923,7 +942,7 @@
   <div id="brain-teaser-content"></div>
   <button class="btn-refresh" id="brain-teaser-refresh">New teaser</button>
   <div class="activity-actions">
-    <a class="btn btn-primary timer-action hidden" href="shortcuts://run-shortcut?name=5%20minute%20timer">Start 5-minute timer</a>
+    <button class="btn btn-primary timer-action hidden" data-timer="5">Start 5-minute timer</button>
   </div>
 </div>
 
@@ -966,6 +985,16 @@
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+
+<!-- Timer modal -->
+<div id="timer-modal" class="timer-modal hidden">
+  <div class="timer-modal-box">
+    <div class="timer-modal-icon">🔔</div>
+    <div class="timer-modal-msg" id="timer-modal-msg">Time's up.</div>
+    <div class="timer-modal-sub" id="timer-modal-sub"></div>
+    <button class="btn btn-primary" id="timer-modal-close">Done</button>
+  </div>
+</div>
 
 <script>
 'use strict';
@@ -1181,6 +1210,49 @@ function showToast(msg, duration = 2500) {
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), duration);
 }
+
+// ── In-app timer ─────────────────────────────
+let activeTimer = null;
+
+function playChime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.35, 0.7].forEach((offset, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime([528, 660, 792][i], ctx.currentTime + offset);
+      gain.gain.setValueAtTime(0, ctx.currentTime + offset);
+      gain.gain.linearRampToValueAtTime(0.25, ctx.currentTime + offset + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 1.5);
+      osc.start(ctx.currentTime + offset);
+      osc.stop(ctx.currentTime + offset + 1.6);
+    });
+  } catch(e) {}
+}
+
+function startTimer(minutes) {
+  if (activeTimer) { clearTimeout(activeTimer); activeTimer = null; }
+  showToast((minutes === 1 ? '1 minute' : '5 minutes') + ' timer started');
+  activeTimer = setTimeout(() => {
+    activeTimer = null;
+    playChime();
+    document.getElementById('timer-modal-msg').textContent = minutes === 1 ? "1 minute — done." : "5 minutes — done.";
+    document.getElementById('timer-modal-sub').textContent = minutes === 1 ? "Nice pause." : "Good work.";
+    document.getElementById('timer-modal').classList.remove('hidden');
+  }, minutes * 60 * 1000);
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('[data-timer]');
+  if (btn) startTimer(parseInt(btn.dataset.timer));
+});
+
+document.getElementById('timer-modal-close').addEventListener('click', () => {
+  document.getElementById('timer-modal').classList.add('hidden');
+});
 
 // ── Done ──────────────────────────────────────
 document.getElementById('done-home-btn').addEventListener('click', () => showScreen('home'));
