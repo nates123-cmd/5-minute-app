@@ -1214,7 +1214,7 @@ async function loadHistory() {
     const topics = await callClaude(
       'Generate 1 genuinely fascinating historical topic — the kind a curious person would fall into for hours. Give a title and one punchy sentence explaining why it\'s interesting.' + exclude + ratingCtx + ' Return JSON: [{title, hook, wikipediaSlug}]'
     );
-    topics.forEach(t => { seenHistoryTitles.push(t.title); searchTerms['history'] = t.title; });
+    topics.forEach(t => { seenHistoryTitles.push(t.title); searchTerms['history'] = t.title; ankiData['history'] = t; });
     container.innerHTML = topics.map(t =>
       '<div class="ai-card">' +
         '<h4>' + esc(t.title) + '</h4>' +
@@ -1567,7 +1567,7 @@ document.getElementById('finance-term-refresh').addEventListener('click', loadFi
 const loadGeographyFact = makeLoader(
   'geography-fact',
   (ex) => 'Give me a specific, surprising geographical fact about a place — something that makes you see the world differently.' + ex + ' Return JSON: {fact, location, context}',
-  (d) => '<div class="ai-single"><div class="tag">' + esc(d.location) + '</div><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>',
+  (d) => { ankiData['geography-fact'] = d; return '<div class="ai-single"><div class="tag">' + esc(d.location) + '</div><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>'; },
   { fact: 'Canada has more lakes than the rest of the world combined.', location: 'Canada', context: 'With over 2 million lakes covering about 9% of its land area, Canada holds roughly 60% of the world\'s freshwater lakes — a legacy of glacial retreat after the last ice age.' }
 );
 document.getElementById('geography-fact-refresh').addEventListener('click', loadGeographyFact);
@@ -1588,7 +1588,7 @@ const loadOnThisDay = makeLoader(
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
     return 'Give me one genuinely interesting historical event that happened on ' + today + '.' + ex + ' Return JSON: {event, year, context}';
   },
-  (d) => '<div class="ai-single"><div class="tag">' + esc(String(d.year)) + '</div><div class="main-text">' + esc(d.event) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>',
+  (d) => { ankiData['on-this-day'] = d; return '<div class="ai-single"><div class="tag">' + esc(String(d.year)) + '</div><div class="main-text">' + esc(d.event) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>'; },
   { event: 'The Library of Congress was established.', year: 1800, context: 'Founded with an initial purchase of 740 books and 3 maps, it is now the largest library in the world with over 170 million items.' }
 );
 document.getElementById('on-this-day-refresh').addEventListener('click', loadOnThisDay);
@@ -1597,7 +1597,7 @@ document.getElementById('on-this-day-refresh').addEventListener('click', loadOnT
 const loadThoughtExperiment = makeLoader(
   'thought-experiment',
   (ex) => 'Give me a classic or lesser-known thought experiment — its name, setup, and the core question it raises.' + ex + ' Return JSON: {name, setup, question}',
-  (d) => '<div class="ai-single"><div class="tag">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.setup) + '</div><div class="main-text" style="margin-top:14px">' + esc(d.question) + '</div></div>',
+  (d) => { ankiData['thought-experiment'] = d; return '<div class="ai-single"><div class="tag">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.setup) + '</div><div class="main-text" style="margin-top:14px">' + esc(d.question) + '</div></div>'; },
   { name: 'The Ship of Theseus', setup: 'The ship of the hero Theseus was kept in a harbour as a monument. As planks decayed they were replaced one by one, until eventually every single part had been replaced.', question: 'Is it still the same ship? And if not — at what point did it stop being?' }
 );
 document.getElementById('thought-experiment-refresh').addEventListener('click', loadThoughtExperiment);
@@ -1643,12 +1643,17 @@ function formatAnkiCard(id) {
     'finance-term':    { front: d.term,  back: d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''), category: 'Finance' },
     'etymology':       { front: d.word,  back: d.origin + (d.journey ? '\n\n' + d.journey : ''), category: 'Etymology' },
     'cognitive-bias':  { front: d.name,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : ''), category: 'Psychology' },
-    'logical-fallacy': { front: d.name,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : ''), category: 'Logic' },
+    'logical-fallacy':  { front: d.name,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : ''), category: 'Logic' },
+    'history':          { front: d.title, back: d.hook, category: 'History' },
+    'on-this-day':      { front: d.event, back: String(d.year) + '\n\n' + d.context, category: 'History' },
+    'geography-fact':   { front: d.fact,  back: d.location + '\n\n' + d.context, category: 'Geography' },
+    'thought-experiment':{ front: d.name, back: d.setup + '\n\n' + d.question, category: 'Philosophy' },
   };
   return map[id] || null;
 }
 
-const ANKI_SCREENS = ['new-word','new-term','finance-term','etymology','cognitive-bias','logical-fallacy'];
+const ANKI_SCREENS = ['new-word','new-term','finance-term','etymology','cognitive-bias','logical-fallacy',
+  'history','on-this-day','geography-fact','thought-experiment'];
 
 ANKI_SCREENS.forEach(id => {
   const actions = document.querySelector('#screen-' + id + ' .activity-actions');
