@@ -455,6 +455,21 @@
     }
     .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
+    .anki-textarea {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--card-bg);
+      font-size: 0.95rem;
+      color: var(--text);
+      font-family: var(--font);
+      resize: none;
+      outline: none;
+      margin-bottom: 10px;
+    }
+    .anki-textarea:focus { border-color: var(--accent); }
+
     .spacer { flex: 1; }
 
     .activity-actions {
@@ -580,6 +595,10 @@
     <div class="activity-card" data-activity="brain-teaser">
       <h3>Brain Teaser</h3>
       <p>Fermi estimates, logic puzzles, lateral thinking.</p>
+    </div>
+    <div class="activity-card" data-activity="anki-input">
+      <h3>Anki Input</h3>
+      <p>Capture something worth remembering.</p>
     </div>
   </div>
 </div>
@@ -878,6 +897,27 @@
   <div id="saved-list"></div>
 </div>
 
+<!-- ANKI INPUT -->
+<div id="screen-anki-input" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Anki Input</span>
+  </div>
+  <p class="framing">Type a card to save to your Notion → Anki queue.</p>
+  <textarea id="anki-front" class="anki-textarea" placeholder="Front (question / term)" rows="3"></textarea>
+  <textarea id="anki-back" class="anki-textarea" placeholder="Back (answer / definition)" rows="5"></textarea>
+  <div class="selector-row" id="anki-category-row">
+    <button class="btn-selector selected" data-anki-cat="General">General</button>
+    <button class="btn-selector" data-anki-cat="Vocabulary">Vocabulary</button>
+    <button class="btn-selector" data-anki-cat="Concepts">Concepts</button>
+    <button class="btn-selector" data-anki-cat="Finance">Finance</button>
+    <button class="btn-selector" data-anki-cat="Psychology">Psychology</button>
+  </div>
+  <div class="activity-actions">
+    <button class="btn btn-primary" id="anki-input-submit">Add to Anki</button>
+  </div>
+</div>
+
 <!-- DONE -->
 <div id="screen-done" class="screen">
   <h2>Time's up.</h2>
@@ -895,6 +935,7 @@ let currentActivity  = null;
 let stoicData        = null;
 let selectedDuration = '5min';
 const searchTerms    = {};
+const ankiData       = {};
 
 // ── Persistent storage helpers ────────────────
 function getDismissed(slug) {
@@ -1499,7 +1540,7 @@ document.getElementById('mental-math-refresh').addEventListener('click', loadMen
 const loadNewWord = makeLoader(
   'new-word',
   (ex) => 'Give me an interesting, obscure but real English word that\'s actually useful or evocative.' + ex + ' Return JSON: {word, pronunciation, partOfSpeech, definition, example}',
-  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.word) + '</div><div class="pronunciation">' + esc(d.pronunciation) + ' · ' + esc(d.partOfSpeech) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">"' + esc(d.example) + '"</div></div>',
+  (d) => { ankiData['new-word'] = d; return '<div class="ai-single"><div class="word-title">' + esc(d.word) + '</div><div class="pronunciation">' + esc(d.pronunciation) + ' · ' + esc(d.partOfSpeech) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">"' + esc(d.example) + '"</div></div>'; },
   { word: 'Sonder', pronunciation: '/ˈsɒndər/', partOfSpeech: 'noun', definition: 'The realization that each passerby has a life as vivid and complex as your own.', example: 'Standing in the airport, she felt a wave of sonder watching the crowds rush past.' }
 );
 document.getElementById('new-word-refresh').addEventListener('click', loadNewWord);
@@ -1508,7 +1549,7 @@ document.getElementById('new-word-refresh').addEventListener('click', loadNewWor
 const loadNewTerm = makeLoader(
   'new-term',
   (ex) => 'Give me an interesting term or concept from any field (philosophy, economics, psychology, science) that\'s genuinely useful for thinking about the world.' + ex + ' Return JSON: {term, field, definition, whyItMatters}',
-  (d) => '<div class="ai-single"><div class="tag">' + esc(d.field) + '</div><div class="word-title">' + esc(d.term) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.whyItMatters) + '</div></div>',
+  (d) => { ankiData['new-term'] = d; return '<div class="ai-single"><div class="tag">' + esc(d.field) + '</div><div class="word-title">' + esc(d.term) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.whyItMatters) + '</div></div>'; },
   { term: 'Overton Window', field: 'Political Science', definition: 'The range of policies politically acceptable to the mainstream public at any given time.', whyItMatters: 'Understanding it explains why ideas that seem radical today often become mainstream policy within a generation — and how advocates deliberately shift it.' }
 );
 document.getElementById('new-term-refresh').addEventListener('click', loadNewTerm);
@@ -1517,7 +1558,7 @@ document.getElementById('new-term-refresh').addEventListener('click', loadNewTer
 const loadFinanceTerm = makeLoader(
   'finance-term',
   (ex) => 'Give me an interesting finance or economics term that\'s useful for understanding money and markets. Not basic ones like inflation or compound interest.' + ex + ' Return JSON: {term, definition, whyItMatters, example}',
-  (d) => '<div class="ai-single"><div class="tag">Finance</div><div class="word-title">' + esc(d.term) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.whyItMatters) + ' ' + esc(d.example) + '</div></div>',
+  (d) => { ankiData['finance-term'] = d; return '<div class="ai-single"><div class="tag">Finance</div><div class="word-title">' + esc(d.term) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.whyItMatters) + ' ' + esc(d.example) + '</div></div>'; },
   { term: 'Yield Curve Inversion', definition: 'When short-term government bonds pay higher interest than long-term ones — the opposite of normal.', whyItMatters: 'It has preceded every US recession since 1955.', example: 'When the 2-year Treasury yield exceeds the 10-year, investors expect rates to fall — usually because a slowdown is coming.' }
 );
 document.getElementById('finance-term-refresh').addEventListener('click', loadFinanceTerm);
@@ -1535,7 +1576,7 @@ document.getElementById('geography-fact-refresh').addEventListener('click', load
 const loadLogicalFallacy = makeLoader(
   'logical-fallacy',
   (ex) => 'Give me a logical fallacy with a clear definition and a realistic everyday example. Not a famous one like ad hominem or straw man.' + ex + ' Return JSON: {name, definition, example}',
-  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.example) + '</div></div>',
+  (d) => { ankiData['logical-fallacy'] = d; return '<div class="ai-single"><div class="word-title">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.example) + '</div></div>'; },
   { name: 'Appeal to Nature', definition: 'Assuming something is good because it\'s natural, or bad because it\'s artificial.', example: '"This supplement is 100% natural, so it must be safe." (Arsenic and cyanide are also natural.)' }
 );
 document.getElementById('logical-fallacy-refresh').addEventListener('click', loadLogicalFallacy);
@@ -1565,7 +1606,7 @@ document.getElementById('thought-experiment-refresh').addEventListener('click', 
 const loadEtymology = makeLoader(
   'etymology',
   (ex) => 'Give me the etymology of an interesting common English word — where it came from and how it evolved. Not a word whose origin most people already know.' + ex + ' Return JSON: {word, origin, journey, modernMeaning}',
-  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.word) + '</div><div class="tag">' + esc(d.origin) + '</div><div class="sub-text">' + esc(d.journey) + '</div><div class="example">' + esc(d.modernMeaning) + '</div></div>',
+  (d) => { ankiData['etymology'] = d; return '<div class="ai-single"><div class="word-title">' + esc(d.word) + '</div><div class="tag">' + esc(d.origin) + '</div><div class="sub-text">' + esc(d.journey) + '</div><div class="example">' + esc(d.modernMeaning) + '</div></div>'; },
   { word: 'Salary', origin: 'Latin: salarium', journey: 'From "sal" (salt). Roman soldiers were sometimes paid in salt, or given an allowance to buy it — salt was that valuable as a preservative.', modernMeaning: 'Today we just mean a fixed regular payment for work, with no thought of seasoning.' }
 );
 document.getElementById('etymology-refresh').addEventListener('click', loadEtymology);
@@ -1587,10 +1628,65 @@ document.getElementById('brain-teaser-refresh').addEventListener('click', loadBr
 const loadCognitiveBias = makeLoader(
   'cognitive-bias',
   (ex) => 'Give me a cognitive bias with a clear definition, a realistic everyday example, and a one-line antidote.' + ex + ' Return JSON: {name, definition, example, antidote}',
-  (d) => '<div class="ai-single"><div class="word-title">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.example) + '</div><div class="sub-text" style="margin-top:10px;font-style:italic">Antidote: ' + esc(d.antidote) + '</div></div>',
+  (d) => { ankiData['cognitive-bias'] = d; return '<div class="ai-single"><div class="word-title">' + esc(d.name) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.example) + '</div><div class="sub-text" style="margin-top:10px;font-style:italic">Antidote: ' + esc(d.antidote) + '</div></div>'; },
   { name: 'Sunk Cost Fallacy', definition: 'Continuing an endeavour because of past investment (time, money, effort) rather than future value.', example: 'Finishing a bad movie because you\'ve already watched an hour. Or staying in a bad job because you\'ve already given it 3 years.', antidote: 'Ask: "If I were starting fresh today, would I choose this?" If no, walk away.' }
 );
 document.getElementById('cognitive-bias-refresh').addEventListener('click', loadCognitiveBias);
+
+// ── Anki helpers ──────────────────────────────
+function formatAnkiCard(id) {
+  const d = ankiData[id];
+  if (!d) return null;
+  const map = {
+    'new-word':        { front: d.word,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : ''), category: 'Vocabulary' },
+    'new-term':        { front: d.term + (d.field ? ' (' + d.field + ')' : ''), back: d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''), category: 'Concepts' },
+    'finance-term':    { front: d.term,  back: d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''), category: 'Finance' },
+    'etymology':       { front: d.word,  back: d.origin + (d.journey ? '\n\n' + d.journey : ''), category: 'Etymology' },
+    'cognitive-bias':  { front: d.name,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : ''), category: 'Psychology' },
+    'logical-fallacy': { front: d.name,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : ''), category: 'Logic' },
+  };
+  return map[id] || null;
+}
+
+const ANKI_SCREENS = ['new-word','new-term','finance-term','etymology','cognitive-bias','logical-fallacy'];
+
+ANKI_SCREENS.forEach(id => {
+  const actions = document.querySelector('#screen-' + id + ' .activity-actions');
+  if (!actions) return;
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-outline';
+  btn.textContent = 'Add to Anki';
+  btn.addEventListener('click', async () => {
+    const card = formatAnkiCard(id);
+    if (!card) { showToast('Load a card first'); return; }
+    try { await navigator.clipboard.writeText(JSON.stringify(card)); } catch(e) {}
+    showToast('Copied — opening Shortcuts');
+    setTimeout(() => { window.location.href = 'shortcuts://run-shortcut?name=Add%20to%20Anki'; }, 600);
+  });
+  actions.insertBefore(btn, actions.lastChild);
+});
+
+// ── Anki Input screen ─────────────────────────
+let ankiInputCategory = 'General';
+document.querySelectorAll('[data-anki-cat]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ankiInputCategory = btn.dataset.ankiCat;
+    document.querySelectorAll('[data-anki-cat]').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+document.getElementById('anki-input-submit').addEventListener('click', async () => {
+  const front = document.getElementById('anki-front').value.trim();
+  const back  = document.getElementById('anki-back').value.trim();
+  if (!front || !back) { showToast('Fill in both fields'); return; }
+  const card = { front, back, category: ankiInputCategory };
+  try { await navigator.clipboard.writeText(JSON.stringify(card)); } catch(e) {}
+  showToast('Copied — opening Shortcuts');
+  setTimeout(() => { window.location.href = 'shortcuts://run-shortcut?name=Add%20to%20Anki'; }, 600);
+  document.getElementById('anki-front').value = '';
+  document.getElementById('anki-back').value = '';
+});
 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
 const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
