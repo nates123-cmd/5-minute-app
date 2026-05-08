@@ -501,6 +501,26 @@
       margin-top: auto;
       padding-top: 16px;
     }
+
+    /* ── Box breathing ── */
+    .breathe-center {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; flex: 1; gap: 28px; padding: 20px 0;
+    }
+    .breathe-ring {
+      width: 160px; height: 160px; border-radius: 50%;
+      background: var(--accent); display: flex; align-items: center;
+      justify-content: center; cursor: pointer; color: var(--bg);
+      font-size: 2rem; font-weight: 700;
+      transition: transform 4s ease-in-out;
+      box-shadow: 0 0 0 14px rgba(168,152,128,0.12), 0 0 0 28px rgba(168,152,128,0.06);
+      user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    .breathe-ring.expand { transform: scale(1.45); }
+    .breathe-phase { font-size: 1.5rem; font-weight: 600; color: var(--text); }
+    .breathe-pattern-label { font-size: 0.82rem; color: var(--muted); }
+    .breathe-controls { display: flex; gap: 10px; width: 100%; max-width: 260px; }
+    .breathe-controls .btn { flex: 1; padding: 12px; }
   </style>
 </head>
 <body>
@@ -724,14 +744,19 @@
 <!-- BREATHE -->
 <div id="screen-breathe" class="screen">
   <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
+    <button class="btn-back" data-back="home" onclick="stopBoxBreathe()">←</button>
     <span class="activity-title">Breathe</span>
   </div>
-  <p class="framing">Close your eyes. Breathe in slowly. Breathe out slowly. Nothing else needed.</p>
-  <div class="spacer"></div>
-  <div class="activity-actions">
-    <button class="btn btn-outline timer-action" data-timer="1">Start 1-minute timer</button>
-    <button class="btn btn-primary timer-action" data-timer="5">Start 5-minute timer</button>
+  <div class="breathe-center">
+    <div id="box-breathe-ring" class="breathe-ring" onclick="toggleBoxBreathe()">
+      <span id="box-breathe-count"></span>
+    </div>
+    <div id="box-breathe-phase" class="breathe-phase">Tap to begin</div>
+    <p class="breathe-pattern-label">Box breathing · 4-4-4-4</p>
+    <div class="breathe-controls">
+      <button id="box-breathe-toggle" class="btn btn-outline" onclick="toggleBoxBreathe()">Start</button>
+      <button class="btn btn-outline" onclick="stopBoxBreathe()">Reset</button>
+    </div>
   </div>
 </div>
 
@@ -1931,6 +1956,52 @@ function replayCard(b) {
     card.insertAdjacentHTML('beforeend', cardFooter(b.slug, b.identifier, b.url));
     addSwipeListener(card, b.slug, b.identifier, LOADERS[b.slug] || (() => {}));
   }
+}
+
+// ── Box breathing ─────────────────────────────
+let boxBreathInterval = null, boxBreathPhase = 0, boxBreathRunning = false;
+const BOX_PHASES    = ['Inhale', 'Hold', 'Exhale', 'Hold'];
+const BOX_DURATIONS = [4, 4, 4, 4];
+
+function toggleBoxBreathe() { boxBreathRunning ? stopBoxBreathe() : startBoxBreathe(); }
+
+function startBoxBreathe() {
+  boxBreathRunning = true; boxBreathPhase = 0;
+  document.getElementById('box-breathe-toggle').textContent = 'Pause';
+  runBoxPhase();
+}
+
+function stopBoxBreathe() {
+  boxBreathRunning = false;
+  if (boxBreathInterval) { clearInterval(boxBreathInterval); boxBreathInterval = null; }
+  const ring = document.getElementById('box-breathe-ring');
+  if (!ring) return;
+  ring.style.transition = 'transform 0.5s ease';
+  ring.classList.remove('expand');
+  document.getElementById('box-breathe-phase').textContent = 'Tap to begin';
+  document.getElementById('box-breathe-count').textContent = '';
+  const tog = document.getElementById('box-breathe-toggle');
+  if (tog) tog.textContent = 'Start';
+}
+
+function runBoxPhase() {
+  if (!boxBreathRunning) return;
+  const phase    = BOX_PHASES[boxBreathPhase % 4];
+  const duration = BOX_DURATIONS[boxBreathPhase % 4];
+  const ring     = document.getElementById('box-breathe-ring');
+  document.getElementById('box-breathe-phase').textContent = phase;
+  if (phase === 'Inhale') { ring.style.transition = `transform ${duration}s ease-in-out`; ring.classList.add('expand'); }
+  else if (phase === 'Exhale') { ring.style.transition = `transform ${duration}s ease-in-out`; ring.classList.remove('expand'); }
+  let remaining = duration;
+  document.getElementById('box-breathe-count').textContent = remaining;
+  boxBreathInterval = setInterval(() => {
+    remaining--;
+    document.getElementById('box-breathe-count').textContent = remaining > 0 ? remaining : '';
+    if (remaining <= 0) {
+      clearInterval(boxBreathInterval); boxBreathInterval = null;
+      boxBreathPhase++; runBoxPhase();
+    }
+  }, 1000);
 }
 
 // ── Saved screen ──────────────────────────────
