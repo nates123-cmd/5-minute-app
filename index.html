@@ -571,6 +571,38 @@
     .srs-half-toggle .srs-mode-btn { flex: 1; padding: 8px; font-size: 0.85rem; text-align: center; }
     /* FAB */
     .srs-fab { position: fixed; bottom: calc(28px + env(safe-area-inset-bottom)); right: 20px; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: 1.7rem; font-weight: 300; border: none; box-shadow: 0 4px 16px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; line-height: 1; }
+
+    /* ── Quiz Overlay ────────────────────────── */
+    .quiz-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 300; display: flex; flex-direction: column; padding: 24px 20px; padding-bottom: calc(32px + env(safe-area-inset-bottom)); max-width: 600px; margin: 0 auto; overflow-y: auto; }
+    .quiz-overlay.hidden { display: none; }
+    .quiz-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .quiz-back { background: none; border: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; padding: 4px; line-height: 1; }
+    .quiz-title { font-size: 1rem; font-weight: 600; flex: 1; }
+    .quiz-progress-label { font-size: 0.82rem; color: var(--muted); }
+    .quiz-progress-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 20px; }
+    .quiz-progress-fill { height: 4px; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
+    .quiz-question-box { background: var(--card-bg); border-radius: var(--radius); padding: 24px 20px; font-size: 1rem; font-weight: 500; line-height: 1.6; margin-bottom: 16px; min-height: 80px; }
+    .quiz-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .quiz-option { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: left; font-size: 0.93rem; color: var(--text); cursor: pointer; font-family: var(--font); transition: background 0.15s, border-color 0.15s; }
+    .quiz-option.correct { background: #d5e8d8; border-color: #256b30; color: #256b30; font-weight: 600; }
+    .quiz-option.wrong   { background: #e8d5d5; border-color: #7a2525; color: #7a2525; }
+    .quiz-option.reveal  { border-color: #256b30; }
+    .quiz-option:disabled { cursor: default; }
+    .quiz-typed-row { display: flex; gap: 10px; margin-bottom: 12px; }
+    .quiz-typed-input { flex: 1; padding: 13px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--card-bg); font-size: 0.95rem; color: var(--text); font-family: var(--font); outline: none; }
+    .quiz-typed-input:focus { border-color: var(--accent); }
+    .quiz-typed-input.correct { border-color: #256b30; background: #d5e8d8; color: #256b30; }
+    .quiz-typed-input.wrong   { border-color: #7a2525; background: #e8d5d5; color: #7a2525; }
+    .quiz-answer-reveal { font-size: 0.88rem; color: var(--muted); margin-bottom: 12px; min-height: 1.3em; }
+    .quiz-action-btns { display: flex; gap: 10px; }
+    .quiz-action-btns .btn { flex: 1; }
+    .quiz-spinner { text-align: center; padding: 48px 0; color: var(--muted); font-size: 0.9rem; }
+    .quiz-done { text-align: center; padding: 32px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .quiz-done-score { font-size: 2.5rem; font-weight: 700; letter-spacing: -1px; }
+    .quiz-done-label { font-size: 0.9rem; color: var(--muted); }
+    .quiz-done-diff { font-size: 0.88rem; color: var(--accent); font-weight: 600; margin-top: 4px; min-height: 1.3em; }
+    .quiz-done-btns { display: flex; gap: 10px; margin-top: 20px; width: 100%; }
+    .quiz-done-btns .btn { flex: 1; }
   </style>
 </head>
 <body>
@@ -703,6 +735,22 @@
     <div class="activity-card" data-activity="anki-input">
       <h3>Anki Input</h3>
       <p>Capture something worth remembering.</p>
+    </div>
+    <div class="activity-card" data-quiz="history">
+      <h3>History Quiz</h3>
+      <p>10 questions. Gets harder as you improve.</p>
+    </div>
+    <div class="activity-card" data-quiz="geography">
+      <h3>Geography Quiz</h3>
+      <p>Capitals, borders, and places you've never heard of.</p>
+    </div>
+    <div class="activity-card" data-quiz="trivia">
+      <h3>Trivia Quiz</h3>
+      <p>Mix of science, culture, and random knowledge.</p>
+    </div>
+    <div class="activity-card" data-quiz="cooking">
+      <h3>Cooking Quiz</h3>
+      <p>Techniques, ingredients, and culinary facts.</p>
     </div>
   </div>
 </div>
@@ -1051,6 +1099,21 @@
     <div class="timer-modal-msg" id="timer-modal-msg">Time's up.</div>
     <div class="timer-modal-sub" id="timer-modal-sub"></div>
     <button class="btn btn-primary" id="timer-modal-close">Done</button>
+  </div>
+</div>
+
+<!-- Quiz Overlay -->
+<div id="quiz-overlay" class="quiz-overlay hidden">
+  <div class="quiz-header">
+    <button class="quiz-back" id="quiz-back">←</button>
+    <span class="quiz-title" id="quiz-title">History Quiz</span>
+    <span class="quiz-progress-label" id="quiz-progress-label">1 / 10</span>
+  </div>
+  <div class="quiz-progress-bar">
+    <div class="quiz-progress-fill" id="quiz-progress-fill" style="width:0%"></div>
+  </div>
+  <div id="quiz-body">
+    <!-- question, options, actions render here -->
   </div>
 </div>
 
@@ -2504,6 +2567,281 @@ document.addEventListener('screenchange', (e) => {
   srsFab.style.display = (e.detail === 'srs-review') ? 'flex' : 'none';
 });
 srsFab.style.display = 'none';
+
+// ── Quiz Activities ───────────────────────────
+const QUIZ_TOPICS = {
+  history:   { label: 'History Quiz',   formats: ['mc'] },
+  geography: { label: 'Geography Quiz', formats: ['mc', 'typed'] },
+  trivia:    { label: 'Trivia Quiz',    formats: ['mc'] },
+  cooking:   { label: 'Cooking Quiz',   formats: ['mc'] },
+};
+
+const DIFF_DESC = {
+  1: 'beginner, common knowledge',
+  2: 'casual learner',
+  3: 'intermediate',
+  4: 'advanced',
+  5: 'expert / specialist knowledge',
+};
+
+// Supabase quiz_performance helpers
+async function qpGet(topic) {
+  const rows = await sbFetch('quiz_performance?topic=eq.' + encodeURIComponent(topic) + '&select=*');
+  return rows && rows.length ? rows[0] : null;
+}
+
+async function qpUpsert(topic, fields) {
+  // Try update first, then insert
+  const existing = await qpGet(topic);
+  if (existing) {
+    return sbFetch('quiz_performance?topic=eq.' + encodeURIComponent(topic), {
+      method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ ...fields, updated_at: new Date().toISOString() }),
+    });
+  } else {
+    return sbFetch('quiz_performance', {
+      method: 'POST', prefer: 'return=minimal', body: JSON.stringify({ topic, difficulty: 2, hit_rate: null, ...fields }),
+    });
+  }
+}
+
+// Session state
+let quizTopic       = null;
+let quizDifficulty  = 2;
+let quizQNum        = 0;       // 0-based index of current question
+let quizScore       = 0;       // number correct
+let quizAnswered    = false;
+let quizRecent      = [];      // last 20 results (true/false), rolling window
+let quizStreak      = 0;       // consecutive streak above/below threshold
+let quizDiffStart   = 2;       // difficulty at session start (for end screen)
+let quizInitDiff    = 2;       // to track change
+
+const QUIZ_TOTAL = 10;
+
+async function startQuiz(topic) {
+  quizTopic      = topic;
+  quizQNum       = 0;
+  quizScore      = 0;
+  quizAnswered   = false;
+  quizRecent     = [];
+  quizStreak     = 0;
+
+  // Load difficulty from Supabase
+  try {
+    const row = await qpGet(topic);
+    quizDifficulty = row ? (row.difficulty || 2) : 2;
+    if (!row) await qpUpsert(topic, { difficulty: 2 });
+  } catch(e) { quizDifficulty = 2; }
+
+  quizDiffStart  = quizDifficulty;
+  quizInitDiff   = quizDifficulty;
+
+  // Show overlay
+  document.getElementById('quiz-title').textContent = QUIZ_TOPICS[topic].label;
+  document.getElementById('quiz-overlay').classList.remove('hidden');
+  updateQuizProgress();
+  await loadQuizQuestion();
+}
+
+function closeQuiz() {
+  document.getElementById('quiz-overlay').classList.add('hidden');
+  quizTopic = null;
+}
+
+function updateQuizProgress() {
+  const pct = (quizQNum / QUIZ_TOTAL) * 100;
+  document.getElementById('quiz-progress-fill').style.width = pct + '%';
+  document.getElementById('quiz-progress-label').textContent = (quizQNum + 1) + ' / ' + QUIZ_TOTAL;
+}
+
+async function loadQuizQuestion() {
+  const body = document.getElementById('quiz-body');
+  body.innerHTML = '<div class="quiz-spinner">Generating question…</div>';
+  quizAnswered = false;
+
+  const topic    = quizTopic;
+  const diff     = quizDifficulty;
+  const diffDesc = DIFF_DESC[diff] || 'intermediate';
+  const formats  = QUIZ_TOPICS[topic].formats;
+  const format   = formats[Math.floor(Math.random() * formats.length)];
+
+  let qData = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      if (format === 'mc') {
+        qData = await callClaudeQuiz(
+          'Generate a ' + topic + ' quiz question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
+          'Return JSON only, no markdown:\n{"question":string,"correct":string,"distractors":[string,string,string]}\n' +
+          'Distractors should be plausible but clearly wrong to someone who knows the answer.\n' +
+          'Keep all answers concise (under 10 words).'
+        );
+      } else {
+        qData = await callClaudeQuiz(
+          'Generate a "name the capital city" geography question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
+          'Return JSON only, no markdown:\n{"question":string,"correct":string,"acceptable":[string]}\n' +
+          '"acceptable" is an array of valid alternate spellings or names.\n' +
+          'Difficulty ' + diff + ' means: ' + diffDesc + '.'
+        );
+      }
+      if (qData && qData.question) break;
+    } catch(e) { qData = null; }
+  }
+
+  if (!qData || !qData.question) {
+    showToast("Couldn't generate question, try again");
+    closeQuiz();
+    return;
+  }
+
+  if (format === 'mc') renderMcQuestion(qData);
+  else renderTypedQuestion(qData);
+}
+
+async function callClaudeQuiz(prompt) {
+  const key = getApiKey();
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 400,
+      system: 'Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble.',
+      messages: [{ role: 'user', content: prompt }] }),
+  });
+  if (!res.ok) throw new Error('API ' + res.status);
+  const data = await res.json();
+  const text = data.content[0].text.trim();
+  return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
+}
+
+function renderMcQuestion(q) {
+  const options = [...(q.distractors || []), q.correct].sort(() => Math.random() - 0.5);
+  const body = document.getElementById('quiz-body');
+  body.innerHTML =
+    '<div class="quiz-question-box">' + esc(q.question) + '</div>' +
+    '<div class="quiz-options">' +
+      options.map(opt => '<button class="quiz-option" data-opt="' + esc(opt) + '">' + esc(opt) + '</button>').join('') +
+    '</div>' +
+    '<div class="quiz-answer-reveal" id="quiz-reveal"></div>' +
+    '<div class="quiz-action-btns hidden" id="quiz-actions"></div>';
+
+  body.querySelectorAll('.quiz-option').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (quizAnswered) return;
+      quizAnswered = true;
+      const correct = btn.dataset.opt === q.correct;
+      btn.classList.add(correct ? 'correct' : 'wrong');
+      body.querySelectorAll('.quiz-option').forEach(b => {
+        b.disabled = true;
+        if (b.dataset.opt === q.correct && !correct) b.classList.add('reveal');
+      });
+      if (!correct) document.getElementById('quiz-reveal').textContent = 'Answer: ' + q.correct;
+      showQuizActions(q.question, q.correct, correct);
+    });
+  });
+}
+
+function renderTypedQuestion(q) {
+  const body = document.getElementById('quiz-body');
+  body.innerHTML =
+    '<div class="quiz-question-box">' + esc(q.question) + '</div>' +
+    '<div class="quiz-typed-row">' +
+      '<input id="quiz-typed-input" class="quiz-typed-input" type="text" placeholder="Type your answer…" autocomplete="off" autocorrect="off" autocapitalize="off" />' +
+      '<button class="btn btn-primary" id="quiz-typed-submit" style="white-space:nowrap;padding:13px 18px">Submit</button>' +
+    '</div>' +
+    '<div class="quiz-answer-reveal" id="quiz-reveal"></div>' +
+    '<div class="quiz-action-btns hidden" id="quiz-actions"></div>';
+
+  const submit = () => {
+    if (quizAnswered) return;
+    const inp = document.getElementById('quiz-typed-input');
+    const val = inp.value.trim().toLowerCase();
+    if (!val) return;
+    quizAnswered = true;
+    document.getElementById('quiz-typed-submit').disabled = true;
+    inp.disabled = true;
+    const accepted = [q.correct, ...(q.acceptable || [])].map(s => s.trim().toLowerCase());
+    const correct = accepted.includes(val);
+    inp.classList.add(correct ? 'correct' : 'wrong');
+    document.getElementById('quiz-reveal').textContent = correct ? '✓ Correct!' : 'Answer: ' + q.correct;
+    showQuizActions(q.question, q.correct, correct);
+  };
+  document.getElementById('quiz-typed-submit').addEventListener('click', submit);
+  document.getElementById('quiz-typed-input').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+}
+
+function showQuizActions(question, correct, wasCorrect) {
+  const actionsEl = document.getElementById('quiz-actions');
+  actionsEl.classList.remove('hidden');
+  actionsEl.innerHTML =
+    '<button class="btn btn-primary" id="quiz-got-it">Got it</button>' +
+    '<button class="btn btn-outline" id="quiz-remember">Remember It</button>';
+
+  document.getElementById('quiz-got-it').addEventListener('click', () => advanceQuiz(wasCorrect));
+  document.getElementById('quiz-remember').addEventListener('click', async () => {
+    try {
+      await srsCreate(question, correct, quizTopic);
+      showToast('Added to flashcards ✓');
+    } catch(e) { showToast('Error saving card'); }
+    advanceQuiz(false); // counts as miss for difficulty
+  });
+}
+
+async function advanceQuiz(correct) {
+  // Track result
+  quizRecent.push(correct);
+  if (quizRecent.length > 20) quizRecent.shift();
+  if (correct) quizScore++;
+
+  // Adaptive difficulty
+  const hitRate = quizRecent.length ? quizRecent.filter(Boolean).length / quizRecent.length : null;
+  if (hitRate !== null) {
+    if (hitRate > 0.8) { quizStreak = quizStreak > 0 ? quizStreak + 1 : 1; }
+    else if (hitRate < 0.5) { quizStreak = quizStreak < 0 ? quizStreak - 1 : -1; }
+    else { quizStreak = 0; }
+
+    const prevDiff = quizDifficulty;
+    if (quizStreak >= 5 && quizDifficulty < 5) { quizDifficulty++; quizStreak = 0; }
+    else if (quizStreak <= -5 && quizDifficulty > 1) { quizDifficulty--; quizStreak = 0; }
+
+    // Persist to Supabase (fire and forget)
+    try { await qpUpsert(quizTopic, { difficulty: quizDifficulty, hit_rate: hitRate }); } catch(e) {}
+  }
+
+  quizQNum++;
+  if (quizQNum >= QUIZ_TOTAL) {
+    renderQuizDone();
+  } else {
+    updateQuizProgress();
+    await loadQuizQuestion();
+  }
+}
+
+function renderQuizDone() {
+  document.getElementById('quiz-progress-fill').style.width = '100%';
+  document.getElementById('quiz-progress-label').textContent = 'Done';
+  const diffChanged = quizDifficulty !== quizDiffStart;
+  const diffMsg = diffChanged
+    ? (quizDifficulty > quizDiffStart ? 'Getting harder — difficulty now ' + quizDifficulty : 'Dropping back — difficulty now ' + quizDifficulty)
+    : '';
+  document.getElementById('quiz-body').innerHTML =
+    '<div class="quiz-done">' +
+      '<div class="quiz-done-score">' + quizScore + ' / ' + QUIZ_TOTAL + '</div>' +
+      '<div class="quiz-done-label">correct</div>' +
+      '<div class="quiz-done-diff">' + esc(diffMsg) + '</div>' +
+      '<div class="quiz-done-btns">' +
+        '<button class="btn btn-primary" id="quiz-play-again">Play Again</button>' +
+        '<button class="btn btn-outline" id="quiz-home-btn">Home</button>' +
+      '</div>' +
+    '</div>';
+  document.getElementById('quiz-play-again').addEventListener('click', () => startQuiz(quizTopic));
+  document.getElementById('quiz-home-btn').addEventListener('click', closeQuiz);
+}
+
+// Home card click handlers for quiz
+document.querySelectorAll('[data-quiz]').forEach(card => {
+  card.addEventListener('click', () => startQuiz(card.dataset.quiz));
+});
+
+// Quiz back button
+document.getElementById('quiz-back').addEventListener('click', closeQuiz);
 
 // Init SRS on page load
 updateDueBadge();
