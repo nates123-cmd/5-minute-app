@@ -2581,7 +2581,7 @@ let quizDifficulty  = 2;
 let quizQNum        = 0;       // 0-based index of current question
 let quizScore       = 0;       // number correct
 let quizAnswered    = false;
-let quizAsked       = [];      // questions asked this session (for dedup)
+let quizAsked       = [];      // questions asked (persisted to localStorage per topic, max 50)
 let quizRecent      = [];      // last 20 results (true/false), rolling window
 let quizStreak      = 0;       // consecutive streak above/below threshold
 let quizDiffStart   = 2;       // difficulty at session start (for end screen)
@@ -2594,7 +2594,7 @@ async function startQuiz(topic) {
   quizQNum       = 0;
   quizScore      = 0;
   quizAnswered   = false;
-  quizAsked      = [];
+  quizAsked      = JSON.parse(localStorage.getItem('quizAsked_' + topic) || '[]');
   quizRecent     = [];
   quizStreak     = 0;
 
@@ -2636,7 +2636,7 @@ async function loadQuizQuestion() {
   const format   = formats[Math.floor(Math.random() * formats.length)];
 
   const exclude = quizAsked.length
-    ? '\nDo NOT repeat any of these questions already asked this session: ' + quizAsked.join(' | ')
+    ? '\nDo NOT repeat any of these previously asked questions: ' + quizAsked.join(' | ')
     : '';
 
   let qData = null;
@@ -2661,7 +2661,11 @@ async function loadQuizQuestion() {
     } catch(e) { qData = null; }
   }
 
-  if (qData && qData.question) quizAsked.push(qData.question);
+  if (qData && qData.question) {
+    quizAsked.push(qData.question);
+    if (quizAsked.length > 50) quizAsked.shift(); // rolling window
+    localStorage.setItem('quizAsked_' + quizTopic, JSON.stringify(quizAsked));
+  }
 
   if (!qData || !qData.question) {
     showToast("Couldn't generate question, try again");
