@@ -736,6 +736,10 @@
       <h3>Cognitive Bias</h3>
       <p>How your brain tricks you — and how to catch it.</p>
     </div>
+    <div class="activity-card" data-activity="health-insight">
+      <h3>Health Insight</h3>
+      <p>One evidence-based tip on sleep, nutrition, or movement.</p>
+    </div>
     <div class="activity-card" data-activity="brain-teaser">
       <h3>Brain Teaser</h3>
       <p>Fermi estimates, logic puzzles, lateral thinking.</p>
@@ -1046,6 +1050,17 @@
   <div class="activity-actions">  </div>
 </div>
 
+<!-- HEALTH INSIGHT -->
+<div id="screen-health-insight" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Health Insight</span>
+  </div>
+  <div id="health-insight-content"></div>
+  <button class="btn-refresh" id="health-insight-refresh">New insight</button>
+  <div class="activity-actions">  </div>
+</div>
+
 <!-- SAVED -->
 <div id="screen-saved" class="screen">
   <div class="activity-header">
@@ -1281,19 +1296,19 @@ document.addEventListener('click', e => {
 const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
            'finance-term','geography-fact','logical-fallacy','on-this-day',
-           'thought-experiment','etymology','cognitive-bias','journal','mindfulness','breathe','brain-teaser'],
+           'thought-experiment','etymology','cognitive-bias','journal','mindfulness','breathe','brain-teaser','health-insight'],
   '5min': ['history','cooking','stoic','reading','mindfulness','breathe','journal',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
-           'thought-experiment','cognitive-bias','brain-teaser'],
+           'thought-experiment','cognitive-bias','brain-teaser','health-insight'],
   'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
-                   'on-this-day','thought-experiment'],
+                   'on-this-day','thought-experiment','health-insight'],
   'activity':     ['mental-math','brain-teaser','reading'],
   'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
-                   'etymology','cognitive-bias','brain-teaser'],
+                   'etymology','cognitive-bias','brain-teaser','health-insight'],
 };
 
 // ── Routing ──────────────────────────────────
@@ -1427,6 +1442,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'etymology')         loadEtymology();
     if (a === 'cognitive-bias')    loadCognitiveBias();
     if (a === 'brain-teaser')      loadBrainTeaser();
+    if (a === 'health-insight')    loadHealthInsight();
     if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'anki-input')        resetAnkiInput();
@@ -1911,6 +1927,22 @@ const loadEtymology = makeLoader(
 );
 document.getElementById('etymology-refresh').addEventListener('click', loadEtymology);
 
+// ── Health Insight ────────────────────────────
+const loadHealthInsight = makeLoader(
+  'health-insight',
+  (ex) => 'Give me a specific, evidence-based health insight about nutrition, sleep, movement, or the body. Be specific — avoid generic advice like "exercise is good" or "sleep more". Pick something genuinely interesting or counterintuitive that a curious person would want to know.' + ex + ' Return JSON: {topic, insight, tryThis} where topic is a short label (e.g. "Sleep"), insight is 2-3 sentences of evidence-based context, and tryThis is one concrete actionable takeaway (1 sentence).',
+  (d) => { ankiData['health-insight'] = d; return (
+    '<div class="ai-single">' +
+      '<div class="tag">' + esc(d.topic) + '</div>' +
+      '<div class="main-text" style="margin-top:10px">' + esc(d.insight) + '</div>' +
+      '<div class="sub-text" style="margin-top:12px;font-weight:600;color:var(--text)">Try this</div>' +
+      '<div class="sub-text">' + esc(d.tryThis) + '</div>' +
+    '</div>'
+  ); },
+  { topic: 'Cold exposure', insight: 'Brief cold exposure (cold shower or outdoor cold) triggers a large release of norepinephrine — up to 300% above baseline — which improves focus and mood for several hours. The effect is dose-dependent: even 30 seconds of cold water matters.', tryThis: 'End your next shower with 30–60 seconds of cold water, focusing on slow breathing through it.' }
+);
+document.getElementById('health-insight-refresh').addEventListener('click', loadHealthInsight);
+
 // ── Brain Teaser ──────────────────────────────
 const loadBrainTeaser = makeLoader(
   'brain-teaser',
@@ -2050,7 +2082,7 @@ document.getElementById('anki-input-submit').addEventListener('click', async () 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
 const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
   'finance-term','geography-fact','logical-fallacy','cognitive-bias','etymology',
-  'on-this-day','thought-experiment'];
+  'on-this-day','thought-experiment','health-insight'];
 
 const INFORMATIONAL_CONTENT_IDS = {
   'history': 'history-cards', 'cooking': 'cooking-cards',
@@ -2059,6 +2091,7 @@ const INFORMATIONAL_CONTENT_IDS = {
   'geography-fact': 'geography-fact-content', 'logical-fallacy': 'logical-fallacy-content',
   'cognitive-bias': 'cognitive-bias-content', 'etymology': 'etymology-content',
   'on-this-day': 'on-this-day-content', 'thought-experiment': 'thought-experiment-content',
+  'health-insight': 'health-insight-content',
 };
 
 INFORMATIONAL_SCREENS.forEach(id => {
@@ -2104,7 +2137,7 @@ INFORMATIONAL_SCREENS.forEach(id => {
 });
 
 // ── "New activity" button ─────────────────────
-const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
+const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal','health-insight',
   'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
   'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
 
@@ -2579,6 +2612,7 @@ wireRememberIt('on-this-day',    d => String(d.year) + ': ' + d.event, d => d.co
 wireRememberIt('geography-fact', d => d.location, d => d.fact + (d.context ? '\n\n' + d.context : ''));
 wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '');
 wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''));
+wireRememberIt('health-insight',    d => d.topic + ': ' + d.insight.slice(0, 80) + '…', d => d.tryThis);
 
 // Show FAB only on srs-review screen and hide elsewhere
 const srsFab = document.getElementById('srs-fab');
