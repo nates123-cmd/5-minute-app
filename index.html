@@ -596,6 +596,10 @@
     .quiz-answer-reveal { font-size: 0.88rem; color: var(--muted); margin-bottom: 12px; min-height: 1.3em; }
     .quiz-action-btns { display: flex; gap: 10px; }
     .quiz-action-btns .btn { flex: 1; }
+    .quiz-secondary-btns { display: flex; gap: 10px; margin-top: 10px; }
+    .quiz-secondary-btns .btn { flex: 1; font-size: 0.85rem; padding: 11px 8px; }
+    .quiz-claude-response { background: var(--card-bg); border-radius: var(--radius); padding: 16px 18px; font-size: 0.88rem; line-height: 1.6; color: var(--text); margin-top: 12px; }
+    .quiz-claude-loading { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 12px 0; }
     .quiz-spinner { text-align: center; padding: 48px 0; color: var(--muted); font-size: 0.9rem; }
     .quiz-done { text-align: center; padding: 32px 0; display: flex; flex-direction: column; align-items: center; gap: 10px; }
     .quiz-done-score { font-size: 2.5rem; font-weight: 700; letter-spacing: -1px; }
@@ -2594,16 +2598,20 @@ async function startQuiz(topic) {
   quizQNum       = 0;
   quizScore      = 0;
   quizAnswered   = false;
-  quizAsked      = JSON.parse(localStorage.getItem('quizAsked_' + topic) || '[]');
+  quizAsked      = [];
   quizRecent     = [];
   quizStreak     = 0;
 
-  // Load difficulty from Supabase
+  // Load difficulty + asked_questions from Supabase
   try {
     const row = await qpGet(topic);
     quizDifficulty = row ? (row.difficulty || 2) : 2;
-    if (!row) await qpUpsert(topic, { difficulty: 2 });
-  } catch(e) { quizDifficulty = 2; }
+    quizAsked      = row ? (row.asked_questions || []) : [];
+    if (!row) await qpUpsert(topic, { difficulty: 2, asked_questions: [] });
+  } catch(e) {
+    quizDifficulty = 2;
+    quizAsked = JSON.parse(localStorage.getItem('quizAsked_' + topic) || '[]'); // fallback
+  }
 
   quizDiffStart  = quizDifficulty;
   quizInitDiff   = quizDifficulty;
@@ -2635,8 +2643,9 @@ async function loadQuizQuestion() {
   const formats  = QUIZ_TOPICS[topic].formats;
   const format   = formats[Math.floor(Math.random() * formats.length)];
 
-  const exclude = quizAsked.length
-    ? '\nDo NOT repeat any of these previously asked questions: ' + quizAsked.join(' | ')
+  const recentAsked = quizAsked.slice(-30);
+  const exclude = recentAsked.length
+    ? '\nDo NOT repeat any of these previously asked questions: ' + recentAsked.join(' | ')
     : '';
 
   let qData = null;
@@ -2663,8 +2672,12 @@ async function loadQuizQuestion() {
 
   if (qData && qData.question) {
     quizAsked.push(qData.question);
-    if (quizAsked.length > 50) quizAsked.shift(); // rolling window
-    localStorage.setItem('quizAsked_' + quizTopic, JSON.stringify(quizAsked));
+    // Persist full history to Supabase; localStorage as fallback
+    try {
+      await qpUpsert(quizTopic, { asked_questions: quizAsked });
+    } catch(e) {
+      localStorage.setItem('quizAsked_' + quizTopic, JSON.stringify(quizAsked.slice(-50)));
+    }
   }
 
   if (!qData || !qData.question) {
@@ -2753,15 +2766,46 @@ function showQuizActions(question, correct, wasCorrect) {
   actionsEl.classList.remove('hidden');
   actionsEl.innerHTML =
     '<button class="btn btn-primary" id="quiz-got-it">Got it</button>' +
-    '<button class="btn btn-outline" id="quiz-remember">Remember It</button>';
+    '<button class="btn btn-outline" id="quiz-remember">Remember It</button>' +
+    '<div class="quiz-secondary-btns">' +
+      '<button class="btn btn-outline" id="quiz-google-it">Google It</button>' +
+      '<button class="btn btn-outline" id="quiz-ask-claude">Ask Claude</button>' +
+    '</div>' +
+    '<div id="quiz-claude-panel"></div>';
 
   document.getElementById('quiz-got-it').addEventListener('click', () => advanceQuiz(wasCorrect));
+
   document.getElementById('quiz-remember').addEventListener('click', async () => {
     try {
       await srsCreate(question, correct, quizTopic);
       showToast('Added to flashcards ✓');
     } catch(e) { showToast('Error saving card'); }
-    advanceQuiz(false); // counts as miss for difficulty
+    advanceQuiz(false);
+  });
+
+  document.getElementById('quiz-google-it').addEventListener('click', () => {
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(question + ' ' + correct), '_blank', 'noopener');
+  });
+
+  document.getElementById('quiz-ask-claude').addEventListener('click', async () => {
+    const panel = document.getElementById('quiz-claude-panel');
+    if (panel.dataset.loaded) return;
+    panel.dataset.loaded = '1';
+    panel.innerHTML = '<div class="quiz-claude-loading">Thinking…</div>';
+    try {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-6', max_tokens: 300,
+          messages: [{ role: 'user', content: 'Quiz question: "' + question + '"\nCorrect answer: "' + correct + '"\n\nGive me 2-3 sentences of interesting context or explanation about this — something that makes the answer more memorable. Be concise and specific, no fluff.' }],
+        }),
+      });
+      const data = await res.json();
+      panel.innerHTML = '<div class="quiz-claude-response">' + esc(data.content[0].text.trim()) + '</div>';
+    } catch(e) {
+      panel.innerHTML = '<div class="quiz-claude-loading">Couldn\'t load response.</div>';
+    }
   });
 }
 
