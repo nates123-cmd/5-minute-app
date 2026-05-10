@@ -522,6 +522,12 @@
     .breathe-controls { display: flex; gap: 10px; width: 100%; max-width: 260px; }
     .breathe-controls .btn { flex: 1; padding: 12px; }
 
+    /* ── SRS Home Row ───────────────────────── */
+    .srs-home-row { display: flex; gap: 12px; }
+    .srs-review-zone { flex: 2; margin: 0; }
+    .srs-add-zone { flex: 0 0 56px; margin: 0; display: flex; align-items: center; justify-content: center; }
+    .srs-add-plus { font-size: 1.6rem; font-weight: 300; color: var(--accent); line-height: 1; }
+
     /* ── SRS Flashcards ──────────────────────── */
     .srs-progress { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 16px; min-height: 1.2em; }
     .srs-card-area { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
@@ -641,9 +647,14 @@
   </div>
 
   <div class="cards-grid">
-    <div class="activity-card" id="srs-due-card" data-activity="srs-review" style="grid-column:1/-1">
-      <h3>Review Due</h3>
-      <p>Loading…</p>
+    <div class="srs-home-row" style="grid-column:1/-1">
+      <div class="activity-card srs-review-zone" id="srs-due-card" data-activity="srs-review">
+        <h3>Review Due</h3>
+        <p>Loading…</p>
+      </div>
+      <div class="activity-card srs-add-zone" id="srs-add-btn" title="Add flashcard">
+        <span class="srs-add-plus">+</span>
+      </div>
     </div>
     <div class="activity-card" data-activity="history">
       <h3>History Rabbit Hole</h3>
@@ -728,10 +739,6 @@
     <div class="activity-card" data-activity="brain-teaser">
       <h3>Brain Teaser</h3>
       <p>Fermi estimates, logic puzzles, lateral thinking.</p>
-    </div>
-    <div class="activity-card" data-activity="anki-input">
-      <h3>Add Flashcard</h3>
-      <p>Capture something worth remembering.</p>
     </div>
     <div class="activity-card" data-quiz="history">
       <h3>History Quiz</h3>
@@ -1055,8 +1062,15 @@
     <span class="activity-title">Add Flashcard</span>
   </div>
   <p class="framing">Capture something worth remembering.</p>
-  <textarea id="anki-front" class="anki-textarea" placeholder="Front (question / term)" rows="3"></textarea>
-  <textarea id="anki-back" class="anki-textarea" placeholder="Back (answer / definition)" rows="5"></textarea>
+  <div class="srs-half-toggle" id="anki-mode-toggle">
+    <button class="srs-mode-btn active" data-anki-mode="both">Both sides</button>
+    <button class="srs-mode-btn" data-anki-mode="front">I have the front</button>
+    <button class="srs-mode-btn" data-anki-mode="back">I have the back</button>
+  </div>
+  <label class="srs-label" id="anki-front-label">Front (question / term)</label>
+  <textarea id="anki-front" class="anki-textarea" placeholder="e.g. What is opportunity cost?" rows="3"></textarea>
+  <label class="srs-label" id="anki-back-label">Back (answer / definition)</label>
+  <textarea id="anki-back" class="anki-textarea" placeholder="e.g. The value of the next best alternative foregone…" rows="4"></textarea>
   <div class="activity-actions">
     <button class="btn btn-primary" id="anki-input-submit">Save to Flashcards</button>
   </div>
@@ -1415,6 +1429,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'brain-teaser')      loadBrainTeaser();
     if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
+    if (a === 'anki-input')        resetAnkiInput();
   }
 }
 
@@ -1948,11 +1963,79 @@ document.getElementById('stoic-reminder-journal-btn').addEventListener('click', 
 
 
 // ── Anki Input screen ─────────────────────────
+function resetAnkiInput() {
+  ankiMode = 'both';
+  document.querySelectorAll('[data-anki-mode]').forEach(b => b.classList.toggle('active', b.dataset.ankiMode === 'both'));
+  document.getElementById('anki-front').value = ''; document.getElementById('anki-front').disabled = false; document.getElementById('anki-front').style.opacity = '';
+  document.getElementById('anki-back').value  = ''; document.getElementById('anki-back').disabled  = false; document.getElementById('anki-back').style.opacity  = '';
+  document.getElementById('anki-front-label').textContent = 'Front (question / term)';
+  document.getElementById('anki-back-label').textContent  = 'Back (answer / definition)';
+  document.getElementById('anki-input-submit').textContent = 'Save to Flashcards';
+}
+
+// + button on home opens Add Flashcard screen
+document.getElementById('srs-add-btn').addEventListener('click', () => navigateToActivity('anki-input'));
+
+// Add Flashcard mode toggle
+let ankiMode = 'both';
+document.querySelectorAll('[data-anki-mode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    ankiMode = btn.dataset.ankiMode;
+    document.querySelectorAll('[data-anki-mode]').forEach(b => b.classList.toggle('active', b === btn));
+    const frontLabel = document.getElementById('anki-front-label');
+    const backLabel  = document.getElementById('anki-back-label');
+    const frontTA    = document.getElementById('anki-front');
+    const backTA     = document.getElementById('anki-back');
+    const submitBtn  = document.getElementById('anki-input-submit');
+    if (ankiMode === 'front') {
+      frontLabel.textContent = 'Front (question / term)';
+      backLabel.textContent  = 'Back — Claude will generate this';
+      backTA.placeholder = 'Leave blank — Claude fills this in';
+      backTA.disabled = true; backTA.style.opacity = '0.45';
+      submitBtn.textContent = 'Generate & Save';
+    } else if (ankiMode === 'back') {
+      frontLabel.textContent = 'Front — Claude will generate this';
+      backLabel.textContent  = 'Back (answer / definition)';
+      frontTA.placeholder = 'Leave blank — Claude fills this in';
+      frontTA.disabled = true; frontTA.style.opacity = '0.45';
+      submitBtn.textContent = 'Generate & Save';
+    } else {
+      frontLabel.textContent = 'Front (question / term)';
+      backLabel.textContent  = 'Back (answer / definition)';
+      frontTA.placeholder = 'e.g. What is opportunity cost?';
+      backTA.placeholder  = 'e.g. The value of the next best alternative foregone…';
+      frontTA.disabled = false; frontTA.style.opacity = '';
+      backTA.disabled  = false; backTA.style.opacity  = '';
+      submitBtn.textContent = 'Save to Flashcards';
+    }
+  });
+});
+
 document.getElementById('anki-input-submit').addEventListener('click', async () => {
-  const front = document.getElementById('anki-front').value.trim();
-  const back  = document.getElementById('anki-back').value.trim();
-  if (!front || !back) { showToast('Fill in both fields'); return; }
+  let front = document.getElementById('anki-front').value.trim();
+  let back  = document.getElementById('anki-back').value.trim();
   const btn = document.getElementById('anki-input-submit');
+
+  if (ankiMode === 'both') {
+    if (!front || !back) { showToast('Fill in both fields'); return; }
+  } else if (ankiMode === 'front') {
+    if (!front) { showToast('Enter the front of the card'); return; }
+    btn.textContent = 'Generating…';
+    try {
+      const res = await callClaude('Generate the back (answer/definition) for this flashcard front: "' + front + '". Return JSON: {"back": string}. Be concise — 1-3 sentences max.');
+      back = res.back || '';
+      if (!back) throw new Error('empty');
+    } catch(e) { showToast('Couldn\'t generate back'); btn.textContent = 'Generate & Save'; return; }
+  } else if (ankiMode === 'back') {
+    if (!back) { showToast('Enter the back of the card'); return; }
+    btn.textContent = 'Generating…';
+    try {
+      const res = await callClaude('Generate the front (question/term) for this flashcard back: "' + back + '". Return JSON: {"front": string}. Be concise — a clear question or term.');
+      front = res.front || '';
+      if (!front) throw new Error('empty');
+    } catch(e) { showToast('Couldn\'t generate front'); btn.textContent = 'Generate & Save'; return; }
+  }
+
   btn.textContent = 'Saving…';
   try {
     await srsCreate(front, back, 'manual');
@@ -1961,7 +2044,7 @@ document.getElementById('anki-input-submit').addEventListener('click', async () 
     document.getElementById('anki-back').value = '';
     updateDueBadge();
   } catch(e) { showToast('Error: ' + e.message); }
-  btn.textContent = 'Save to Flashcards';
+  btn.textContent = ankiMode === 'both' ? 'Save to Flashcards' : 'Generate & Save';
 });
 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
