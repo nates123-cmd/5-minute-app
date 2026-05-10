@@ -664,10 +664,6 @@
       <h3>One-Page Read</h3>
       <p>Open your book. Just one page.</p>
     </div>
-    <div class="activity-card" data-activity="anki">
-      <h3>Anki Sprint</h3>
-      <p>10 cards max. Knowledge compounds.</p>
-    </div>
     <div class="activity-card" data-activity="mindfulness">
       <h3>Mindfulness</h3>
       <p>5 minutes. Just breathe and notice.</p>
@@ -733,7 +729,7 @@
       <p>Fermi estimates, logic puzzles, lateral thinking.</p>
     </div>
     <div class="activity-card" data-activity="anki-input">
-      <h3>Anki Input</h3>
+      <h3>Add Flashcard</h3>
       <p>Capture something worth remembering.</p>
     </div>
     <div class="activity-card" data-quiz="history">
@@ -817,16 +813,6 @@
 </div>
 
 <!-- ANKI -->
-<div id="screen-anki" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Anki Sprint</span>
-  </div>
-  <p class="framing">10 cards max. Close when the timer ends. Knowledge compounds quietly.</p>
-  <div class="spacer"></div>
-  <div class="activity-actions">
-    <a class="btn btn-outline" href="anki://">Open Anki</a><!-- TODO: specific Anki deck deep link -->  </div>
-</div>
 
 <!-- MINDFULNESS -->
 <div id="screen-mindfulness" class="screen">
@@ -1065,20 +1051,13 @@
 <div id="screen-anki-input" class="screen">
   <div class="activity-header">
     <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Anki Input</span>
+    <span class="activity-title">Add Flashcard</span>
   </div>
-  <p class="framing">Type a card to save to your Notion → Anki queue.</p>
+  <p class="framing">Capture something worth remembering.</p>
   <textarea id="anki-front" class="anki-textarea" placeholder="Front (question / term)" rows="3"></textarea>
   <textarea id="anki-back" class="anki-textarea" placeholder="Back (answer / definition)" rows="5"></textarea>
-  <div class="selector-row" id="anki-category-row">
-    <button class="btn-selector selected" data-anki-cat="General">General</button>
-    <button class="btn-selector" data-anki-cat="Vocabulary">Vocabulary</button>
-    <button class="btn-selector" data-anki-cat="Concepts">Concepts</button>
-    <button class="btn-selector" data-anki-cat="Finance">Finance</button>
-    <button class="btn-selector" data-anki-cat="Psychology">Psychology</button>
-  </div>
   <div class="activity-actions">
-    <button class="btn btn-primary" id="anki-input-submit">Add to Anki</button>
+    <button class="btn btn-primary" id="anki-input-submit">Save to Flashcards</button>
   </div>
 </div>
 
@@ -1288,15 +1267,15 @@ const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
            'finance-term','geography-fact','logical-fallacy','on-this-day',
            'thought-experiment','etymology','cognitive-bias','journal','mindfulness','breathe','brain-teaser'],
-  '5min': ['history','cooking','stoic','reading','anki','mindfulness','breathe','journal',
+  '5min': ['history','cooking','stoic','reading','mindfulness','breathe','journal',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
            'thought-experiment','cognitive-bias','brain-teaser'],
   'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment'],
-  'activity':     ['mental-math','brain-teaser','anki','reading'],
-  'random':       ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','breathe','journal',
+  'activity':     ['mental-math','brain-teaser','reading'],
+  'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser'],
@@ -2004,25 +1983,20 @@ ANKI_SCREENS.forEach(id => {
 });
 
 // ── Anki Input screen ─────────────────────────
-let ankiInputCategory = 'General';
-document.querySelectorAll('[data-anki-cat]').forEach(btn => {
-  btn.addEventListener('click', () => {
-    ankiInputCategory = btn.dataset.ankiCat;
-    document.querySelectorAll('[data-anki-cat]').forEach(b => b.classList.remove('selected'));
-    btn.classList.add('selected');
-  });
-});
-
 document.getElementById('anki-input-submit').addEventListener('click', async () => {
   const front = document.getElementById('anki-front').value.trim();
   const back  = document.getElementById('anki-back').value.trim();
   if (!front || !back) { showToast('Fill in both fields'); return; }
-  const card = { front, back, category: ankiInputCategory };
-  try { await navigator.clipboard.writeText(JSON.stringify(card)); } catch(e) {}
-  showToast('Copied — opening Shortcuts');
-  setTimeout(() => { window.location.href = 'shortcuts://run-shortcut?name=Add%20to%20Anki'; }, 600);
-  document.getElementById('anki-front').value = '';
-  document.getElementById('anki-back').value = '';
+  const btn = document.getElementById('anki-input-submit');
+  btn.textContent = 'Saving…';
+  try {
+    await srsCreate(front, back, 'manual');
+    showToast('Saved to flashcards ✓');
+    document.getElementById('anki-front').value = '';
+    document.getElementById('anki-back').value = '';
+    updateDueBadge();
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.textContent = 'Save to Flashcards';
 });
 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
@@ -2082,7 +2056,7 @@ INFORMATIONAL_SCREENS.forEach(id => {
 });
 
 // ── "New activity" button ─────────────────────
-const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','anki','mindfulness','breathe','journal',
+const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
   'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
   'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
 
