@@ -738,7 +738,7 @@
     </div>
     <div class="activity-card" data-quiz="history">
       <h3>History Quiz</h3>
-      <p>10 questions. Gets harder as you improve.</p>
+      <p>Gets harder as you improve. Stop when you want.</p>
     </div>
     <div class="activity-card" data-quiz="geography">
       <h3>Geography Quiz</h3>
@@ -1107,10 +1107,7 @@
   <div class="quiz-header">
     <button class="quiz-back" id="quiz-back">←</button>
     <span class="quiz-title" id="quiz-title">History Quiz</span>
-    <span class="quiz-progress-label" id="quiz-progress-label">1 / 10</span>
-  </div>
-  <div class="quiz-progress-bar">
-    <div class="quiz-progress-fill" id="quiz-progress-fill" style="width:0%"></div>
+    <span class="quiz-progress-label" id="quiz-progress-label">Q 1</span>
   </div>
   <div id="quiz-body">
     <!-- question, options, actions render here -->
@@ -2616,7 +2613,7 @@ let quizStreak      = 0;       // consecutive streak above/below threshold
 let quizDiffStart   = 2;       // difficulty at session start (for end screen)
 let quizInitDiff    = 2;       // to track change
 
-const QUIZ_TOTAL = 10;
+// No session limit — quiz runs until user taps back
 
 async function startQuiz(topic) {
   quizTopic      = topic;
@@ -2650,9 +2647,8 @@ function closeQuiz() {
 }
 
 function updateQuizProgress() {
-  const pct = (quizQNum / QUIZ_TOTAL) * 100;
-  document.getElementById('quiz-progress-fill').style.width = pct + '%';
-  document.getElementById('quiz-progress-label').textContent = (quizQNum + 1) + ' / ' + QUIZ_TOTAL;
+  document.getElementById('quiz-progress-fill').style.width = '0%';
+  document.getElementById('quiz-progress-label').textContent = 'Q ' + (quizQNum + 1) + '  ·  ' + quizScore + ' correct';
 }
 
 async function loadQuizQuestion() {
@@ -2814,34 +2810,10 @@ async function advanceQuiz(correct) {
   }
 
   quizQNum++;
-  if (quizQNum >= QUIZ_TOTAL) {
-    renderQuizDone();
-  } else {
-    updateQuizProgress();
-    await loadQuizQuestion();
-  }
+  updateQuizProgress();
+  await loadQuizQuestion();
 }
 
-function renderQuizDone() {
-  document.getElementById('quiz-progress-fill').style.width = '100%';
-  document.getElementById('quiz-progress-label').textContent = 'Done';
-  const diffChanged = quizDifficulty !== quizDiffStart;
-  const diffMsg = diffChanged
-    ? (quizDifficulty > quizDiffStart ? 'Getting harder — difficulty now ' + quizDifficulty : 'Dropping back — difficulty now ' + quizDifficulty)
-    : '';
-  document.getElementById('quiz-body').innerHTML =
-    '<div class="quiz-done">' +
-      '<div class="quiz-done-score">' + quizScore + ' / ' + QUIZ_TOTAL + '</div>' +
-      '<div class="quiz-done-label">correct</div>' +
-      '<div class="quiz-done-diff">' + esc(diffMsg) + '</div>' +
-      '<div class="quiz-done-btns">' +
-        '<button class="btn btn-primary" id="quiz-play-again">Play Again</button>' +
-        '<button class="btn btn-outline" id="quiz-home-btn">Home</button>' +
-      '</div>' +
-    '</div>';
-  document.getElementById('quiz-play-again').addEventListener('click', () => startQuiz(quizTopic));
-  document.getElementById('quiz-home-btn').addEventListener('click', closeQuiz);
-}
 
 // Home card click handlers for quiz
 document.querySelectorAll('[data-quiz]').forEach(card => {
