@@ -575,9 +575,6 @@
     /* ── Quiz Overlay ────────────────────────── */
     .quiz-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 300; display: flex; flex-direction: column; padding: 24px 20px; padding-bottom: calc(32px + env(safe-area-inset-bottom)); max-width: 600px; margin: 0 auto; overflow-y: auto; }
     .quiz-overlay.hidden { display: none; }
-    .quiz-header { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
-    .quiz-back { background: none; border: none; font-size: 1.3rem; color: var(--muted); cursor: pointer; padding: 4px; line-height: 1; }
-    .quiz-title { font-size: 1rem; font-weight: 600; flex: 1; }
     .quiz-progress-label { font-size: 0.82rem; color: var(--muted); }
     .quiz-progress-bar { width: 100%; height: 4px; background: var(--border); border-radius: 2px; margin-bottom: 20px; }
     .quiz-progress-fill { height: 4px; background: var(--accent); border-radius: 2px; transition: width 0.3s ease; }
@@ -1087,9 +1084,9 @@
 
 <!-- Quiz Overlay -->
 <div id="quiz-overlay" class="quiz-overlay hidden">
-  <div class="quiz-header">
-    <button class="quiz-back" id="quiz-back">←</button>
-    <span class="quiz-title" id="quiz-title">History Quiz</span>
+  <div class="activity-header">
+    <button class="btn-back" id="quiz-back">←</button>
+    <span class="activity-title" id="quiz-title">History Quiz</span>
     <span class="quiz-progress-label" id="quiz-progress-label">Q 1</span>
   </div>
   <div id="quiz-body">
@@ -1423,6 +1420,7 @@ function navigateToActivity(a, skipLoad = false) {
 
 document.querySelectorAll('.activity-card').forEach(card => {
   card.addEventListener('click', () => {
+    if (!card.dataset.activity) return; // quiz cards use data-quiz, not data-activity
     selectedDuration = '5min';
     navigateToActivity(card.dataset.activity);
   });
