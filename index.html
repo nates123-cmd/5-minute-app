@@ -293,7 +293,7 @@
       color: var(--muted);
       margin-right: auto;
     }
-    .btn-thumb, .btn-bookmark {
+    .btn-thumb, .btn-bookmark, .btn-share {
       background: none;
       border: 1.5px solid var(--border);
       border-radius: 8px;
@@ -303,6 +303,7 @@
       color: var(--muted);
       transition: background 0.15s, border-color 0.15s;
     }
+    .btn-share { font-size: 0.78rem; padding: 5px 8px; }
     .btn-thumb.active-up   { background: #d4edda; border-color: #5cb85c; }
     .btn-thumb.active-down { background: #f8d7da; border-color: #d9534f; }
     .btn-bookmark.saved    { color: var(--accent); border-color: var(--accent); }
@@ -1253,6 +1254,7 @@ function cardFooter(slug, identifier, url) {
     '<button class="btn-thumb' + (liked    ? ' active-up'   : '') + '" data-thumb="up"   data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👍</button>' +
     '<button class="btn-thumb' + (disliked ? ' active-down' : '') + '" data-thumb="down" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👎</button>' +
     '<button class="btn-bookmark' + (bookmarked ? ' saved' : '') + '" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">🔖</button>' +
+    '<button class="btn-share" data-share="1" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">↑</button>' +
   '</div>';
 }
 
@@ -1290,6 +1292,19 @@ document.addEventListener('click', e => {
       bm.classList.add('saved');
     }
     updateSavedCount();
+  }
+
+  const sh = e.target.closest('[data-share]');
+  if (sh) {
+    const card = sh.closest('.ai-card, .ai-single');
+    const text = card ? card.innerText.replace(/[👍👎🔖↑←\n]+/g, ' ').trim() : sh.dataset.id;
+    const shareData = { title: '5-Minute Break', text };
+    if (sh.dataset.url) shareData.url = sh.dataset.url;
+    if (navigator.share) {
+      navigator.share(shareData).catch(() => {});
+    } else {
+      try { await navigator.clipboard.writeText((shareData.url ? shareData.url + '\n\n' : '') + text); showToast('Copied to clipboard'); } catch(e) {}
+    }
   }
 });
 
