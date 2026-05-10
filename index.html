@@ -2034,25 +2034,28 @@ document.querySelectorAll('[data-anki-mode]').forEach(btn => {
     const frontTA    = document.getElementById('anki-front');
     const backTA     = document.getElementById('anki-back');
     const submitBtn  = document.getElementById('anki-input-submit');
+    // Always reset both first
+    frontTA.disabled = false; frontTA.style.opacity = '';
+    backTA.disabled  = false; backTA.style.opacity  = '';
+    frontTA.placeholder = 'e.g. What is opportunity cost?';
+    backTA.placeholder  = 'e.g. The value of the next best alternative foregone…';
     if (ankiMode === 'front') {
       frontLabel.textContent = 'Front (question / term)';
       backLabel.textContent  = 'Back — Claude will generate this';
+      backTA.value = '';
       backTA.placeholder = 'Leave blank — Claude fills this in';
       backTA.disabled = true; backTA.style.opacity = '0.45';
       submitBtn.textContent = 'Generate & Save';
     } else if (ankiMode === 'back') {
       frontLabel.textContent = 'Front — Claude will generate this';
       backLabel.textContent  = 'Back (answer / definition)';
+      frontTA.value = '';
       frontTA.placeholder = 'Leave blank — Claude fills this in';
       frontTA.disabled = true; frontTA.style.opacity = '0.45';
       submitBtn.textContent = 'Generate & Save';
     } else {
       frontLabel.textContent = 'Front (question / term)';
       backLabel.textContent  = 'Back (answer / definition)';
-      frontTA.placeholder = 'e.g. What is opportunity cost?';
-      backTA.placeholder  = 'e.g. The value of the next best alternative foregone…';
-      frontTA.disabled = false; frontTA.style.opacity = '';
-      backTA.disabled  = false; backTA.style.opacity  = '';
       submitBtn.textContent = 'Save to Flashcards';
     }
   });
@@ -2069,18 +2072,34 @@ document.getElementById('anki-input-submit').addEventListener('click', async () 
     if (!front) { showToast('Enter the front of the card'); return; }
     btn.textContent = 'Generating…';
     try {
-      const res = await callClaude('Generate the back (answer/definition) for this flashcard front: "' + front + '". Return JSON: {"back": string}. Be concise — 1-3 sentences max.');
-      back = res.back || '';
-      if (!back) throw new Error('empty');
-    } catch(e) { showToast('Couldn\'t generate back'); btn.textContent = 'Generate & Save'; return; }
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300,
+          system: 'Return ONLY valid JSON, no markdown, no explanation.',
+          messages: [{ role: 'user', content: 'Generate a concise flashcard back (answer/definition) for this front: "' + front + '". Return JSON: {"back":"..."}. 1-3 sentences max.' }] }),
+      });
+      const d = await r.json();
+      const raw = d.content?.[0]?.text?.trim() || '';
+      back = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).back || '';
+      if (!back) throw new Error('empty response');
+    } catch(e) { showToast('Generation failed: ' + e.message); btn.textContent = 'Generate & Save'; return; }
   } else if (ankiMode === 'back') {
     if (!back) { showToast('Enter the back of the card'); return; }
     btn.textContent = 'Generating…';
     try {
-      const res = await callClaude('Generate the front (question/term) for this flashcard back: "' + back + '". Return JSON: {"front": string}. Be concise — a clear question or term.');
-      front = res.front || '';
-      if (!front) throw new Error('empty');
-    } catch(e) { showToast('Couldn\'t generate front'); btn.textContent = 'Generate & Save'; return; }
+      const r = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 200,
+          system: 'Return ONLY valid JSON, no markdown, no explanation.',
+          messages: [{ role: 'user', content: 'Generate a concise flashcard front (question or term) for this back: "' + back + '". Return JSON: {"front":"..."}.' }] }),
+      });
+      const d = await r.json();
+      const raw = d.content?.[0]?.text?.trim() || '';
+      front = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).front || '';
+      if (!front) throw new Error('empty response');
+    } catch(e) { showToast('Generation failed: ' + e.message); btn.textContent = 'Generate & Save'; return; }
   }
 
   btn.textContent = 'Saving…';
