@@ -521,6 +521,56 @@
     .breathe-pattern-label { font-size: 0.82rem; color: var(--muted); }
     .breathe-controls { display: flex; gap: 10px; width: 100%; max-width: 260px; }
     .breathe-controls .btn { flex: 1; padding: 12px; }
+
+    /* ── SRS Flashcards ──────────────────────── */
+    .srs-progress { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 16px; min-height: 1.2em; }
+    .srs-card-area { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
+    /* Flip card */
+    .srs-card-wrap { perspective: 1000px; width: 100%; min-height: 200px; cursor: pointer; }
+    .srs-card { width: 100%; min-height: 200px; position: relative; transform-style: preserve-3d; transition: transform 0.45s ease; border-radius: var(--radius); }
+    .srs-card.flipped { transform: rotateY(180deg); }
+    .srs-card-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--card-bg); border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 24px; text-align: center; }
+    .srs-card-back { transform: rotateY(180deg); }
+    /* MC card */
+    .srs-card-mc { background: var(--card-bg); border-radius: var(--radius); padding: 28px 24px; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center; }
+    .srs-card-text { font-size: 1.05rem; font-weight: 500; line-height: 1.55; }
+    .srs-card-hint { font-size: 0.72rem; color: var(--muted); position: absolute; bottom: 14px; }
+    /* Controls */
+    .srs-controls { padding: 8px 0 0; }
+    .srs-rate-btns { display: flex; gap: 10px; }
+    .srs-rate-btns .btn { flex: 1; padding: 14px 8px; font-weight: 600; border-radius: var(--radius); border: none; cursor: pointer; font-family: var(--font); font-size: 0.95rem; }
+    .srs-btn-miss { background: #e8d5d5; color: #7a2525; }
+    .srs-btn-hard { background: var(--card-bg); color: var(--text); border: 1.5px solid var(--border) !important; }
+    .srs-btn-easy { background: #d5e8d8; color: #256b30; }
+    /* MC options */
+    .srs-mc-options { display: flex; flex-direction: column; gap: 10px; }
+    .srs-mc-btn { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: left; font-size: 0.93rem; color: var(--text); cursor: pointer; font-family: var(--font); transition: background 0.15s; }
+    .srs-mc-btn.srs-mc-correct { background: #d5e8d8; border-color: #256b30; color: #256b30; font-weight: 600; }
+    .srs-mc-btn.srs-mc-wrong   { background: #e8d5d5; border-color: #7a2525; color: #7a2525; }
+    .srs-mc-btn.srs-mc-reveal  { border-color: #256b30; }
+    /* Done state */
+    .srs-done { text-align: center; padding: 32px 0; display: flex; flex-direction: column; align-items: center; }
+    .srs-done-icon { font-size: 2.8rem; margin-bottom: 14px; }
+    .srs-done-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 6px; }
+    .srs-done-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 20px; }
+    .srs-done-stats { display: flex; gap: 20px; font-size: 0.85rem; font-weight: 600; }
+    .srs-stat-easy { color: #256b30; } .srs-stat-hard { color: var(--muted); } .srs-stat-miss { color: #7a2525; }
+    /* Mode toggle in header */
+    .srs-mode-toggle { display: flex; gap: 4px; }
+    .srs-mode-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 0.78rem; color: var(--muted); cursor: pointer; font-family: var(--font); }
+    .srs-mode-btn.active { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 600; }
+    /* Modals (bottom sheet) */
+    .srs-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 400; }
+    .srs-modal.hidden { display: none; }
+    .srs-modal-box { background: var(--bg); border-radius: 20px 20px 0 0; padding: 24px 20px calc(32px + env(safe-area-inset-bottom)); width: 100%; max-width: 600px; max-height: 88vh; overflow-y: auto; }
+    .srs-modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .srs-modal-title { font-size: 1rem; font-weight: 700; }
+    .srs-modal-close { background: none; border: none; font-size: 1.5rem; color: var(--muted); cursor: pointer; line-height: 1; padding: 0; }
+    .srs-label { font-size: 0.75rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px; margin-top: 14px; }
+    .srs-half-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+    .srs-half-toggle .srs-mode-btn { flex: 1; padding: 8px; font-size: 0.85rem; text-align: center; }
+    /* FAB */
+    .srs-fab { position: fixed; bottom: calc(28px + env(safe-area-inset-bottom)); right: 20px; width: 52px; height: 52px; border-radius: 50%; background: var(--accent); color: var(--bg); font-size: 1.7rem; font-weight: 300; border: none; box-shadow: 0 4px 16px rgba(0,0,0,0.2); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 200; line-height: 1; }
   </style>
 </head>
 <body>
@@ -558,6 +608,10 @@
   </div>
 
   <div class="cards-grid">
+    <div class="activity-card" id="srs-due-card" data-activity="srs-review" style="grid-column:1/-1">
+      <h3>Review Due</h3>
+      <p>Loading…</p>
+    </div>
     <div class="activity-card" data-activity="history">
       <h3>History Rabbit Hole</h3>
       <p>Dive into something genuinely fascinating</p>
@@ -758,6 +812,23 @@
       <button class="btn btn-outline" onclick="stopBoxBreathe()">Reset</button>
     </div>
   </div>
+</div>
+
+<!-- SRS REVIEW -->
+<div id="screen-srs-review" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Flashcard Review</span>
+    <div class="srs-mode-toggle">
+      <button class="srs-mode-btn active" data-srs-mode="flip">Flip</button>
+      <button class="srs-mode-btn" data-srs-mode="mc">MC</button>
+    </div>
+  </div>
+  <div class="srs-progress" id="srs-progress"></div>
+  <div class="srs-card-area" id="srs-card-area">
+    <!-- card renders here -->
+  </div>
+  <div class="srs-controls" id="srs-controls"></div>
 </div>
 
 <!-- JOURNAL -->
@@ -983,6 +1054,41 @@
   </div>
 </div>
 
+<!-- SRS Modals + FAB -->
+<div id="srs-add-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Add Flashcard</span>
+      <button class="srs-modal-close" id="srs-add-close">×</button>
+    </div>
+    <label class="srs-label">Front (question / term)</label>
+    <textarea id="srs-add-front" class="anki-textarea" rows="3" placeholder="e.g. What is photosynthesis?"></textarea>
+    <label class="srs-label">Back (answer / definition)</label>
+    <textarea id="srs-add-back" class="anki-textarea" rows="5" placeholder="e.g. The process by which plants convert light into energy…"></textarea>
+    <div style="margin-top:18px">
+      <button class="btn btn-primary" id="srs-add-save" style="width:100%">Save Card</button>
+    </div>
+  </div>
+</div>
+
+<div id="srs-preview-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Remember It?</span>
+      <button class="srs-modal-close" id="srs-preview-close">×</button>
+    </div>
+    <label class="srs-label">Front</label>
+    <div id="srs-preview-front" style="background:var(--card-bg);border-radius:var(--radius);padding:14px 16px;font-size:0.95rem;line-height:1.5;margin-bottom:2px"></div>
+    <label class="srs-label">Back</label>
+    <div id="srs-preview-back" style="background:var(--card-bg);border-radius:var(--radius);padding:14px 16px;font-size:0.95rem;line-height:1.5;margin-bottom:2px"></div>
+    <div style="margin-top:18px">
+      <button class="btn btn-primary" id="srs-preview-save" style="width:100%">Save</button>
+    </div>
+  </div>
+</div>
+
+<button class="srs-fab" id="srs-fab" title="Add flashcard" style="display:none">+</button>
+
 <script>
 'use strict';
 
@@ -1140,6 +1246,7 @@ const DURATION_ACTIVITIES = {
 function showScreen(id) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
+  document.dispatchEvent(new CustomEvent('screenchange', { detail: id }));
 }
 
 // ── API Key ───────────────────────────────────
@@ -1267,6 +1374,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'cognitive-bias')    loadCognitiveBias();
     if (a === 'brain-teaser')      loadBrainTeaser();
     if (a === 'stoic-reminder')    loadStoicReminder();
+    if (a === 'srs-review')        loadSrsReview();
   }
 }
 
@@ -2080,6 +2188,325 @@ updateSavedCount();
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
 }
+
+// ── SRS / Flashcards ──────────────────────────
+const SB_URL  = 'https://xsmnfcmtbpeaccnyinkr.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzbW5mY210YnBlYWNjbnlpbmtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODQ3MjksImV4cCI6MjA5Mzk2MDcyOX0.flUt1SAkkt1ppcKCR2XnPKbAaS4PjCLMzi3Gu08jVWo';
+
+async function sbFetch(path, opts = {}) {
+  const res = await fetch(SB_URL + '/rest/v1/' + path, {
+    ...opts,
+    headers: {
+      'apikey': SB_KEY,
+      'Authorization': 'Bearer ' + SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': opts.prefer || 'return=representation',
+      ...(opts.headers || {}),
+    },
+  });
+  if (!res.ok) { const t = await res.text(); throw new Error(t); }
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+async function srsGetDue() {
+  const today = new Date().toISOString().slice(0,10);
+  return sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=50');
+}
+
+async function srsGetDueCount() {
+  const today = new Date().toISOString().slice(0,10);
+  const res = await fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + '&select=id', {
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
+  });
+  const count = res.headers.get('content-range');
+  if (count) { const m = count.match(/\/(\d+)/); return m ? parseInt(m[1]) : 0; }
+  return 0;
+}
+
+async function srsCreate(front, back, source) {
+  return sbFetch('flashcards', {
+    method: 'POST',
+    prefer: 'return=representation',
+    body: JSON.stringify({ front, back, source: source || '5-Minute Break' }),
+  });
+}
+
+async function srsUpdate(id, fields) {
+  return sbFetch('flashcards?id=eq.' + id, {
+    method: 'PATCH',
+    prefer: 'return=minimal',
+    body: JSON.stringify(fields),
+  });
+}
+
+// SM-2
+function sm2(card, rating) {
+  // rating: 0=miss, 1=hard, 2=easy
+  let { interval, ease_factor } = card;
+  if (rating === 0) { interval = 1; }
+  else if (rating === 1) { interval = Math.max(1, Math.round(interval * 1.2)); ease_factor = Math.max(1.3, ease_factor - 0.15); }
+  else { interval = Math.round(interval * ease_factor); ease_factor = Math.min(2.5, ease_factor + 0.1); }
+  const next = new Date(); next.setDate(next.getDate() + interval);
+  return { interval, ease_factor, next_review: next.toISOString().slice(0,10), status: 'review' };
+}
+
+// Session state
+let srsQueue = [], srsCurrent = 0, srsStats = { easy:0, hard:0, miss:0 };
+let srsMode = localStorage.getItem('srsMode') || 'flip';
+let srsFlipped = false;
+
+async function updateDueBadge() {
+  const card = document.getElementById('srs-due-card');
+  if (!card) return;
+  try {
+    const n = await srsGetDueCount();
+    card.querySelector('p').textContent = n === 0 ? 'All caught up!' : n + ' card' + (n===1?'':'s') + ' due';
+  } catch(e) {
+    card.querySelector('p').textContent = 'Tap to review';
+  }
+}
+
+async function loadSrsReview() {
+  const area = document.getElementById('srs-card-area');
+  const prog = document.getElementById('srs-progress');
+  area.innerHTML = '<p style="text-align:center;color:var(--muted);padding:32px 0">Loading…</p>';
+  prog.textContent = '';
+  document.getElementById('srs-controls').innerHTML = '';
+  try {
+    srsQueue = await srsGetDue();
+    srsCurrent = 0; srsStats = { easy:0, hard:0, miss:0 };
+    if (!srsQueue || !srsQueue.length) { renderSrsDone(); return; }
+    renderSrsCard();
+  } catch(e) {
+    area.innerHTML = '<p style="text-align:center;color:var(--muted);padding:32px 0">Couldn\'t load cards.<br><small>' + esc(e.message) + '</small></p>';
+  }
+}
+
+function renderSrsCard() {
+  if (srsCurrent >= srsQueue.length) { renderSrsDone(); return; }
+  const card = srsQueue[srsCurrent];
+  const prog = document.getElementById('srs-progress');
+  prog.textContent = (srsCurrent + 1) + ' / ' + srsQueue.length;
+  srsFlipped = false;
+  if (srsMode === 'flip') renderSrsFlip(card);
+  else renderSrsMC(card);
+}
+
+function renderSrsFlip(card) {
+  const area = document.getElementById('srs-card-area');
+  const ctrl = document.getElementById('srs-controls');
+  area.innerHTML =
+    '<div class="srs-card-wrap" id="srs-flip-wrap">' +
+      '<div class="srs-card" id="srs-flip-card">' +
+        '<div class="srs-card-face">' +
+          '<span class="srs-card-text">' + esc(card.front) + '</span>' +
+          '<span class="srs-card-hint">Tap to reveal</span>' +
+        '</div>' +
+        '<div class="srs-card-face srs-card-back">' +
+          '<span class="srs-card-text">' + esc(card.back) + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  ctrl.innerHTML = '<div class="srs-rate-btns" id="srs-rate-btns" style="display:none">' +
+    '<button class="btn srs-btn-miss" data-rate="0">Miss</button>' +
+    '<button class="btn srs-btn-hard" data-rate="1">Hard</button>' +
+    '<button class="btn srs-btn-easy" data-rate="2">Easy</button>' +
+  '</div>';
+  document.getElementById('srs-flip-wrap').addEventListener('click', () => {
+    if (!srsFlipped) {
+      srsFlipped = true;
+      document.getElementById('srs-flip-card').classList.add('flipped');
+      document.getElementById('srs-rate-btns').style.display = 'flex';
+    }
+  });
+  ctrl.querySelectorAll('[data-rate]').forEach(btn => {
+    btn.addEventListener('click', () => rateSrsCard(parseInt(btn.dataset.rate)));
+  });
+}
+
+async function renderSrsMC(card) {
+  const area = document.getElementById('srs-card-area');
+  const ctrl = document.getElementById('srs-controls');
+  area.innerHTML = '<div class="srs-card-mc"><span class="srs-card-text">' + esc(card.front) + '</span></div>' +
+    '<div class="srs-mc-options" id="srs-mc-opts"><p style="color:var(--muted);font-size:0.85rem;text-align:center;padding:12px">Generating options…</p></div>';
+  ctrl.innerHTML = '';
+  // Generate 3 distractors via Claude
+  let options = [];
+  try {
+    const apiKey = getApiKey();
+    const prompt = 'You are a quiz generator. Given this flashcard:\nFront: ' + card.front + '\nBack: ' + card.back + '\n\nGenerate exactly 3 plausible but WRONG answer options for a multiple-choice quiz. Return ONLY a JSON array of 3 strings, no other text. Example: ["wrong1","wrong2","wrong3"]';
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 200, messages: [{ role: 'user', content: prompt }] }),
+    });
+    const data = await resp.json();
+    const raw = data.content?.[0]?.text || '[]';
+    options = JSON.parse(raw.match(/\[[\s\S]*\]/)?.[0] || '[]');
+  } catch(e) {}
+  if (options.length < 3) options = ['(option A)', '(option B)', '(option C)'];
+  const all = [...options, card.back].sort(() => Math.random() - 0.5);
+  const optsEl = document.getElementById('srs-mc-opts');
+  if (!optsEl) return; // navigated away
+  optsEl.innerHTML = all.map(opt =>
+    '<button class="srs-mc-btn" data-answer="' + esc(opt) + '">' + esc(opt) + '</button>'
+  ).join('');
+  let answered = false;
+  optsEl.querySelectorAll('.srs-mc-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (answered) return;
+      answered = true;
+      const correct = btn.dataset.answer === card.back;
+      btn.classList.add(correct ? 'srs-mc-correct' : 'srs-mc-wrong');
+      optsEl.querySelectorAll('.srs-mc-btn').forEach(b => {
+        if (b.dataset.answer === card.back) b.classList.add('srs-mc-reveal');
+      });
+      // Show rate buttons
+      ctrl.innerHTML = '<div class="srs-rate-btns">' +
+        '<button class="btn srs-btn-miss" data-rate="0">Miss</button>' +
+        '<button class="btn srs-btn-hard" data-rate="1">Hard</button>' +
+        '<button class="btn srs-btn-easy" data-rate="2">Easy</button>' +
+      '</div>';
+      ctrl.querySelectorAll('[data-rate]').forEach(b => {
+        b.addEventListener('click', () => rateSrsCard(parseInt(b.dataset.rate)));
+      });
+    });
+  });
+}
+
+async function rateSrsCard(rating) {
+  const card = srsQueue[srsCurrent];
+  if (rating === 0) srsStats.miss++;
+  else if (rating === 1) srsStats.hard++;
+  else srsStats.easy++;
+  const updates = sm2(card, rating);
+  try { await srsUpdate(card.id, updates); } catch(e) {}
+  srsCurrent++;
+  renderSrsCard();
+}
+
+function renderSrsDone() {
+  const area = document.getElementById('srs-card-area');
+  const prog = document.getElementById('srs-progress');
+  prog.textContent = '';
+  document.getElementById('srs-controls').innerHTML = '';
+  const total = srsStats.easy + srsStats.hard + srsStats.miss;
+  area.innerHTML =
+    '<div class="srs-done">' +
+      '<div class="srs-done-icon">✓</div>' +
+      '<div class="srs-done-title">Session complete</div>' +
+      '<div class="srs-done-sub">' + total + ' card' + (total===1?'':'s') + ' reviewed</div>' +
+      '<div class="srs-done-stats">' +
+        '<span class="srs-stat-easy">✓ ' + srsStats.easy + '</span>' +
+        '<span class="srs-stat-hard">~ ' + srsStats.hard + '</span>' +
+        '<span class="srs-stat-miss">✗ ' + srsStats.miss + '</span>' +
+      '</div>' +
+    '</div>';
+  updateDueBadge();
+}
+
+// Mode toggle
+document.querySelectorAll('[data-srs-mode]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    srsMode = btn.dataset.srsMode;
+    localStorage.setItem('srsMode', srsMode);
+    document.querySelectorAll('[data-srs-mode]').forEach(b => b.classList.toggle('active', b === btn));
+    if (srsQueue.length && srsCurrent < srsQueue.length) renderSrsCard();
+  });
+});
+
+// FAB — add card modal
+document.getElementById('srs-fab').addEventListener('click', () => {
+  document.getElementById('srs-add-modal').classList.remove('hidden');
+  document.getElementById('srs-add-front').value = '';
+  document.getElementById('srs-add-back').value = '';
+});
+document.getElementById('srs-add-close').addEventListener('click', () => document.getElementById('srs-add-modal').classList.add('hidden'));
+document.getElementById('srs-add-save').addEventListener('click', async () => {
+  const front = document.getElementById('srs-add-front').value.trim();
+  const back  = document.getElementById('srs-add-back').value.trim();
+  if (!front || !back) { showToast('Fill in both sides'); return; }
+  document.getElementById('srs-add-save').textContent = 'Saving…';
+  try {
+    await srsCreate(front, back);
+    showToast('Card saved!');
+    document.getElementById('srs-add-modal').classList.add('hidden');
+    updateDueBadge();
+  } catch(e) { showToast('Error: ' + e.message); }
+  document.getElementById('srs-add-save').textContent = 'Save Card';
+});
+
+// "Remember It" — inject button on activity screens after content loads
+function injectRememberIt(slug, getFrontBack) {
+  const screen = document.getElementById('screen-' + slug);
+  if (!screen) return;
+  const actions = screen.querySelector('.activity-actions');
+  if (!actions) return;
+  if (actions.querySelector('.btn-remember-it')) return; // already injected
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-outline btn-remember-it';
+  btn.textContent = 'Remember It';
+  btn.addEventListener('click', async () => {
+    const pair = getFrontBack();
+    if (!pair) { showToast('Load a card first'); return; }
+    // Pre-fill preview modal
+    document.getElementById('srs-preview-front').textContent = pair.front;
+    document.getElementById('srs-preview-back').textContent = pair.back;
+    document.getElementById('srs-preview-modal').classList.remove('hidden');
+  });
+  actions.insertBefore(btn, actions.firstChild);
+}
+
+document.getElementById('srs-preview-close').addEventListener('click', () => document.getElementById('srs-preview-modal').classList.add('hidden'));
+document.getElementById('srs-preview-save').addEventListener('click', async () => {
+  const front = document.getElementById('srs-preview-front').textContent.trim();
+  const back  = document.getElementById('srs-preview-back').textContent.trim();
+  if (!front || !back) return;
+  document.getElementById('srs-preview-save').textContent = 'Saving…';
+  try {
+    await srsCreate(front, back);
+    showToast('Card saved!');
+    document.getElementById('srs-preview-modal').classList.add('hidden');
+    updateDueBadge();
+  } catch(e) { showToast('Error: ' + e.message); }
+  document.getElementById('srs-preview-save').textContent = 'Save';
+});
+
+// Wire up "Remember It" for each activity using ankiData
+function wireRememberIt(slug, frontFn, backFn) {
+  injectRememberIt(slug, () => {
+    const d = ankiData[slug];
+    if (!d) return null;
+    const front = frontFn(d);
+    const back  = backFn(d);
+    if (!front) return null;
+    return { front, back };
+  });
+}
+
+// Wire "Remember It" buttons on activity screens
+wireRememberIt('new-word',       d => d.word, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''));
+wireRememberIt('new-term',       d => d.term + (d.field ? ' (' + d.field + ')' : ''), d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''));
+wireRememberIt('finance-term',   d => d.term, d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : ''));
+wireRememberIt('etymology',      d => d.word, d => d.origin + (d.journey ? '\n\n' + d.journey : ''));
+wireRememberIt('cognitive-bias', d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : ''));
+wireRememberIt('logical-fallacy',d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''));
+wireRememberIt('fun-fact',       d => d.fact, d => d.context || d.explanation || '');
+wireRememberIt('on-this-day',    d => String(d.year) + ': ' + d.event, d => d.context || '');
+wireRememberIt('geography-fact', d => d.location, d => d.fact + (d.context ? '\n\n' + d.context : ''));
+wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '');
+wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''));
+
+// Show FAB only on srs-review screen and hide elsewhere
+const srsFab = document.getElementById('srs-fab');
+document.addEventListener('screenchange', (e) => {
+  srsFab.style.display = (e.detail === 'srs-review') ? 'flex' : 'none';
+});
+srsFab.style.display = 'none';
+
+// Init SRS on page load
+updateDueBadge();
 </script>
 </body>
 </html>

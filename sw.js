@@ -1,4 +1,4 @@
-const CACHE_NAME = '5min-break-v16';
+const CACHE_NAME = '5min-break-v17';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -22,7 +22,7 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   // Network-first for API calls, cache-first for everything else
-  if (event.request.url.includes('api.anthropic.com')) {
+  if (event.request.url.includes('api.anthropic.com') || event.request.url.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
     return;
   }
