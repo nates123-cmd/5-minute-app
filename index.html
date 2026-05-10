@@ -2775,8 +2775,8 @@ async function advanceQuiz(correct) {
     else { quizStreak = 0; }
 
     const prevDiff = quizDifficulty;
-    if (quizStreak >= 5 && quizDifficulty < 5) { quizDifficulty++; quizStreak = 0; }
-    else if (quizStreak <= -5 && quizDifficulty > 1) { quizDifficulty--; quizStreak = 0; }
+    if (quizStreak >= 3 && quizDifficulty < 5) { quizDifficulty++; quizStreak = 0; }
+    else if (quizStreak <= -3 && quizDifficulty > 1) { quizDifficulty--; quizStreak = 0; }
 
     // Persist to Supabase (fire and forget)
     try { await qpUpsert(quizTopic, { difficulty: quizDifficulty, hit_rate: hitRate }); } catch(e) {}
