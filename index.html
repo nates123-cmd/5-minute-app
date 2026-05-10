@@ -1366,7 +1366,7 @@ async function callClaude(userPrompt) {
       'anthropic-dangerous-direct-browser-access': 'true',
     },
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: 'claude-sonnet-4-5',
       max_tokens: 1000,
       system: 'You are a helpful assistant. Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble. Just the raw JSON object or array.',
       messages: [{ role: 'user', content: userPrompt }],
@@ -1776,6 +1776,7 @@ function makeLoader(slug, prompt, render, fallbackData) {
         addSwipeListener(card, slug, key, load);
       }
     } catch(e) {
+      showToast('⚠️ ' + (e.message || 'Generation failed'), 4000);
       container.innerHTML = render(fallbackData);
     }
   }
@@ -2075,7 +2076,7 @@ document.getElementById('anki-input-submit').addEventListener('click', async () 
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 300,
+        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 300,
           system: 'Return ONLY valid JSON, no markdown, no explanation.',
           messages: [{ role: 'user', content: 'Generate a concise flashcard back (answer/definition) for this front: "' + front + '". Return JSON: {"back":"..."}. 1-3 sentences max.' }] }),
       });
@@ -2091,7 +2092,7 @@ document.getElementById('anki-input-submit').addEventListener('click', async () 
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-        body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 200,
+        body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 200,
           system: 'Return ONLY valid JSON, no markdown, no explanation.',
           messages: [{ role: 'user', content: 'Generate a concise flashcard front (question or term) for this back: "' + back + '". Return JSON: {"front":"..."}.' }] }),
       });
@@ -2488,7 +2489,7 @@ async function renderSrsMC(card) {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 200, messages: [{ role: 'user', content: prompt }] }),
+      body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 200, messages: [{ role: 'user', content: prompt }] }),
     });
     const data = await resp.json();
     const raw = data.content?.[0]?.text || '[]';
@@ -2807,7 +2808,7 @@ async function callClaudeQuiz(prompt) {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 400,
+    body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 400,
       system: 'Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble.',
       messages: [{ role: 'user', content: prompt }] }),
   });
@@ -2909,7 +2910,7 @@ function showQuizActions(question, correct, wasCorrect) {
         method: 'POST',
         headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({
-          model: 'claude-sonnet-4-6', max_tokens: 300,
+          model: 'claude-sonnet-4-5', max_tokens: 300,
           messages: [{ role: 'user', content: 'Quiz question: "' + question + '"\nCorrect answer: "' + correct + '"\n\nGive me 2-3 sentences of interesting context or explanation about this — something that makes the answer more memorable. Be concise and specific, no fluff.' }],
         }),
       });
