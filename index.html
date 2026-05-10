@@ -611,9 +611,35 @@
     .quiz-done-diff { font-size: 0.88rem; color: var(--accent); font-weight: 600; margin-top: 4px; min-height: 1.3em; }
     .quiz-done-btns { display: flex; gap: 10px; margin-top: 20px; width: 100%; }
     .quiz-done-btns .btn { flex: 1; }
+
+    /* ── Offline banner ──────────────────────── */
+    #offline-banner { display:none; background:#e8d5d5; color:#7a2525; font-size:0.8rem; font-weight:500; text-align:center; padding:9px 16px; position:fixed; top:0; left:0; right:0; z-index:1000; }
+    body.offline-active { padding-top: 36px; }
+
+    /* ── Mantra ──────────────────────────────── */
+    .mantra-text-area { display:flex; flex:1; align-items:center; justify-content:center; padding:20px 0; }
+    .mantra-text { font-size:1.55rem; font-weight:600; letter-spacing:-0.4px; line-height:1.5; text-align:center; color:var(--text); }
+    .mantra-empty { text-align:center; color:var(--muted); padding:48px 0; line-height:1.8; font-size:0.93rem; }
+    .mantra-list-item { display:flex; align-items:flex-start; gap:12px; background:var(--card-bg); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; }
+    .mantra-list-text { flex:1; font-size:0.93rem; line-height:1.55; }
+    .mantra-list-actions { display:flex; gap:6px; flex-shrink:0; margin-top:2px; }
+    .btn-mantra-icon { background:none; border:1.5px solid var(--border); border-radius:8px; color:var(--muted); font-size:0.85rem; cursor:pointer; padding:4px 8px; line-height:1; }
+    .mantra-modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; justify-content:center; z-index:500; }
+    .mantra-modal.hidden { display:none; }
+    .mantra-modal-box { background:var(--bg); border-radius:20px 20px 0 0; padding:24px 20px calc(32px + env(safe-area-inset-bottom)); width:100%; max-width:600px; }
+    .mantra-confirm { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:600; }
+    .mantra-confirm.hidden { display:none; }
+    .mantra-confirm-box { background:var(--bg); border-radius:var(--radius); padding:28px 24px; max-width:320px; width:90%; text-align:center; }
+    .mantra-confirm-msg { font-size:1rem; font-weight:600; margin-bottom:6px; }
+    .mantra-confirm-preview { font-size:0.82rem; color:var(--muted); font-style:italic; margin-top:4px; }
+    .mantra-confirm-btns { display:flex; gap:10px; margin-top:20px; }
+    .mantra-confirm-btns .btn { flex:1; }
   </style>
 </head>
 <body>
+
+<!-- Offline banner -->
+<div id="offline-banner">Offline — cards will sync when reconnected</div>
 
 <!-- API KEY SETUP -->
 <div id="screen-apikey" class="screen">
@@ -740,6 +766,10 @@
     <div class="activity-card" data-activity="health-insight">
       <h3>Health Insight</h3>
       <p>One evidence-based tip on sleep, nutrition, or movement.</p>
+    </div>
+    <div class="activity-card" data-activity="mantra">
+      <h3>Mantras</h3>
+      <p>Your personal collection of reminders and principles.</p>
     </div>
     <div class="activity-card" data-activity="brain-teaser">
       <h3>Brain Teaser</h3>
@@ -1097,6 +1127,52 @@
   <h2>Time's up.</h2>
   <p id="done-reflection"></p>
   <button class="btn btn-primary" id="done-home-btn" style="width:180px;">Back to home</button>
+</div>
+
+<!-- MANTRA SESSION -->
+<div id="screen-mantra" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Mantras</span>
+    <button class="btn-settings" id="mantra-manage-btn" style="margin-left:auto">Manage</button>
+  </div>
+  <div id="mantra-session-body" style="display:flex;flex-direction:column;flex:1;"></div>
+  <div class="activity-actions" id="mantra-session-actions"></div>
+</div>
+
+<!-- MANTRA MANAGE -->
+<div id="screen-mantra-manage" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" id="mantra-back-btn">←</button>
+    <span class="activity-title">Manage Mantras</span>
+    <button class="btn-settings" id="mantra-add-new-btn" style="margin-left:auto">+ Add</button>
+  </div>
+  <div id="mantra-list-container"></div>
+</div>
+
+<!-- Mantra Add/Edit Modal -->
+<div id="mantra-edit-modal" class="mantra-modal hidden">
+  <div class="mantra-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title" id="mantra-edit-title">Add Mantra</span>
+      <button class="srs-modal-close" id="mantra-edit-close">×</button>
+    </div>
+    <label class="srs-label" style="margin-top:4px">Mantra</label>
+    <textarea id="mantra-edit-text" class="anki-textarea" rows="4" placeholder="e.g. You are what you repeatedly do."></textarea>
+    <button class="btn btn-primary" id="mantra-edit-save" style="width:100%;margin-top:16px">Save</button>
+  </div>
+</div>
+
+<!-- Mantra Delete Confirm -->
+<div id="mantra-delete-confirm" class="mantra-confirm hidden">
+  <div class="mantra-confirm-box">
+    <div class="mantra-confirm-msg">Remove this mantra?</div>
+    <div class="mantra-confirm-preview" id="mantra-delete-preview"></div>
+    <div class="mantra-confirm-btns">
+      <button class="btn btn-outline" id="mantra-delete-cancel">Cancel</button>
+      <button class="btn btn-primary" id="mantra-delete-yes">Remove</button>
+    </div>
+  </div>
 </div>
 
 <!-- Toast -->
@@ -1461,6 +1537,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'anki-input')        resetAnkiInput();
+    if (a === 'mantra')            mantraLoad();
   }
 }
 
@@ -2105,11 +2182,11 @@ document.getElementById('anki-input-submit').addEventListener('click', async () 
 
   btn.textContent = 'Saving…';
   try {
-    await srsCreate(front, back, 'manual');
-    showToast('Saved to flashcards ✓');
+    const r1 = await srsCreate(front, back, 'manual');
+    showToast(r1?.offline ? 'Saved offline — will sync when connected ✓' : 'Saved to flashcards ✓');
     document.getElementById('anki-front').value = '';
     document.getElementById('anki-back').value = '';
-    updateDueBadge();
+    if (!r1?.offline) updateDueBadge();
   } catch(e) { showToast('Error: ' + e.message); }
   btn.textContent = ankiMode === 'both' ? 'Save to Flashcards' : 'Generate & Save';
 });
@@ -2374,11 +2451,55 @@ async function srsGetDueCount() {
   return 0;
 }
 
+// ── Offline queue ─────────────────────────────
+function getOfflineQueue() {
+  try { return JSON.parse(localStorage.getItem('offline_card_queue') || '[]'); } catch(e) { return []; }
+}
+function setOfflineQueue(q) { localStorage.setItem('offline_card_queue', JSON.stringify(q)); }
+
+async function syncOfflineQueue() {
+  const queue = getOfflineQueue();
+  if (!queue.length) return;
+  const failed = [];
+  let synced = 0;
+  for (const card of queue) {
+    try {
+      await sbFetch('flashcards', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(card) });
+      synced++;
+    } catch(e) { failed.push(card); }
+  }
+  setOfflineQueue(failed);
+  if (!failed.length) showToast(synced + ' card' + (synced === 1 ? '' : 's') + ' synced ✓');
+  else showToast('Sync incomplete — will retry');
+  updateDueBadge();
+}
+
+window.addEventListener('online', () => {
+  document.getElementById('offline-banner').style.display = 'none';
+  document.body.classList.remove('offline-active');
+  syncOfflineQueue();
+});
+window.addEventListener('offline', () => {
+  document.getElementById('offline-banner').style.display = 'block';
+  document.body.classList.add('offline-active');
+});
+if (!navigator.onLine) {
+  document.getElementById('offline-banner').style.display = 'block';
+  document.body.classList.add('offline-active');
+}
+
 async function srsCreate(front, back, source) {
+  const card = { front, back, source: source || '5-Minute Break', created_at: new Date().toISOString() };
+  if (!navigator.onLine) {
+    const q = getOfflineQueue();
+    q.push(card);
+    setOfflineQueue(q);
+    return { offline: true };
+  }
   return sbFetch('flashcards', {
     method: 'POST',
     prefer: 'return=representation',
-    body: JSON.stringify({ front, back, source: source || '5-Minute Break' }),
+    body: JSON.stringify(card),
   });
 }
 
@@ -2579,10 +2700,10 @@ document.getElementById('srs-add-save').addEventListener('click', async () => {
   if (!front || !back) { showToast('Fill in both sides'); return; }
   document.getElementById('srs-add-save').textContent = 'Saving…';
   try {
-    await srsCreate(front, back);
-    showToast('Card saved!');
+    const r2 = await srsCreate(front, back);
+    showToast(r2?.offline ? 'Saved offline — will sync when connected ✓' : 'Card saved!');
     document.getElementById('srs-add-modal').classList.add('hidden');
-    updateDueBadge();
+    if (!r2?.offline) updateDueBadge();
   } catch(e) { showToast('Error: ' + e.message); }
   document.getElementById('srs-add-save').textContent = 'Save Card';
 });
@@ -2615,10 +2736,10 @@ document.getElementById('srs-preview-save').addEventListener('click', async () =
   if (!front || !back) return;
   document.getElementById('srs-preview-save').textContent = 'Saving…';
   try {
-    await srsCreate(front, back);
-    showToast('Card saved!');
+    const r3 = await srsCreate(front, back);
+    showToast(r3?.offline ? 'Saved offline — will sync when connected ✓' : 'Card saved!');
     document.getElementById('srs-preview-modal').classList.add('hidden');
-    updateDueBadge();
+    if (!r3?.offline) updateDueBadge();
   } catch(e) { showToast('Error: ' + e.message); }
   document.getElementById('srs-preview-save').textContent = 'Save';
 });
@@ -2703,12 +2824,15 @@ let quizRecent      = [];      // last 20 results (true/false), rolling window
 let quizStreak      = 0;       // consecutive streak above/below threshold
 let quizDiffStart   = 2;       // difficulty at session start (for end screen)
 let quizInitDiff    = 2;       // to track change
+let quizSeenIds     = [];      // session-level dedup for API question IDs
 
 // No session limit — quiz runs until user taps back
 
 async function startQuiz(topic) {
+  if (!navigator.onLine) { showToast('Quiz requires a connection'); return; }
   quizTopic      = topic;
   quizQNum       = 0;
+  quizSeenIds    = [];
   quizScore      = 0;
   quizAnswered   = false;
   quizAsked      = [];
@@ -2745,6 +2869,86 @@ function updateQuizProgress() {
   document.getElementById('quiz-progress-label').textContent = 'Q ' + (quizQNum + 1) + '  ·  ' + quizScore + ' correct';
 }
 
+// ── Quiz API helpers ──────────────────────────
+function stripHtml(str) {
+  return str.replace(/<[^>]*>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#039;/g, "'")
+    .replace(/\\/g, '').trim();
+}
+function decodeHtml(str) {
+  const t = document.createElement('textarea'); t.innerHTML = str; return t.value;
+}
+
+async function fetchWithTimeout(url, opts, ms = 2000) {
+  const controller = new AbortController();
+  const tid = setTimeout(() => controller.abort(), ms);
+  try {
+    const res = await fetch(url, { ...opts, signal: controller.signal });
+    clearTimeout(tid);
+    return res;
+  } catch(e) { clearTimeout(tid); throw e; }
+}
+
+async function fetchJService(topic) {
+  const catMap = { history: [108, 114], geography: [81, 704] };
+  const ids = catMap[topic];
+  if (!ids) return null;
+  const catId = ids[Math.floor(Math.random() * ids.length)];
+  const offset = Math.floor(Math.random() * 80);
+  try {
+    const res = await fetchWithTimeout(
+      'https://jservice.io/api/clues?category=' + catId + '&offset=' + offset + '&count=10', {}, 2000
+    );
+    if (!res.ok) return null;
+    const clues = await res.json();
+    if (!clues || !clues.length) return null;
+    // Filter: needs question, answer, value, not seen this session
+    const valid = clues.filter(c =>
+      c.question && c.answer && c.value && !quizSeenIds.includes(String(c.id)) &&
+      !c.question.includes('(') // skip parenthetical/incomplete Jeopardy clues
+    );
+    if (!valid.length) return null;
+    // Prefer clues matching current difficulty (±1 level)
+    const diffVal = { 1: [100,200], 2: [200,400], 3: [400,600], 4: [600,800], 5: [800,1000] };
+    const [lo, hi] = diffVal[quizDifficulty] || [0, 2000];
+    const matched = valid.filter(c => c.value >= lo && c.value <= hi);
+    return matched.length ? matched[Math.floor(Math.random() * matched.length)]
+                          : valid[Math.floor(Math.random() * valid.length)];
+  } catch(e) { return null; }
+}
+
+async function fetchOpenTDB(diff) {
+  const diffMap = { 1: 'easy', 2: 'easy', 3: 'medium', 4: 'medium', 5: 'hard' };
+  const d = diffMap[diff] || 'medium';
+  try {
+    const res = await fetchWithTimeout(
+      'https://opentdb.com/api.php?amount=10&type=multiple&difficulty=' + d, {}, 2000
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.response_code !== 0 || !data.results?.length) return null;
+    const valid = data.results.filter(r => !quizSeenIds.includes(r.question));
+    return valid.length ? valid[Math.floor(Math.random() * valid.length)] : null;
+  } catch(e) { return null; }
+}
+
+async function generateDistractors(answer, categoryTitle) {
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5', max_tokens: 150,
+        system: 'Return ONLY valid JSON, no markdown.',
+        messages: [{ role: 'user', content: 'The correct answer to this quiz question is: "' + answer + '"\nTopic: ' + categoryTitle + '\nGenerate 3 plausible but wrong answers. Return JSON only: {"distractors":[string,string,string]}\nKeep all answers concise, under 10 words.' }],
+      }),
+    });
+    const d = await r.json();
+    const raw = d.content?.[0]?.text?.trim() || '';
+    return (JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).distractors || []).slice(0, 3);
+  } catch(e) { return []; }
+}
+
 async function loadQuizQuestion() {
   const body = document.getElementById('quiz-body');
   body.innerHTML = '<div class="quiz-spinner">Generating question…</div>';
@@ -2762,30 +2966,66 @@ async function loadQuizQuestion() {
     : '';
 
   let qData = null;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      if (format === 'mc') {
-        qData = await callClaudeQuiz(
-          'Generate a ' + topic + ' quiz question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
-          'Return JSON only, no markdown:\n{"question":string,"correct":string,"distractors":[string,string,string]}\n' +
-          'Distractors should be plausible but clearly wrong to someone who knows the answer.\n' +
-          'Keep all answers concise (under 10 words).' + exclude
-        );
-      } else {
-        qData = await callClaudeQuiz(
-          'Generate a "name the capital city" geography question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
-          'Return JSON only, no markdown:\n{"question":string,"correct":string,"acceptable":[string]}\n' +
-          '"acceptable" is an array of valid alternate spellings or names.\n' +
-          'Difficulty ' + diff + ' means: ' + diffDesc + '.' + exclude
-        );
+  let fromApi = false;
+
+  // ── Try API sources ──────────────────────────
+  if (topic === 'trivia') {
+    const otRes = await fetchOpenTDB(diff);
+    if (otRes) {
+      const question   = decodeHtml(otRes.question);
+      const correct    = decodeHtml(otRes.correct_answer);
+      const distractors = otRes.incorrect_answers.map(decodeHtml);
+      quizSeenIds.push(otRes.question);
+      qData = { question, correct, distractors };
+      fromApi = true;
+      console.log('[Quiz] source: opentdb');
+    }
+  } else if ((topic === 'history' || topic === 'geography') && format === 'mc') {
+    // Try jService up to 3 times (dedup)
+    for (let attempt = 0; attempt < 3 && !qData; attempt++) {
+      const jRes = await fetchJService(topic);
+      if (jRes) {
+        const correct    = stripHtml(jRes.answer);
+        const catTitle   = jRes.category?.title || topic;
+        const distractors = await generateDistractors(correct, catTitle);
+        if (distractors.length >= 3) {
+          quizSeenIds.push(String(jRes.id));
+          qData = { question: jRes.question, correct, distractors };
+          fromApi = true;
+          console.log('[Quiz] source: jservice');
+        }
       }
-      if (qData && qData.question) break;
-    } catch(e) { qData = null; }
+    }
+  }
+  // Typed geography and Cooking always use Claude (no API attempt)
+
+  // ── Claude fallback ──────────────────────────
+  if (!qData) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (format === 'mc') {
+          qData = await callClaudeQuiz(
+            'Generate a ' + topic + ' quiz question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
+            'Return JSON only, no markdown:\n{"question":string,"correct":string,"distractors":[string,string,string]}\n' +
+            'Distractors should be plausible but clearly wrong to someone who knows the answer.\n' +
+            'Keep all answers concise (under 10 words).' + exclude
+          );
+        } else {
+          qData = await callClaudeQuiz(
+            'Generate a "name the capital city" geography question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
+            'Return JSON only, no markdown:\n{"question":string,"correct":string,"acceptable":[string]}\n' +
+            '"acceptable" is an array of valid alternate spellings or names.\n' +
+            'Difficulty ' + diff + ' means: ' + diffDesc + '.' + exclude
+          );
+        }
+        if (qData && qData.question) { console.log('[Quiz] source: claude'); break; }
+      } catch(e) { qData = null; }
+    }
   }
 
-  if (qData && qData.question) {
+  // Track Claude-generated questions in asked history (API questions tracked by ID in quizSeenIds)
+  if (!fromApi && qData && qData.question) {
     quizAsked.push(qData.question);
-    // Persist full history to Supabase; localStorage as fallback
     try {
       await qpUpsert(quizTopic, { asked_questions: quizAsked });
     } catch(e) {
@@ -2890,8 +3130,8 @@ function showQuizActions(question, correct, wasCorrect) {
 
   document.getElementById('quiz-remember').addEventListener('click', async () => {
     try {
-      await srsCreate(question, correct, quizTopic);
-      showToast('Added to flashcards ✓');
+      const r4 = await srsCreate(question, correct, quizTopic);
+      showToast(r4?.offline ? 'Saved offline — will sync when connected ✓' : 'Added to flashcards ✓');
     } catch(e) { showToast('Error saving card'); }
     advanceQuiz(false);
   });
@@ -2959,6 +3199,157 @@ document.getElementById('quiz-back').addEventListener('click', closeQuiz);
 
 // Init SRS on page load
 updateDueBadge();
+
+// ── Mantras ───────────────────────────────────
+let mantraList     = [];
+let mantraShuffled = [];
+let mantraIdx      = 0;
+let mantraEditId   = null;
+let mantraDeleteId = null;
+
+async function mantraLoad() {
+  const body = document.getElementById('mantra-session-body');
+  body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:48px 0">Loading…</p>';
+  document.getElementById('mantra-session-actions').innerHTML = '';
+  if (!navigator.onLine) { showToast('Mantras require a connection'); showScreen('home'); return; }
+  try {
+    mantraList = await sbFetch('mantras?order=created_at.asc&select=*') || [];
+  } catch(e) {
+    mantraList = [];
+    body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:48px 0">Couldn\'t load mantras.<br><small>' + esc(e.message) + '</small></p>';
+    return;
+  }
+  mantraShuffle();
+}
+
+function mantraShuffle() {
+  mantraShuffled = [...mantraList].sort(() => Math.random() - 0.5);
+  mantraIdx = 0;
+  mantraRenderSession();
+}
+
+function mantraRenderSession() {
+  const body    = document.getElementById('mantra-session-body');
+  const actions = document.getElementById('mantra-session-actions');
+  if (!mantraShuffled.length) {
+    body.innerHTML = '<div class="mantra-empty">No mantras yet.<br>Add your first one below.</div>';
+    actions.innerHTML = '<button class="btn btn-primary" id="mantra-empty-add-btn">Add Mantra</button>';
+    document.getElementById('mantra-empty-add-btn').addEventListener('click', () => {
+      showScreen('mantra-manage');
+      mantraRenderList();
+      openMantraEdit(null);
+    });
+    return;
+  }
+  const m = mantraShuffled[mantraIdx];
+  body.innerHTML = '<div class="mantra-text-area"><div class="mantra-text">' + esc(m.text) + '</div></div>';
+  actions.innerHTML = '<button class="btn btn-primary" id="mantra-next-btn">Next</button>';
+  document.getElementById('mantra-next-btn').addEventListener('click', () => {
+    mantraIdx++;
+    if (mantraIdx >= mantraShuffled.length) mantraShuffle();
+    else mantraRenderSession();
+  });
+}
+
+// Manage screen
+function mantraRenderList() {
+  const container = document.getElementById('mantra-list-container');
+  if (!mantraList.length) {
+    container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:48px 0">No mantras yet</p>';
+    return;
+  }
+  container.innerHTML = mantraList.map(m =>
+    '<div class="mantra-list-item" data-mid="' + esc(m.id) + '">' +
+      '<div class="mantra-list-text">' + esc(m.text) + '</div>' +
+      '<div class="mantra-list-actions">' +
+        '<button class="btn-mantra-icon" data-edit="' + esc(m.id) + '" title="Edit">✎</button>' +
+        '<button class="btn-mantra-icon" data-delete="' + esc(m.id) + '" title="Delete">✕</button>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+}
+
+document.getElementById('mantra-list-container').addEventListener('click', e => {
+  const eb = e.target.closest('[data-edit]');
+  if (eb) { openMantraEdit(eb.dataset.edit); return; }
+  const db = e.target.closest('[data-delete]');
+  if (db) { openMantraDelete(db.dataset.delete); }
+});
+
+function openMantraEdit(id) {
+  mantraEditId = id || null;
+  document.getElementById('mantra-edit-title').textContent = id ? 'Edit Mantra' : 'Add Mantra';
+  const m = id ? mantraList.find(x => x.id === id) : null;
+  document.getElementById('mantra-edit-text').value = m ? m.text : '';
+  document.getElementById('mantra-edit-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('mantra-edit-text').focus(), 60);
+}
+
+document.getElementById('mantra-edit-close').addEventListener('click', () =>
+  document.getElementById('mantra-edit-modal').classList.add('hidden')
+);
+
+document.getElementById('mantra-edit-save').addEventListener('click', async () => {
+  const text = document.getElementById('mantra-edit-text').value.trim();
+  if (!text) { showToast('Enter a mantra'); return; }
+  const btn = document.getElementById('mantra-edit-save');
+  btn.textContent = 'Saving…';
+  try {
+    if (mantraEditId) {
+      await sbFetch('mantras?id=eq.' + mantraEditId, {
+        method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ text }),
+      });
+      const m = mantraList.find(x => x.id === mantraEditId);
+      if (m) m.text = text;
+    } else {
+      const created = await sbFetch('mantras', {
+        method: 'POST', prefer: 'return=representation', body: JSON.stringify({ text }),
+      });
+      if (created && created.length) mantraList.push(created[0]);
+    }
+    document.getElementById('mantra-edit-modal').classList.add('hidden');
+    mantraRenderList();
+    showToast('Saved ✓');
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.textContent = 'Save';
+});
+
+function openMantraDelete(id) {
+  mantraDeleteId = id;
+  const m = mantraList.find(x => x.id === id);
+  document.getElementById('mantra-delete-preview').textContent =
+    m ? (m.text.length > 70 ? m.text.slice(0, 70) + '…' : m.text) : '';
+  document.getElementById('mantra-delete-confirm').classList.remove('hidden');
+}
+
+document.getElementById('mantra-delete-cancel').addEventListener('click', () => {
+  document.getElementById('mantra-delete-confirm').classList.add('hidden');
+  mantraDeleteId = null;
+});
+
+document.getElementById('mantra-delete-yes').addEventListener('click', async () => {
+  if (!mantraDeleteId) return;
+  try {
+    await sbFetch('mantras?id=eq.' + mantraDeleteId, { method: 'DELETE', prefer: 'return=minimal' });
+    mantraList = mantraList.filter(x => x.id !== mantraDeleteId);
+    document.getElementById('mantra-delete-confirm').classList.add('hidden');
+    mantraDeleteId = null;
+    mantraRenderList();
+    showToast('Removed ✓');
+  } catch(e) { showToast('Error: ' + e.message); }
+});
+
+document.getElementById('mantra-manage-btn').addEventListener('click', () => {
+  showScreen('mantra-manage');
+  mantraRenderList();
+});
+
+document.getElementById('mantra-back-btn').addEventListener('click', () => {
+  showScreen('mantra');
+  mantraLoad();
+});
+
+document.getElementById('mantra-add-new-btn').addEventListener('click', () => openMantraEdit(null));
 </script>
 </body>
 </html>
