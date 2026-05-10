@@ -1948,43 +1948,6 @@ document.getElementById('stoic-reminder-journal-btn').addEventListener('click', 
   });
 });
 
-// ── Anki helpers ──────────────────────────────
-function formatAnkiCard(id) {
-  const d = ankiData[id];
-  if (!d) return null;
-  const map = {
-    'new-word':        { front: d.word,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : ''), category: 'Vocabulary' },
-    'new-term':        { front: d.term + (d.field ? ' (' + d.field + ')' : ''), back: d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''), category: 'Concepts' },
-    'finance-term':    { front: d.term,  back: d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''), category: 'Finance' },
-    'etymology':       { front: d.word,  back: d.origin + (d.journey ? '\n\n' + d.journey : ''), category: 'Etymology' },
-    'cognitive-bias':  { front: d.name,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : ''), category: 'Psychology' },
-    'logical-fallacy':  { front: d.name,  back: d.definition + (d.example ? '\n\nExample: ' + d.example : ''), category: 'Logic' },
-    'history':          { front: d.title, back: d.hook, category: 'History' },
-    'on-this-day':      { front: d.event, back: String(d.year) + '\n\n' + d.context, category: 'History' },
-    'geography-fact':   { front: d.fact,  back: d.location + '\n\n' + d.context, category: 'Geography' },
-    'thought-experiment':{ front: d.name, back: d.setup + '\n\n' + d.question, category: 'Philosophy' },
-  };
-  return map[id] || null;
-}
-
-const ANKI_SCREENS = ['new-word','new-term','finance-term','etymology','cognitive-bias','logical-fallacy',
-  'history','on-this-day','geography-fact','thought-experiment'];
-
-ANKI_SCREENS.forEach(id => {
-  const actions = document.querySelector('#screen-' + id + ' .activity-actions');
-  if (!actions) return;
-  const btn = document.createElement('button');
-  btn.className = 'btn btn-outline';
-  btn.textContent = 'Add to Anki';
-  btn.addEventListener('click', async () => {
-    const card = formatAnkiCard(id);
-    if (!card) { showToast('Load a card first'); return; }
-    try { await navigator.clipboard.writeText(JSON.stringify(card)); } catch(e) {}
-    showToast('Copied — opening Shortcuts');
-    setTimeout(() => { window.location.href = 'shortcuts://run-shortcut?name=Add%20to%20Anki'; }, 600);
-  });
-  actions.insertBefore(btn, actions.lastChild);
-});
 
 // ── Anki Input screen ─────────────────────────
 document.getElementById('anki-input-submit').addEventListener('click', async () => {
