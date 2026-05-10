@@ -2610,6 +2610,7 @@ let quizDifficulty  = 2;
 let quizQNum        = 0;       // 0-based index of current question
 let quizScore       = 0;       // number correct
 let quizAnswered    = false;
+let quizAsked       = [];      // questions asked this session (for dedup)
 let quizRecent      = [];      // last 20 results (true/false), rolling window
 let quizStreak      = 0;       // consecutive streak above/below threshold
 let quizDiffStart   = 2;       // difficulty at session start (for end screen)
@@ -2622,6 +2623,7 @@ async function startQuiz(topic) {
   quizQNum       = 0;
   quizScore      = 0;
   quizAnswered   = false;
+  quizAsked      = [];
   quizRecent     = [];
   quizStreak     = 0;
 
@@ -2664,6 +2666,10 @@ async function loadQuizQuestion() {
   const formats  = QUIZ_TOPICS[topic].formats;
   const format   = formats[Math.floor(Math.random() * formats.length)];
 
+  const exclude = quizAsked.length
+    ? '\nDo NOT repeat any of these questions already asked this session: ' + quizAsked.join(' | ')
+    : '';
+
   let qData = null;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -2672,19 +2678,21 @@ async function loadQuizQuestion() {
           'Generate a ' + topic + ' quiz question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
           'Return JSON only, no markdown:\n{"question":string,"correct":string,"distractors":[string,string,string]}\n' +
           'Distractors should be plausible but clearly wrong to someone who knows the answer.\n' +
-          'Keep all answers concise (under 10 words).'
+          'Keep all answers concise (under 10 words).' + exclude
         );
       } else {
         qData = await callClaudeQuiz(
           'Generate a "name the capital city" geography question at difficulty level ' + diff + ' (' + diffDesc + ').\n' +
           'Return JSON only, no markdown:\n{"question":string,"correct":string,"acceptable":[string]}\n' +
           '"acceptable" is an array of valid alternate spellings or names.\n' +
-          'Difficulty ' + diff + ' means: ' + diffDesc + '.'
+          'Difficulty ' + diff + ' means: ' + diffDesc + '.' + exclude
         );
       }
       if (qData && qData.question) break;
     } catch(e) { qData = null; }
   }
+
+  if (qData && qData.question) quizAsked.push(qData.question);
 
   if (!qData || !qData.question) {
     showToast("Couldn't generate question, try again");
