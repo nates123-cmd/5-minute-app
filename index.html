@@ -2414,7 +2414,12 @@ showScreen(getApiKey() ? 'home' : 'apikey');
 updateSavedCount();
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then((reg) => {
+      reg.update();
+      navigator.serviceWorker.addEventListener('controllerchange', () => location.reload());
+    }).catch(() => {});
+  });
 }
 
 // ── SRS / Flashcards ──────────────────────────
