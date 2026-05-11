@@ -545,7 +545,7 @@
     .srs-card-hint { font-size: 0.72rem; color: var(--muted); position: absolute; bottom: 14px; }
     /* Controls */
     .srs-controls { padding: 8px 0 0; }
-    .srs-rate-btns { display: flex; gap: 10px; }
+    .srs-rate-btns { display: flex; gap: 10px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
     .srs-rate-btns .btn { flex: 1; padding: 14px 8px; font-weight: 600; border-radius: var(--radius); border: none; cursor: pointer; font-family: var(--font); font-size: 0.95rem; }
     .srs-btn-miss { background: #e8d5d5; color: #7a2525; }
     .srs-btn-hard { background: var(--card-bg); color: var(--text); border: 1.5px solid var(--border) !important; }
@@ -645,7 +645,7 @@
 <!-- API KEY SETUP -->
 <div id="screen-apikey" class="screen">
   <h1>5-Minute Break</h1>
-  <p>A calm alternative to opening YouTube.<br>Paste your Anthropic API key to get started. It stays on your device.</p>
+  <p>A calm alternative to scrolling socials.<br>Paste your Anthropic API key to get started. It stays on your device.</p>
   <input type="password" id="apikey-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
   <button class="btn btn-primary" id="apikey-save">Get Started</button>
   <p style="font-size:0.78rem;color:var(--muted)">Stored in localStorage — only sent to api.anthropic.com</p>
