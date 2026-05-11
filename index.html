@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="5-Min Break" />
+  <meta name="apple-mobile-web-app-title" content="Break" />
   <meta name="theme-color" content="#F5F2EE" />
   <link rel="manifest" href="./manifest.json" />
   <script src="./dev-config.js" onerror="void 0"></script>
-  <title>5-Minute Break</title>
+  <title>Break</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -644,7 +644,7 @@
 
 <!-- API KEY SETUP -->
 <div id="screen-apikey" class="screen">
-  <h1>5-Minute Break</h1>
+  <h1>Break</h1>
   <p>A calm alternative to scrolling socials.<br>Paste your Anthropic API key to get started. It stays on your device.</p>
   <input type="password" id="apikey-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
   <button class="btn btn-primary" id="apikey-save">Get Started</button>
@@ -655,7 +655,7 @@
 <div id="screen-home" class="screen">
   <div class="home-header">
     <div>
-      <h1>5-Minute Break</h1>
+      <h1>Break</h1>
     </div>
     <div style="display:flex;gap:12px;align-items:center">
       <button class="btn-settings" id="btn-saved">Saved</button>
@@ -1403,7 +1403,7 @@ document.addEventListener('click', async e => {
   if (sh) {
     const card = sh.closest('.ai-card, .ai-single');
     const text = card ? card.innerText.replace(/[👍👎🔖↑←\n]+/g, ' ').trim() : sh.dataset.id;
-    const shareData = { title: '5-Minute Break', text };
+    const shareData = { title: 'Break', text };
     if (sh.dataset.url) shareData.url = sh.dataset.url;
     if (navigator.share) {
       navigator.share(shareData).catch(() => {});
@@ -2593,7 +2593,7 @@ if (!navigator.onLine) {
 }
 
 async function srsCreate(front, back, source) {
-  const card = { front, back, source: source || '5-Minute Break', created_at: new Date().toISOString() };
+  const card = { front, back, source: source || 'Break', created_at: new Date().toISOString() };
   if (!navigator.onLine) {
     const q = getOfflineQueue();
     q.push(card);
