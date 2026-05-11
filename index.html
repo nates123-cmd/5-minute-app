@@ -684,6 +684,15 @@
         <span class="srs-add-plus">+</span>
       </div>
     </div>
+    <div class="srs-home-row" style="grid-column:1/-1">
+      <div class="activity-card srs-review-zone" data-activity="mantra">
+        <h3>Mantras</h3>
+        <p>Your personal collection of reminders and principles.</p>
+      </div>
+      <div class="activity-card srs-add-zone" id="mantra-home-add-btn" title="Add mantra">
+        <span class="srs-add-plus">+</span>
+      </div>
+    </div>
     <div class="activity-card" data-activity="history">
       <h3>History Rabbit Hole</h3>
       <p>Dive into something genuinely fascinating</p>
@@ -768,9 +777,9 @@
       <h3>Health Insight</h3>
       <p>One evidence-based tip on sleep, nutrition, or movement.</p>
     </div>
-    <div class="activity-card" data-activity="mantra">
-      <h3>Mantras</h3>
-      <p>Your personal collection of reminders and principles.</p>
+    <div class="activity-card" data-activity="productivity-insight">
+      <h3>Productivity Insight</h3>
+      <p>An evidence-based idea to work smarter.</p>
     </div>
     <div class="activity-card" data-activity="brain-teaser">
       <h3>Brain Teaser</h3>
@@ -828,7 +837,9 @@
   <div id="stoic-content"></div>
   <button class="btn-refresh" id="stoic-refresh">New passage</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>  </div>
+    <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>
+    <button class="btn btn-outline" id="stoic-mantra-btn">Add Mantra</button>
+  </div>
 </div>
 
 <!-- STOIC REMINDER -->
@@ -841,6 +852,7 @@
   <button class="btn-refresh" id="stoic-reminder-refresh">New reminder</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="stoic-reminder-journal-btn">Journal about it</button>
+    <button class="btn btn-outline" id="stoic-reminder-mantra-btn">Add to Mantras</button>
   </div>
 </div>
 
@@ -944,7 +956,9 @@
   <div id="introspection-content"></div>
   <button class="btn-refresh" id="introspection-refresh">New question</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="introspection-notion-btn">Copy &amp; Open Notion</button>  </div>
+    <button class="btn btn-outline" id="introspection-notion-btn">Copy &amp; Open Notion</button>
+    <button class="btn btn-outline" id="introspection-mantra-btn">Add to Mantras</button>
+  </div>
 </div>
 
 <!-- MENTAL MATH -->
@@ -1046,7 +1060,9 @@
   </div>
   <div id="thought-experiment-content"></div>
   <button class="btn-refresh" id="thought-experiment-refresh">New experiment</button>
-  <div class="activity-actions">  </div>
+  <div class="activity-actions">
+    <button class="btn btn-outline" id="thought-experiment-mantra-btn">Add to Mantras</button>
+  </div>
 </div>
 
 <!-- ETYMOLOGY -->
@@ -1068,7 +1084,9 @@
   </div>
   <div id="cognitive-bias-content"></div>
   <button class="btn-refresh" id="cognitive-bias-refresh">New bias</button>
-  <div class="activity-actions">  </div>
+  <div class="activity-actions">
+    <button class="btn btn-outline" id="cognitive-bias-mantra-btn">Add to Mantras</button>
+  </div>
 </div>
 
 <!-- BRAIN TEASER -->
@@ -1090,6 +1108,16 @@
   </div>
   <div id="health-insight-content"></div>
   <button class="btn-refresh" id="health-insight-refresh">New insight</button>
+  <div class="activity-actions">  </div>
+</div>
+
+<div id="screen-productivity-insight" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Productivity Insight</span>
+  </div>
+  <div id="productivity-insight-content"></div>
+  <button class="btn-refresh" id="productivity-insight-refresh">New insight</button>
   <div class="activity-actions">  </div>
 </div>
 
@@ -1392,15 +1420,15 @@ const DURATION_ACTIVITIES = {
   '5min': ['history','cooking','stoic','reading','mindfulness','breathe','journal',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
            'thought-experiment','cognitive-bias','brain-teaser','health-insight'],
-  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection'],
+  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection','mantra'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
-                   'on-this-day','thought-experiment','health-insight'],
-  'activity':     ['mental-math','brain-teaser','reading'],
+                   'on-this-day','thought-experiment','health-insight','productivity-insight'],
+  'activity':     ['mental-math','brain-teaser','reading','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
   'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
-                   'etymology','cognitive-bias','brain-teaser','health-insight'],
+                   'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight','mantra'],
 };
 
 // ── Routing ──────────────────────────────────
@@ -1455,7 +1483,7 @@ async function callClaude(userPrompt) {
     throw new Error('API ' + res.status + ': ' + errText);
   }
   const data = await res.json();
-  return JSON.parse(data.content[0].text.trim());
+  return extractJson(data.content[0].text.trim());
 }
 
 // ── Toast ─────────────────────────────────────
@@ -1514,6 +1542,7 @@ document.getElementById('done-home-btn').addEventListener('click', () => showScr
 
 // ── Navigate to activity ──────────────────────
 function navigateToActivity(a, skipLoad = false) {
+  if (a.startsWith('quiz-')) { startQuiz(a.slice(5)); return; }
   currentActivity = a;
   showScreen(a);
   if (!skipLoad) {
@@ -1534,7 +1563,8 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'etymology')         loadEtymology();
     if (a === 'cognitive-bias')    loadCognitiveBias();
     if (a === 'brain-teaser')      loadBrainTeaser();
-    if (a === 'health-insight')    loadHealthInsight();
+    if (a === 'health-insight')        loadHealthInsight();
+    if (a === 'productivity-insight')  loadProductivityInsight();
     if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'anki-input')        resetAnkiInput();
@@ -1791,6 +1821,25 @@ document.getElementById('stoic-journal-btn').addEventListener('click', async () 
   });
 });
 
+document.getElementById('stoic-mantra-btn').addEventListener('click', async () => {
+  if (!stoicData) return;
+  const btn = document.getElementById('stoic-mantra-btn');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  try {
+    const d = await callClaude(
+      'Distill this Stoic passage into a personal mantra — 1 to 3 punchy sentences someone could repeat to themselves. Write it in the second person ("you") or as a direct principle. No quotes, no attribution.\n\nPassage: "' + stoicData.passage + '"\n\nExplanation: ' + stoicData.explanation + '\n\nReturn JSON: {mantra}'
+    );
+    openMantraEdit(null);
+    document.getElementById('mantra-edit-text').value = d.mantra || '';
+  } catch(e) {
+    showToast('Could not generate mantra');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Add Mantra';
+  }
+});
+
 // ── Journal ───────────────────────────────────
 let journalData = null;
 const seenJournalQuestions = [];
@@ -2037,6 +2086,22 @@ const loadHealthInsight = makeLoader(
 );
 document.getElementById('health-insight-refresh').addEventListener('click', loadHealthInsight);
 
+// ── Productivity Insight ──────────────────────
+const loadProductivityInsight = makeLoader(
+  'productivity-insight',
+  (ex) => 'Give me a specific, evidence-based productivity insight about focus, deep work, habit formation, decision-making, or cognitive performance. Be specific — avoid generic advice like "make a to-do list" or "take breaks". Pick something genuinely interesting or counterintuitive.' + ex + ' Return JSON: {topic, insight, tryThis} where topic is a short label (e.g. "Deep Work"), insight is 2-3 sentences of evidence-based context, and tryThis is one concrete actionable takeaway (1 sentence).',
+  (d) => { ankiData['productivity-insight'] = d; return (
+    '<div class="ai-single">' +
+      '<div class="tag">' + esc(d.topic) + '</div>' +
+      '<div class="main-text" style="margin-top:10px">' + esc(d.insight) + '</div>' +
+      '<div class="sub-text" style="margin-top:12px;font-weight:600;color:var(--text)">Try this</div>' +
+      '<div class="sub-text">' + esc(d.tryThis) + '</div>' +
+    '</div>'
+  ); },
+  { topic: 'Attention residue', insight: 'Switching tasks leaves an "attention residue" — part of your brain keeps processing the previous task for minutes after you move on. This is why multitasking degrades quality even when it feels productive. Cal Newport\'s research shows even brief interruptions can cost 20+ minutes of deep focus.', tryThis: 'Before switching tasks, write one sentence capturing where you left off, then fully close the previous context.' }
+);
+document.getElementById('productivity-insight-refresh').addEventListener('click', loadProductivityInsight);
+
 // ── Brain Teaser ──────────────────────────────
 const loadBrainTeaser = makeLoader(
   'brain-teaser',
@@ -2085,6 +2150,38 @@ document.getElementById('stoic-reminder-journal-btn').addEventListener('click', 
     title: stoicReminderData.principle,
     content: stoicReminderData.reminder + '\n\n' + stoicReminderData.context,
   });
+});
+
+async function addToMantras(text) {
+  if (!text) return;
+  try {
+    await sbFetch('mantras', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify({ text }) });
+    showToast('Added to mantras');
+  } catch(e) {
+    showToast('Could not save mantra');
+  }
+}
+
+document.getElementById('stoic-reminder-mantra-btn').addEventListener('click', () => {
+  if (!stoicReminderData) return;
+  addToMantras(stoicReminderData.reminder);
+});
+
+document.getElementById('introspection-mantra-btn').addEventListener('click', () => {
+  if (!introspectionData) return;
+  addToMantras(introspectionData.question);
+});
+
+document.getElementById('thought-experiment-mantra-btn').addEventListener('click', () => {
+  const d = ankiData['thought-experiment'];
+  if (!d) return;
+  addToMantras(d.name + ': ' + d.question);
+});
+
+document.getElementById('cognitive-bias-mantra-btn').addEventListener('click', () => {
+  const d = ankiData['cognitive-bias'];
+  if (!d) return;
+  addToMantras(d.name + ' — ' + d.antidote);
 });
 
 
@@ -2195,7 +2292,7 @@ document.getElementById('anki-input-submit').addEventListener('click', async () 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
 const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
   'finance-term','geography-fact','logical-fallacy','cognitive-bias','etymology',
-  'on-this-day','thought-experiment','health-insight'];
+  'on-this-day','thought-experiment','health-insight','productivity-insight'];
 
 const INFORMATIONAL_CONTENT_IDS = {
   'history': 'history-cards', 'cooking': 'cooking-cards',
@@ -2205,6 +2302,7 @@ const INFORMATIONAL_CONTENT_IDS = {
   'cognitive-bias': 'cognitive-bias-content', 'etymology': 'etymology-content',
   'on-this-day': 'on-this-day-content', 'thought-experiment': 'thought-experiment-content',
   'health-insight': 'health-insight-content',
+  'productivity-insight': 'productivity-insight-content',
 };
 
 INFORMATIONAL_SCREENS.forEach(id => {
@@ -2951,7 +3049,7 @@ async function generateDistractors(answer, categoryTitle) {
     });
     const d = await r.json();
     const raw = d.content?.[0]?.text?.trim() || '';
-    return (JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).distractors || []).slice(0, 3);
+    return (extractJson(raw).distractors || []).slice(0, 3);
   } catch(e) { return []; }
 }
 
@@ -3049,6 +3147,12 @@ async function loadQuizQuestion() {
   else renderTypedQuestion(qData);
 }
 
+function extractJson(text) {
+  const stripped = text.replace(/^```[a-z]*\n?/i, '').replace(/\n?```$/i, '').trim();
+  const match = stripped.match(/(\[[\s\S]*\]|\{[\s\S]*\})/)?.[0];
+  return JSON.parse(match || stripped);
+}
+
 async function callClaudeQuiz(prompt) {
   const key = getApiKey();
   const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -3060,8 +3164,7 @@ async function callClaudeQuiz(prompt) {
   });
   if (!res.ok) throw new Error('API ' + res.status);
   const data = await res.json();
-  const text = data.content[0].text.trim();
-  return JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || text);
+  return extractJson(data.content[0].text.trim());
 }
 
 function renderMcQuestion(q) {
@@ -3356,6 +3459,7 @@ document.getElementById('mantra-back-btn').addEventListener('click', () => {
 });
 
 document.getElementById('mantra-add-new-btn').addEventListener('click', () => openMantraEdit(null));
+document.getElementById('mantra-home-add-btn').addEventListener('click', () => openMantraEdit(null));
 </script>
 </body>
 </html>

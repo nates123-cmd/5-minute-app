@@ -23,7 +23,7 @@ dev-config.js    — GITIGNORED — sets Anthropic API key in localStorage for l
 - **No build step** — plain HTML/CSS/JS, edit and refresh
 - **Claude API** — `claude-sonnet-4-5`, direct browser fetch with `anthropic-dangerous-direct-browser-access: true`
 - **Supabase** — REST API (no SDK), anon key auth, used for flashcards + quiz performance + mantras
-- **Service worker** — cache-first for static assets, network-first for Anthropic + Supabase, bypass entirely on localhost
+- **Service worker** — cache-first for static assets, network-first for Anthropic + Supabase, bypass entirely on localhost. Only handles GET requests. Auto-updates on every page load (`updateViaCache: 'none'`, `reg.update()`, `controllerchange` → reload).
 
 ---
 
@@ -103,6 +103,7 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 
 ## Home screen layout
 - **SRS row** (full width): left 2/3 = Review Due card, right 1/3 = + Add Flashcard button
+- **Mantras row** (full width): directly below SRS row
 - **Activity grid**: 2-column card grid, all other activities
 - Quiz cards use `data-quiz` attribute (not `data-activity`) — guard: `if (!card.dataset.activity) return`
 
