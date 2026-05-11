@@ -1,0 +1,16 @@
+{
+  "name": "5-Minute Break",
+  "short_name": "5-Min Break",
+  "start_url": "/5-minute-app/",
+  "scope": "/5-minute-app/",
+  "display": "standalone",
+  "background_color": "#F5F2EE",
+  "theme_color": "#F5F2EE",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Ccircle%20cx%3D%2750%27%20cy%3D%2750%27%20r%3D%2750%27%20fill%3D%27%23A89880%27%2F%3E%3C%2Fsvg%3E",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

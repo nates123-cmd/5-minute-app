@@ -1,7 +1,8 @@
-const CACHE_NAME = '5min-break-v21';
+const CACHE_NAME = '5min-break-v22';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './manifest.json',
 ];
 
 self.addEventListener('install', (event) => {
