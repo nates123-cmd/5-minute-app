@@ -1146,8 +1146,9 @@
   <textarea id="anki-front" class="anki-textarea" placeholder="e.g. What is opportunity cost?" rows="3"></textarea>
   <label class="srs-label" id="anki-back-label">Back (answer / definition)</label>
   <textarea id="anki-back" class="anki-textarea" placeholder="e.g. The value of the next best alternative foregone…" rows="4"></textarea>
-  <div class="activity-actions">
-    <button class="btn btn-primary" id="anki-input-submit">Save to Flashcards</button>
+  <div class="activity-actions" style="gap:10px">
+    <button class="btn btn-outline" id="anki-regenerate" style="display:none;flex:1">Regenerate</button>
+    <button class="btn btn-primary" id="anki-input-submit" style="flex:1">Save to Flashcards</button>
   </div>
 </div>
 
@@ -2188,12 +2189,14 @@ document.getElementById('cognitive-bias-mantra-btn').addEventListener('click', (
 // ── Anki Input screen ─────────────────────────
 function resetAnkiInput() {
   ankiMode = 'both';
+  ankiReviewMode = false;
   document.querySelectorAll('[data-anki-mode]').forEach(b => b.classList.toggle('active', b.dataset.ankiMode === 'both'));
   document.getElementById('anki-front').value = ''; document.getElementById('anki-front').disabled = false; document.getElementById('anki-front').style.opacity = '';
   document.getElementById('anki-back').value  = ''; document.getElementById('anki-back').disabled  = false; document.getElementById('anki-back').style.opacity  = '';
   document.getElementById('anki-front-label').textContent = 'Front (question / term)';
   document.getElementById('anki-back-label').textContent  = 'Back (answer / definition)';
   document.getElementById('anki-input-submit').textContent = 'Save to Flashcards';
+  document.getElementById('anki-regenerate').style.display = 'none';
 }
 
 // + button on home opens Add Flashcard screen
@@ -2204,31 +2207,35 @@ let ankiMode = 'both';
 document.querySelectorAll('[data-anki-mode]').forEach(btn => {
   btn.addEventListener('click', () => {
     ankiMode = btn.dataset.ankiMode;
+    ankiReviewMode = false;
     document.querySelectorAll('[data-anki-mode]').forEach(b => b.classList.toggle('active', b === btn));
     const frontLabel = document.getElementById('anki-front-label');
     const backLabel  = document.getElementById('anki-back-label');
     const frontTA    = document.getElementById('anki-front');
     const backTA     = document.getElementById('anki-back');
     const submitBtn  = document.getElementById('anki-input-submit');
+    const regenBtn   = document.getElementById('anki-regenerate');
     // Always reset both first
     frontTA.disabled = false; frontTA.style.opacity = '';
     backTA.disabled  = false; backTA.style.opacity  = '';
     frontTA.placeholder = 'e.g. What is opportunity cost?';
     backTA.placeholder  = 'e.g. The value of the next best alternative foregone…';
+    regenBtn.style.display = 'none';
+    submitBtn.style.flex = '1';
     if (ankiMode === 'front') {
       frontLabel.textContent = 'Front (question / term)';
       backLabel.textContent  = 'Back — Claude will generate this';
       backTA.value = '';
       backTA.placeholder = 'Leave blank — Claude fills this in';
       backTA.disabled = true; backTA.style.opacity = '0.45';
-      submitBtn.textContent = 'Generate & Save';
+      submitBtn.textContent = 'Generate';
     } else if (ankiMode === 'back') {
       frontLabel.textContent = 'Front — Claude will generate this';
       backLabel.textContent  = 'Back (answer / definition)';
       frontTA.value = '';
       frontTA.placeholder = 'Leave blank — Claude fills this in';
       frontTA.disabled = true; frontTA.style.opacity = '0.45';
-      submitBtn.textContent = 'Generate & Save';
+      submitBtn.textContent = 'Generate';
     } else {
       frontLabel.textContent = 'Front (question / term)';
       backLabel.textContent  = 'Back (answer / definition)';
@@ -2237,56 +2244,95 @@ document.querySelectorAll('[data-anki-mode]').forEach(btn => {
   });
 });
 
-document.getElementById('anki-input-submit').addEventListener('click', async () => {
-  let front = document.getElementById('anki-front').value.trim();
-  let back  = document.getElementById('anki-back').value.trim();
-  const btn = document.getElementById('anki-input-submit');
+let ankiReviewMode = false;
 
-  if (ankiMode === 'both') {
-    if (!front || !back) { showToast('Fill in both fields'); return; }
-  } else if (ankiMode === 'front') {
+async function ankiGenerate(seed) {
+  const frontTA  = document.getElementById('anki-front');
+  const backTA   = document.getElementById('anki-back');
+  const btn      = document.getElementById('anki-input-submit');
+  const regenBtn = document.getElementById('anki-regenerate');
+  const seedSuffix = seed ? ' (variation ' + seed + ')' : '';
+
+  if (ankiMode === 'front') {
+    const front = frontTA.value.trim();
     if (!front) { showToast('Enter the front of the card'); return; }
     btn.textContent = 'Generating…';
+    btn.disabled = true;
     try {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 300,
           system: 'Return ONLY valid JSON, no markdown, no explanation.',
-          messages: [{ role: 'user', content: 'Generate a concise flashcard back (answer/definition) for this front: "' + front + '". Return JSON: {"back":"..."}. 1-3 sentences max.' }] }),
+          messages: [{ role: 'user', content: 'Generate a concise flashcard back (answer/definition) for this front: "' + front + '". Be clear and self-contained. Aim for 1-3 sentences.' + seedSuffix + ' Return JSON: {"back":"..."}.' }] }),
       });
       const d = await r.json();
       const raw = d.content?.[0]?.text?.trim() || '';
-      back = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).back || '';
+      const back = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).back || '';
       if (!back) throw new Error('empty response');
-    } catch(e) { showToast('Generation failed: ' + e.message); btn.textContent = 'Generate & Save'; return; }
+      backTA.value = back;
+      backTA.disabled = false; backTA.style.opacity = '';
+      document.getElementById('anki-back-label').textContent = 'Back (edit if needed)';
+    } catch(e) { showToast('Generation failed: ' + e.message); btn.textContent = 'Generate'; btn.disabled = false; return; }
   } else if (ankiMode === 'back') {
+    const back = backTA.value.trim();
     if (!back) { showToast('Enter the back of the card'); return; }
     btn.textContent = 'Generating…';
+    btn.disabled = true;
     try {
       const r = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: { 'x-api-key': getApiKey(), 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
         body: JSON.stringify({ model: 'claude-sonnet-4-5', max_tokens: 200,
           system: 'Return ONLY valid JSON, no markdown, no explanation.',
-          messages: [{ role: 'user', content: 'Generate a concise flashcard front (question or term) for this back: "' + back + '". Return JSON: {"front":"..."}.' }] }),
+          messages: [{ role: 'user', content: 'Generate a concise flashcard front (question or term) for this back: "' + back + '".' + seedSuffix + ' Return JSON: {"front":"..."}.' }] }),
       });
       const d = await r.json();
       const raw = d.content?.[0]?.text?.trim() || '';
-      front = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).front || '';
+      const front = JSON.parse(raw.match(/\{[\s\S]*\}/)?.[0] || raw).front || '';
       if (!front) throw new Error('empty response');
-    } catch(e) { showToast('Generation failed: ' + e.message); btn.textContent = 'Generate & Save'; return; }
+      frontTA.value = front;
+      frontTA.disabled = false; frontTA.style.opacity = '';
+      document.getElementById('anki-front-label').textContent = 'Front (edit if needed)';
+    } catch(e) { showToast('Generation failed: ' + e.message); btn.textContent = 'Generate'; btn.disabled = false; return; }
   }
 
-  btn.textContent = 'Saving…';
-  try {
-    const r1 = await srsCreate(front, back, 'manual');
-    showToast(r1?.offline ? 'Saved offline — will sync when connected ✓' : 'Saved to flashcards ✓');
-    document.getElementById('anki-front').value = '';
-    document.getElementById('anki-back').value = '';
-    if (!r1?.offline) updateDueBadge();
-  } catch(e) { showToast('Error: ' + e.message); }
-  btn.textContent = ankiMode === 'both' ? 'Save to Flashcards' : 'Generate & Save';
+  ankiReviewMode = true;
+  btn.textContent = 'Save Card';
+  btn.disabled = false;
+  regenBtn.style.display = 'flex';
+}
+
+document.getElementById('anki-input-submit').addEventListener('click', async () => {
+  const frontTA = document.getElementById('anki-front');
+  const backTA  = document.getElementById('anki-back');
+  const btn     = document.getElementById('anki-input-submit');
+
+  if (ankiMode === 'both' || ankiReviewMode) {
+    const front = frontTA.value.trim();
+    const back  = backTA.value.trim();
+    if (!front || !back) { showToast('Fill in both fields'); return; }
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+    try {
+      const r1 = await srsCreate(front, back, 'manual');
+      showToast(r1?.offline ? 'Saved offline — will sync when connected ✓' : 'Saved to flashcards ✓');
+      frontTA.value = ''; backTA.value = '';
+      if (!r1?.offline) updateDueBadge();
+      ankiReviewMode = false;
+      document.getElementById('anki-regenerate').style.display = 'none';
+      // Re-apply mode UI state
+      document.querySelector('[data-anki-mode="' + ankiMode + '"]').click();
+    } catch(e) { showToast('Error: ' + e.message); }
+    btn.textContent = ankiMode === 'both' ? 'Save to Flashcards' : 'Generate';
+    btn.disabled = false;
+  } else {
+    await ankiGenerate(0);
+  }
+});
+
+document.getElementById('anki-regenerate').addEventListener('click', async () => {
+  await ankiGenerate(Math.floor(Math.random() * 900) + 100);
 });
 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
