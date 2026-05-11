@@ -1335,7 +1335,7 @@ function cardFooter(slug, identifier, url) {
 }
 
 // ── Thumb + bookmark event delegation ────────
-document.addEventListener('click', e => {
+document.addEventListener('click', async e => {
   const thumb = e.target.closest('[data-thumb]');
   if (thumb) {
     const slug = thumb.dataset.slug, id = thumb.dataset.id, dir = thumb.dataset.thumb;
