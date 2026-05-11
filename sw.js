@@ -22,6 +22,11 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
+  // Skip caching entirely on localhost for dev
+  if (event.request.url.includes('localhost') || event.request.url.includes('127.0.0.1')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
   // Network-first for API calls, cache-first for everything else
   if (event.request.url.includes('api.anthropic.com') || event.request.url.includes('supabase.co')) {
     event.respondWith(fetch(event.request));
