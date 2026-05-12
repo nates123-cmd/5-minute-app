@@ -2996,7 +2996,7 @@ function lulRenderAnswer(el, id, data, list) {
   const answerEl = document.createElement('div');
   answerEl.className = 'lul-answer';
   answerEl.innerHTML =
-    (data.tl_dr ? '<div class="lul-tldr"><span class="lul-tldr-label">TL;DR</span>' + esc(data.tl_dr) + '</div>' : '') +
+    (data.tl_dr && typeof data.tl_dr === 'string' && !data.tl_dr.startsWith('[') && !data.tl_dr.startsWith('{') ? '<div class="lul-tldr"><span class="lul-tldr-label">TL;DR</span>' + esc(data.tl_dr) + '</div>' : '') +
     '<div class="lul-summary">' + esc(data.summary) + '</div>' +
     (data.links && data.links.length ? '<div class="lul-links">' + data.links.map(l => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title) + '</a>').join('') + '</div>' : '') +
     '<div class="lul-answer-actions" style="display:flex;flex-direction:column;gap:8px;margin-top:14px">' +
@@ -3093,7 +3093,8 @@ async function loadLulScreen() {
         const data = await callClaude(
           'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}'
         );
-        await lulUpdate(id, data.summary, data.tl_dr || '', data.links || []);
+        const safeTlDr = typeof data.tl_dr === 'string' && !data.tl_dr.startsWith('[') && !data.tl_dr.startsWith('{') ? data.tl_dr : '';
+      await lulUpdate(id, data.summary, safeTlDr, data.links || []);
         lulRenderAnswer(el, id, data, list);
       } catch(e) {
         showToast('Research failed: ' + (e.message || 'unknown error'));
