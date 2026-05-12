@@ -92,6 +92,8 @@
       text-decoration: underline;
       text-underline-offset: 3px;
     }
+    .btn-icon { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 50%; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; cursor: pointer; line-height: 1; color: var(--text); flex-shrink: 0; }
+    .btn-icon:active { transform: scale(0.93); }
 
     /* Buttons */
     .btn {
@@ -670,16 +672,14 @@
     <div>
       <h1>Break</h1>
     </div>
-    <div style="display:flex;gap:12px;align-items:center">
+    <div style="display:flex;gap:10px;align-items:center">
+      <button class="btn-icon" id="btn-timer-menu" title="Set timer">⏱</button>
+      <button class="btn-icon" id="btn-add-menu" title="Add">+</button>
       <button class="btn-settings" id="btn-saved">Saved</button>
       <button class="btn-settings" id="btn-settings">API key</button>
     </div>
   </div>
 
-  <div class="duration-row">
-    <button class="btn-duration" data-bucket="1min">1 min</button>
-    <button class="btn-duration" data-bucket="5min">5 min</button>
-  </div>
   <div class="duration-row">
     <button class="btn-duration" data-bucket="reflection">Reflection</button>
     <button class="btn-duration" data-bucket="informational">Informational</button>
@@ -688,32 +688,17 @@
   </div>
 
   <div class="cards-grid">
-    <div class="srs-home-row" style="grid-column:1/-1">
-      <div class="activity-card srs-review-zone" id="srs-due-card" data-activity="srs-review">
-        <h3>Review Due</h3>
-        <p>Loading…</p>
-      </div>
-      <div class="activity-card srs-add-zone" id="srs-add-btn" title="Add flashcard">
-        <span class="srs-add-plus">+</span>
-      </div>
+    <div class="activity-card" style="grid-column:1/-1" id="srs-due-card" data-activity="srs-review">
+      <h3>Review Due</h3>
+      <p>Loading…</p>
     </div>
-    <div class="srs-home-row" style="grid-column:1/-1">
-      <div class="activity-card srs-review-zone" data-activity="mantra">
-        <h3>Mantras</h3>
-        <p>Your personal collection of reminders and principles.</p>
-      </div>
-      <div class="activity-card srs-add-zone" id="mantra-home-add-btn" title="Add mantra">
-        <span class="srs-add-plus">+</span>
-      </div>
+    <div class="activity-card" style="grid-column:1/-1" data-activity="mantra">
+      <h3>Mantras</h3>
+      <p>Your personal collection of reminders and principles.</p>
     </div>
-    <div class="srs-home-row" style="grid-column:1/-1">
-      <div class="activity-card srs-review-zone" id="lul-home-card">
-        <h3>Look Up Later</h3>
-        <p id="lul-home-subtitle">Queue questions for Claude to research.</p>
-      </div>
-      <div class="activity-card srs-add-zone" id="lul-add-btn" title="Add question">
-        <span class="srs-add-plus">+</span>
-      </div>
+    <div class="activity-card" style="grid-column:1/-1" id="lul-home-card">
+      <h3>Look Up Later</h3>
+      <p id="lul-home-subtitle">Queue questions for Claude to research.</p>
     </div>
     <div class="activity-card" data-activity="history">
       <h3>History Rabbit Hole</h3>
@@ -1258,6 +1243,37 @@
   </div>
   <div id="quiz-body">
     <!-- question, options, actions render here -->
+  </div>
+</div>
+
+<!-- Add Menu Modal -->
+<div id="add-menu-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Add</span>
+      <button class="srs-modal-close" id="add-menu-close">×</button>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-outline add-menu-opt" data-add="card">Add Card</button>
+      <button class="btn btn-outline add-menu-opt" data-add="mantra">Add Mantra</button>
+      <button class="btn btn-outline add-menu-opt" data-add="lul">Look Up Later</button>
+    </div>
+  </div>
+</div>
+
+<!-- Timer Menu Modal -->
+<div id="timer-menu-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Set a timer</span>
+      <button class="srs-modal-close" id="timer-menu-close">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <button class="btn btn-outline timer-menu-opt" data-mins="1">1 min</button>
+      <button class="btn btn-outline timer-menu-opt" data-mins="2">2 min</button>
+      <button class="btn btn-outline timer-menu-opt" data-mins="5">5 min</button>
+      <button class="btn btn-outline timer-menu-opt" data-mins="10">10 min</button>
+    </div>
   </div>
 </div>
 
@@ -2244,9 +2260,6 @@ function resetAnkiInput() {
   document.getElementById('anki-regenerate').style.display = 'none';
 }
 
-// + button on home opens Add Flashcard screen
-document.getElementById('srs-add-btn').addEventListener('click', () => navigateToActivity('anki-input'));
-
 // Add Flashcard mode toggle
 let ankiMode = 'both';
 document.querySelectorAll('[data-anki-mode]').forEach(btn => {
@@ -3112,11 +3125,6 @@ async function loadLulScreen() {
 }
 
 document.getElementById('lul-home-card').addEventListener('click', () => navigateToActivity('look-up-later'));
-document.getElementById('lul-add-btn').addEventListener('click', () => {
-  document.getElementById('lul-question-input').value = '';
-  document.getElementById('lul-add-modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('lul-question-input').focus(), 60);
-});
 document.getElementById('lul-add-close').addEventListener('click', () => document.getElementById('lul-add-modal').classList.add('hidden'));
 document.getElementById('lul-add-save').addEventListener('click', async () => {
   const q = document.getElementById('lul-question-input').value.trim();
@@ -3723,7 +3731,36 @@ document.getElementById('mantra-back-btn').addEventListener('click', () => {
 });
 
 document.getElementById('mantra-add-new-btn').addEventListener('click', () => openMantraEdit(null));
-document.getElementById('mantra-home-add-btn').addEventListener('click', () => openMantraEdit(null));
+
+// ── Global Add Menu ──────────────────────────────────────
+document.getElementById('btn-add-menu').addEventListener('click', () =>
+  document.getElementById('add-menu-modal').classList.remove('hidden'));
+document.getElementById('add-menu-close').addEventListener('click', () =>
+  document.getElementById('add-menu-modal').classList.add('hidden'));
+document.querySelectorAll('.add-menu-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('add-menu-modal').classList.add('hidden');
+    if (btn.dataset.add === 'card')   navigateToActivity('anki-input');
+    if (btn.dataset.add === 'mantra') openMantraEdit(null);
+    if (btn.dataset.add === 'lul') {
+      document.getElementById('lul-question-input').value = '';
+      document.getElementById('lul-add-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('lul-question-input').focus(), 60);
+    }
+  });
+});
+
+// ── Timer Menu ───────────────────────────────────────────
+document.getElementById('btn-timer-menu').addEventListener('click', () =>
+  document.getElementById('timer-menu-modal').classList.remove('hidden'));
+document.getElementById('timer-menu-close').addEventListener('click', () =>
+  document.getElementById('timer-menu-modal').classList.add('hidden'));
+document.querySelectorAll('.timer-menu-opt').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.getElementById('timer-menu-modal').classList.add('hidden');
+    startTimer(Number(btn.dataset.mins));
+  });
+});
 </script>
 </body>
 </html>
