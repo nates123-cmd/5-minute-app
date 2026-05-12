@@ -761,6 +761,10 @@
       <h3>Finance Term</h3>
       <p>Understand money and markets better.</p>
     </div>
+    <div class="activity-card" data-activity="stats-concept">
+      <h3>Stats Concept</h3>
+      <p>A statistical idea that changes how you read the world.</p>
+    </div>
     <div class="activity-card" data-activity="geography-fact">
       <h3>Geography Fact</h3>
       <p>A place that makes you rethink the map.</p>
@@ -940,6 +944,10 @@
     <span class="activity-title">Listen</span>
     <button class="btn-settings" id="listen-manage-btn" style="margin-left:auto">Manage</button>
   </div>
+  <div id="listen-sort-bar" style="display:flex;gap:6px;margin-bottom:14px">
+    <button class="btn btn-primary listen-sort-btn" data-sort="recent" style="flex:1">Most recent</button>
+    <button class="btn btn-outline listen-sort-btn" data-sort="shortest" style="flex:1">Shortest</button>
+  </div>
   <div id="listen-subscriptions"></div>
   <div id="listen-queue"></div>
   <div id="listen-audiobook"></div>
@@ -1049,6 +1057,17 @@
   </div>
   <div id="finance-term-content"></div>
   <button class="btn-refresh" id="finance-term-refresh">New term</button>
+  <div class="activity-actions">  </div>
+</div>
+
+<!-- STATS CONCEPT -->
+<div id="screen-stats-concept" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Stats Concept</span>
+  </div>
+  <div id="stats-concept-content"></div>
+  <button class="btn-refresh" id="stats-concept-refresh">New concept</button>
   <div class="activity-actions">  </div>
 </div>
 
@@ -1382,8 +1401,9 @@
     <textarea id="srs-preview-front" class="anki-textarea" rows="3"></textarea>
     <label class="srs-label">Back</label>
     <textarea id="srs-preview-back" class="anki-textarea" rows="4"></textarea>
-    <div style="margin-top:18px">
-      <button class="btn btn-primary" id="srs-preview-save" style="width:100%">Save</button>
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn btn-outline" id="srs-preview-regenerate" style="flex:1;display:none">Regenerate</button>
+      <button class="btn btn-primary" id="srs-preview-save" style="flex:1">Save</button>
     </div>
   </div>
 </div>
@@ -1541,18 +1561,18 @@ document.addEventListener('click', async e => {
 
 const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
-           'finance-term','geography-fact','logical-fallacy','on-this-day',
+           'finance-term','stats-concept','geography-fact','logical-fallacy','on-this-day',
            'thought-experiment','etymology','cognitive-bias','journal','mindfulness','breathe','brain-teaser','health-insight'],
   '5min': ['history','cooking','stoic','reading','mindfulness','breathe','journal',
-           'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
+           'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
            'thought-experiment','cognitive-bias','brain-teaser','health-insight'],
   'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection','mantra'],
-  'informational':['history','cooking','fun-fact','new-word','new-term','finance-term',
+  'informational':['history','cooking','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment','health-insight','productivity-insight'],
   'activity':     ['mental-math','brain-teaser','reading','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
   'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
-                   'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
+                   'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight','mantra',
                    'quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
@@ -1683,6 +1703,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'new-word')          loadNewWord();
     if (a === 'new-term')          loadNewTerm();
     if (a === 'finance-term')      loadFinanceTerm();
+    if (a === 'stats-concept')     loadStatsConcept();
     if (a === 'geography-fact')    loadGeographyFact();
     if (a === 'logical-fallacy')   loadLogicalFallacy();
     if (a === 'on-this-day')       loadOnThisDay();
@@ -2151,6 +2172,15 @@ const loadFinanceTerm = makeLoader(
 );
 document.getElementById('finance-term-refresh').addEventListener('click', loadFinanceTerm);
 
+// ── Stats Concept ─────────────────────────────
+const loadStatsConcept = makeLoader(
+  'stats-concept',
+  (ex) => 'Give me a statistics or probability concept that genuinely changes how you reason about data — something with real-world bite. Avoid intro-textbook basics like mean, median, variance, or standard deviation. Good candidates: Simpson\'s paradox, base rate fallacy, regression to the mean, survivorship bias in data, p-hacking, Bayes\' theorem in everyday reasoning, ecological fallacy, etc.' + ex + ' Return JSON: {concept, definition, whyItMatters, example}',
+  (d) => { ankiData['stats-concept'] = d; return '<div class="ai-single"><div class="tag">Stats</div><div class="word-title">' + esc(d.concept) + '</div><div class="sub-text">' + esc(d.definition) + '</div><div class="example">' + esc(d.whyItMatters) + ' ' + esc(d.example) + '</div></div>'; },
+  { concept: 'Simpson\'s Paradox', definition: 'A trend that appears in several groups of data can reverse when the groups are combined.', whyItMatters: 'It means an aggregate number can lie even when every sub-group tells the truth.', example: 'A drug looks worse than a placebo overall, but is better in both men and women separately — because the groups have different sample sizes.' }
+);
+document.getElementById('stats-concept-refresh').addEventListener('click', loadStatsConcept);
+
 // ── Geography Fact ────────────────────────────
 const loadGeographyFact = makeLoader(
   'geography-fact',
@@ -2462,13 +2492,14 @@ document.getElementById('anki-regenerate').addEventListener('click', async () =>
 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
 const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
-  'finance-term','geography-fact','logical-fallacy','cognitive-bias','etymology',
+  'finance-term','stats-concept','geography-fact','logical-fallacy','cognitive-bias','etymology',
   'on-this-day','thought-experiment','health-insight','productivity-insight'];
 
 const INFORMATIONAL_CONTENT_IDS = {
   'history': 'history-cards', 'cooking': 'cooking-cards',
   'fun-fact': 'fun-fact-content', 'new-word': 'new-word-content',
   'new-term': 'new-term-content', 'finance-term': 'finance-term-content',
+  'stats-concept': 'stats-concept-content',
   'geography-fact': 'geography-fact-content', 'logical-fallacy': 'logical-fallacy-content',
   'cognitive-bias': 'cognitive-bias-content', 'etymology': 'etymology-content',
   'on-this-day': 'on-this-day-content', 'thought-experiment': 'thought-experiment-content',
@@ -2520,7 +2551,7 @@ INFORMATIONAL_SCREENS.forEach(id => {
 
 // ── "New activity" button ─────────────────────
 const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal','health-insight',
-  'fun-fact','introspection','mental-math','new-word','new-term','finance-term',
+  'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
   'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
 
 ACTIVITY_SCREENS.forEach(id => {
@@ -2542,7 +2573,7 @@ const LOADERS = {
   'history': () => loadHistory(), 'cooking': () => loadCooking(), 'stoic': () => loadStoic(),
   'journal': () => loadJournal(), 'fun-fact': () => loadFunFact(), 'introspection': () => loadIntrospection(),
   'mental-math': () => loadMentalMath(), 'new-word': () => loadNewWord(), 'new-term': () => loadNewTerm(),
-  'finance-term': () => loadFinanceTerm(), 'geography-fact': () => loadGeographyFact(),
+  'finance-term': () => loadFinanceTerm(), 'stats-concept': () => loadStatsConcept(), 'geography-fact': () => loadGeographyFact(),
   'logical-fallacy': () => loadLogicalFallacy(), 'on-this-day': () => loadOnThisDay(),
   'thought-experiment': () => loadThoughtExperiment(), 'etymology': () => loadEtymology(),
   'cognitive-bias': () => loadCognitiveBias(), 'brain-teaser': () => loadBrainTeaser(),
@@ -3017,8 +3048,31 @@ document.getElementById('srs-add-save').addEventListener('click', async () => {
   document.getElementById('srs-add-save').textContent = 'Save Card';
 });
 
-// "Remember It" — inject button on activity screens after content loads
-function injectRememberIt(slug, getFrontBack) {
+// "Remember It" — condense long activity content into a flashcard via Claude,
+// then open the editable preview modal. Mirrors the Stoic→Mantra distill flow.
+let currentRememberSource = null;
+
+async function generateRememberCard(source, seed) {
+  return await callClaude(
+    'Condense this into a single atomic flashcard for spaced repetition (seed: ' + seed + '). '
+    + 'Front: a clean cue — a term, concept name, or short specific question. '
+    + 'Back: 1–2 punchy sentences with the core idea only. No examples, no caveats, no fluff. '
+    + 'Subject type: ' + (source.kind || 'general fact') + '.\n\n'
+    + 'Source cue: "' + source.rawFront + '"\n'
+    + 'Source detail: "' + source.rawBack + '"\n\n'
+    + 'Return JSON: {front, back}'
+  );
+}
+
+function openRememberPreview(source, card) {
+  currentRememberSource = source;
+  document.getElementById('srs-preview-front').value = (card && card.front) || source.rawFront;
+  document.getElementById('srs-preview-back').value  = (card && card.back)  || source.rawBack;
+  document.getElementById('srs-preview-regenerate').style.display = source ? '' : 'none';
+  document.getElementById('srs-preview-modal').classList.remove('hidden');
+}
+
+function injectRememberIt(slug, getSource) {
   const screen = document.getElementById('screen-' + slug);
   if (!screen) return;
   const actions = screen.querySelector('.activity-actions');
@@ -3028,56 +3082,89 @@ function injectRememberIt(slug, getFrontBack) {
   btn.className = 'btn btn-outline btn-remember-it';
   btn.textContent = 'Remember It';
   btn.addEventListener('click', async () => {
-    const pair = getFrontBack();
-    if (!pair) { showToast('Load a card first'); return; }
-    // Pre-fill preview modal
-    document.getElementById('srs-preview-front').value = pair.front;
-    document.getElementById('srs-preview-back').value = pair.back;
-    document.getElementById('srs-preview-modal').classList.remove('hidden');
+    const source = getSource();
+    if (!source) { showToast('Load a card first'); return; }
+    btn.textContent = 'Generating…';
+    btn.disabled = true;
+    try {
+      const card = await generateRememberCard(source, Math.floor(Math.random() * 900) + 100);
+      openRememberPreview(source, card);
+    } catch(e) {
+      openRememberPreview(source, null);
+      showToast('Couldn\'t condense — edit and save');
+    }
+    btn.textContent = 'Remember It';
+    btn.disabled = false;
   });
   actions.insertBefore(btn, actions.firstChild);
 }
 
-document.getElementById('srs-preview-close').addEventListener('click', () => document.getElementById('srs-preview-modal').classList.add('hidden'));
+function closeRememberPreview() {
+  document.getElementById('srs-preview-modal').classList.add('hidden');
+  document.getElementById('srs-preview-regenerate').style.display = 'none';
+  currentRememberSource = null;
+}
+
+document.getElementById('srs-preview-close').addEventListener('click', closeRememberPreview);
 document.getElementById('srs-preview-save').addEventListener('click', async () => {
   const front = document.getElementById('srs-preview-front').value.trim();
   const back  = document.getElementById('srs-preview-back').value.trim();
   if (!front || !back) return;
+  const onSaved = currentRememberSource && currentRememberSource.onSaved;
+  const srsSource = currentRememberSource && currentRememberSource.srsSource;
   document.getElementById('srs-preview-save').textContent = 'Saving…';
   try {
-    const r3 = await srsCreate(front, back);
+    const r3 = await srsCreate(front, back, srsSource);
     showToast(r3?.offline ? 'Saved offline — will sync when connected ✓' : 'Card saved!');
-    document.getElementById('srs-preview-modal').classList.add('hidden');
+    closeRememberPreview();
     if (!r3?.offline) updateDueBadge();
+    if (onSaved) onSaved();
   } catch(e) { showToast('Error: ' + e.message); }
   document.getElementById('srs-preview-save').textContent = 'Save';
 });
 
+document.getElementById('srs-preview-regenerate').addEventListener('click', async () => {
+  if (!currentRememberSource) return;
+  const btn = document.getElementById('srs-preview-regenerate');
+  btn.textContent = 'Regenerating…';
+  btn.disabled = true;
+  try {
+    const card = await generateRememberCard(currentRememberSource, Math.floor(Math.random() * 900) + 100);
+    if (card && card.front) document.getElementById('srs-preview-front').value = card.front;
+    if (card && card.back)  document.getElementById('srs-preview-back').value  = card.back;
+  } catch(e) {
+    showToast('Regeneration failed');
+  }
+  btn.textContent = 'Regenerate';
+  btn.disabled = false;
+});
+
 // Wire up "Remember It" for each activity using ankiData
-function wireRememberIt(slug, frontFn, backFn) {
+function wireRememberIt(slug, frontFn, backFn, kind) {
   injectRememberIt(slug, () => {
     const d = ankiData[slug];
     if (!d) return null;
     const front = frontFn(d);
     const back  = backFn(d);
     if (!front) return null;
-    return { front, back };
+    return { slug, kind: kind || 'general fact', rawFront: front, rawBack: back || '' };
   });
 }
 
 // Wire "Remember It" buttons on activity screens
-wireRememberIt('new-word',       d => d.word, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''));
-wireRememberIt('new-term',       d => d.term + (d.field ? ' (' + d.field + ')' : ''), d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''));
-wireRememberIt('finance-term',   d => d.term, d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : ''));
-wireRememberIt('etymology',      d => d.word, d => d.origin + (d.journey ? '\n\n' + d.journey : ''));
-wireRememberIt('cognitive-bias', d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : ''));
-wireRememberIt('logical-fallacy',d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''));
-wireRememberIt('fun-fact',       d => d.fact, d => d.context || d.explanation || '');
-wireRememberIt('on-this-day',    d => String(d.year) + ': ' + d.event, d => d.context || '');
-wireRememberIt('geography-fact', d => d.location, d => d.fact + (d.context ? '\n\n' + d.context : ''));
-wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '');
-wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''));
-wireRememberIt('health-insight',    d => d.topic + ': ' + d.insight.slice(0, 80) + '…', d => d.tryThis);
+wireRememberIt('new-word',       d => d.word, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''), 'vocabulary word');
+wireRememberIt('new-term',       d => d.term + (d.field ? ' (' + d.field + ')' : ''), d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''), 'concept or term');
+wireRememberIt('finance-term',   d => d.term, d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : ''), 'finance term');
+wireRememberIt('stats-concept',  d => d.concept, d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : ''), 'statistics concept');
+wireRememberIt('etymology',      d => d.word, d => d.origin + (d.journey ? '\n\n' + d.journey : ''), 'word etymology');
+wireRememberIt('cognitive-bias', d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : ''), 'cognitive bias');
+wireRememberIt('logical-fallacy',d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''), 'logical fallacy');
+wireRememberIt('fun-fact',       d => d.fact, d => d.context || d.explanation || '', 'fun fact');
+wireRememberIt('on-this-day',    d => String(d.year) + ': ' + d.event, d => d.context || '', 'historical event');
+wireRememberIt('geography-fact', d => d.location, d => d.fact + (d.context ? '\n\n' + d.context : ''), 'geography fact');
+wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '', 'historical topic');
+wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''), 'thought experiment');
+wireRememberIt('health-insight',    d => d.topic, d => (d.insight || '') + (d.tryThis ? '\n\nTry: ' + d.tryThis : ''), 'health insight');
 
 // ── Look Up Later ────────────────────────────────────────
 async function lulFetch() { return sbFetch('look_up_later?status=eq.pending&order=created_at.asc'); }
@@ -3148,6 +3235,8 @@ function lulRenderAnswer(el, id, data, list) {
       );
       document.getElementById('srs-preview-front').value = card.front || question;
       document.getElementById('srs-preview-back').value = card.back || (data.tl_dr || '');
+      document.getElementById('srs-preview-regenerate').style.display = 'none';
+      currentRememberSource = null;
       document.getElementById('srs-preview-modal').classList.remove('hidden');
     } catch(e) {
       showToast('Generation failed: ' + (e.message || 'unknown error'));
@@ -3610,12 +3699,15 @@ function showQuizActions(question, correct, wasCorrect) {
 
   document.getElementById('quiz-got-it').addEventListener('click', () => advanceQuiz(wasCorrect));
 
-  document.getElementById('quiz-remember').addEventListener('click', async () => {
-    try {
-      const r4 = await srsCreate(question, correct, quizTopic);
-      showToast(r4?.offline ? 'Saved offline — will sync when connected ✓' : 'Added to flashcards ✓');
-    } catch(e) { showToast('Error saving card'); }
-    advanceQuiz(false);
+  document.getElementById('quiz-remember').addEventListener('click', () => {
+    openRememberPreview({
+      slug: 'quiz-' + quizTopic,
+      kind: quizTopic + ' quiz Q&A',
+      rawFront: question,
+      rawBack: correct,
+      srsSource: quizTopic,
+      onSaved: () => advanceQuiz(false),
+    }, null);
   });
 
   document.getElementById('quiz-google-it').addEventListener('click', () => {
@@ -3725,11 +3817,19 @@ function mantraRenderSession() {
   }
   const m = mantraShuffled[mantraIdx];
   body.innerHTML = '<div class="mantra-text-area"><div class="mantra-text">' + esc(m.text) + '</div></div>';
-  actions.innerHTML = '<button class="btn btn-primary" id="mantra-next-btn">Next</button>';
+  actions.innerHTML =
+    '<button class="btn btn-outline" id="mantra-still-btn">Reflect in Still</button>' +
+    '<button class="btn btn-primary" id="mantra-next-btn">Next</button>';
   document.getElementById('mantra-next-btn').addEventListener('click', () => {
     mantraIdx++;
     if (mantraIdx >= mantraShuffled.length) mantraShuffle();
     else mantraRenderSession();
+  });
+  document.getElementById('mantra-still-btn').addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(m.text); } catch(e) {}
+    showToast('Opening Still');
+    const url = 'https://nates123-cmd.github.io/Still-App/?capture=' + encodeURIComponent(m.text);
+    setTimeout(() => { window.open(url, '_blank', 'noopener'); }, 400);
   });
 }
 
@@ -3972,7 +4072,16 @@ async function listenQueueFetch() { return sbFetch('listening_queue?listened=eq.
 async function listenQueueCreate(row) { return sbFetch('listening_queue', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(row) }); }
 async function listenQueueDismiss(id) { return sbFetch('listening_queue?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ listened: true }) }); }
 async function listenSubCreate(row) { return sbFetch('listening_subscriptions', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(row) }); }
-async function listenSubDelete(id) { return sbFetch('listening_subscriptions?id=eq.' + id, { method: 'DELETE' }); }
+async function listenSubDelete(id) {
+  // Remove pending queue items from this show so they leave the queue,
+  // then detach any historical/listened rows so the FK releases the subscription.
+  await sbFetch('listening_queue?subscription_id=eq.' + id + '&listened=eq.false', { method: 'DELETE' });
+  await sbFetch('listening_queue?subscription_id=eq.' + id, {
+    method: 'PATCH', prefer: 'return=minimal',
+    body: JSON.stringify({ subscription_id: null }),
+  });
+  return sbFetch('listening_subscriptions?id=eq.' + id, { method: 'DELETE' });
+}
 
 async function listenEnrich(id, title) {
   try {
@@ -4072,16 +4181,70 @@ function listenRenderItem(item, container) {
   container.appendChild(div);
 }
 
+// Listen sort: 'recent' | 'shortest'. Cached items let us re-sort without re-fetching Spotify.
+let _listenSubsItems = [];
+let _listenQueueItems = [];
+const LISTEN_SUB_HEADER   = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:8px">Subscriptions</div>';
+const LISTEN_QUEUE_HEADER = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:16px 0 8px">Your Queue</div>';
+
+function getListenSort() { return localStorage.getItem('listen_sort') || 'recent'; }
+function setListenSort(v) { localStorage.setItem('listen_sort', v); }
+function sortListenItems(items) {
+  const mode = getListenSort();
+  return items.slice().sort((a, b) => {
+    if (mode === 'shortest') {
+      const da = (a.duration_secs == null) ? Infinity : a.duration_secs;
+      const db = (b.duration_secs == null) ? Infinity : b.duration_secs;
+      if (da !== db) return da - db;
+    }
+    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
+}
+function updateListenSortUI() {
+  const mode = getListenSort();
+  document.querySelectorAll('.listen-sort-btn').forEach(b => {
+    const active = b.dataset.sort === mode;
+    b.classList.toggle('btn-primary', active);
+    b.classList.toggle('btn-outline', !active);
+  });
+}
+function renderListenSubsSection() {
+  const subEl = document.getElementById('listen-subscriptions');
+  subEl.innerHTML = LISTEN_SUB_HEADER;
+  if (_listenSubsItems.length === 0) {
+    subEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">No new episodes.</p>';
+    return;
+  }
+  sortListenItems(_listenSubsItems).forEach(item => listenRenderItem(item, subEl));
+}
+function renderListenQueueSection() {
+  const queueEl = document.getElementById('listen-queue');
+  queueEl.innerHTML = LISTEN_QUEUE_HEADER;
+  if (_listenQueueItems.length === 0) {
+    queueEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">Nothing queued. Tap + to add.</p>';
+    return;
+  }
+  sortListenItems(_listenQueueItems).forEach(item => listenRenderItem(item, queueEl));
+}
+
+document.querySelectorAll('.listen-sort-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    setListenSort(btn.dataset.sort);
+    updateListenSortUI();
+    renderListenSubsSection();
+    renderListenQueueSection();
+  });
+});
+
 async function loadListenScreen() {
   const subEl   = document.getElementById('listen-subscriptions');
   const queueEl = document.getElementById('listen-queue');
   const bookEl  = document.getElementById('listen-audiobook');
   subEl.innerHTML = '<p class="lul-empty" style="padding:12px 0">Checking subscriptions…</p>';
   queueEl.innerHTML = '';
-
-  // Section headers
-  const subHeader   = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:8px">Subscriptions</div>';
-  const queueHeader = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:16px 0 8px">Your Queue</div>';
+  _listenSubsItems = [];
+  _listenQueueItems = [];
+  updateListenSortUI();
 
   // A. Subscriptions
   try {
@@ -4089,19 +4252,29 @@ async function loadListenScreen() {
     if (!subs || subs.length === 0) {
       subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">No subscriptions yet. Tap Manage to add shows.</p>';
     } else {
-      subEl.innerHTML = subHeader;
-      const existing = await listenQueueFetch();
-      const existingTitles = new Set((existing || []).map(i => i.title.toLowerCase()));
+      // Fetch ALL queue rows (including dismissed/listened) so we never recreate an episode
+      // the user already dismissed. Pending rows are derived from the same set.
+      const allRows = (await sbFetch('listening_queue?order=created_at.desc')) || [];
+      const pendingRows = allRows.filter(i => i.listened === false);
+      const titlesByShow = new Map();
+      allRows.forEach(i => {
+        if (!i.subscription_id) return;
+        if (!titlesByShow.has(i.subscription_id)) titlesByShow.set(i.subscription_id, new Set());
+        titlesByShow.get(i.subscription_id).add(i.title.toLowerCase());
+      });
       for (const sub of subs) {
         try {
           const eps = await spotifyFetchLatestEpisodes(sub.feed_url, 2);
-          const subExisting = (existing || []).filter(i => i.subscription_id === sub.id);
-          let subCount = subExisting.length;
+          const subPending = pendingRows.filter(i => i.subscription_id === sub.id);
+          const seenTitles = titlesByShow.get(sub.id) || new Set();
+          let subCount = subPending.length;
           for (const ep of eps) {
-            if (existingTitles.has(ep.title.toLowerCase())) {
-              const match = subExisting.find(i => i.title.toLowerCase() === ep.title.toLowerCase());
-              if (match) listenRenderItem(match, subEl);
-            } else if (subCount < 2) {
+            const titleLc = ep.title.toLowerCase();
+            const matchPending = subPending.find(i => i.title.toLowerCase() === titleLc);
+            if (matchPending) {
+              _listenSubsItems.push(matchPending);
+            } else if (!seenTitles.has(titleLc) && subCount < 2) {
+              // Genuinely new episode — add up to a max of 2 pending per show
               const rows = await listenQueueCreate({
                 title: ep.title, show_name: ep.show_name || sub.name,
                 summary: ep.summary, source: 'subscription',
@@ -4110,12 +4283,13 @@ async function loadListenScreen() {
                 spotify_url: ep.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
               });
               const newItem = Array.isArray(rows) ? rows[0] : rows;
-              if (newItem) { listenRenderItem(newItem, subEl); subCount++; }
+              if (newItem) { _listenSubsItems.push(newItem); subCount++; }
             }
+            // else: episode was previously in queue (dismissed) — skip
           }
         } catch(e) {}
       }
-      if (!subEl.querySelector('.lul-item')) subEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">No new episodes.</p>';
+      renderListenSubsSection();
     }
   } catch(e) {
     subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">Failed to load subscriptions.</p>';
@@ -4123,13 +4297,8 @@ async function loadListenScreen() {
 
   // B. Manual queue
   try {
-    const items = (await listenQueueFetch() || []).filter(i => i.source === 'manual' || i.source === 'custom');
-    queueEl.innerHTML = queueHeader;
-    if (items.length === 0) {
-      queueEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">Nothing queued. Tap + to add.</p>';
-    } else {
-      items.forEach(item => listenRenderItem(item, queueEl));
-    }
+    _listenQueueItems = (await listenQueueFetch() || []).filter(i => i.source === 'manual' || i.source === 'custom');
+    renderListenQueueSection();
   } catch(e) {}
 
   // C. Currently listening (audiobook)
@@ -4223,8 +4392,18 @@ async function renderSubsList() {
   ).join('');
   el.querySelectorAll('[data-sub-id]').forEach(btn => {
     btn.addEventListener('click', async () => {
-      await listenSubDelete(btn.dataset.subId);
-      await renderSubsList();
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.textContent = 'Removing…';
+      try {
+        await listenSubDelete(btn.dataset.subId);
+        await renderSubsList();
+        updateListenBadge();
+      } catch(e) {
+        showToast('Remove failed: ' + (e.message || 'unknown'));
+        btn.disabled = false;
+        btn.textContent = original;
+      }
     });
   });
 }
