@@ -1287,7 +1287,7 @@
       <button class="srs-modal-close" id="listen-add-close">×</button>
     </div>
     <label class="srs-label">Show or episode</label>
-    <textarea id="listen-add-title" class="anki-textarea" rows="2" placeholder="e.g. Lex Fridman #400 — Sam Altman"></textarea>
+    <textarea id="listen-add-title" class="anki-textarea" rows="2" placeholder="Show name or paste a Spotify URL"></textarea>
     <label class="srs-label" style="margin-top:12px">Recommended by (optional)</label>
     <input id="listen-add-recby" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. Dad" />
     <button class="btn btn-primary" id="listen-add-save" style="width:100%;margin-top:16px">Save</button>
@@ -1302,8 +1302,8 @@
       <button class="srs-modal-close" id="listen-manage-close">×</button>
     </div>
     <div id="listen-subs-list" style="margin-bottom:16px"></div>
-    <label class="srs-label">Add show (paste Apple Podcasts URL)</label>
-    <input id="listen-sub-input" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="https://podcasts.apple.com/us/podcast/..." />
+    <label class="srs-label">Add show (paste Spotify show URL)</label>
+    <input id="listen-sub-input" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="https://open.spotify.com/show/..." />
     <label class="srs-label" style="margin-top:12px">Show name</label>
     <input id="listen-sub-name" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. Interesting Times with Ross Douthat" />
     <button class="btn btn-primary" id="listen-sub-add" style="width:100%;margin-top:16px">Add Subscription</button>
@@ -3885,24 +3885,27 @@ async function spotifySearchShow(query) {
 })();
 
 // Podcast feed helpers
-async function appleUrlToFeed(appleUrl) {
-  const match = appleUrl.match(/id(\d+)/);
+async function spotifyFetchLatestEpisode(showUrl) {
+  const token = await spotifyToken();
+  if (!token) return null;
+  const match = showUrl.match(/show\/([A-Za-z0-9]+)/);
   if (!match) return null;
-  const res = await fetch('https://itunes.apple.com/lookup?id=' + match[1] + '&entity=podcast');
-  const data = await res.json();
-  return data.results?.[0]?.feedUrl || null;
-}
-
-async function fetchLatestEpisode(feedUrl) {
-  const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feedUrl) + '&count=1');
-  const data = await res.json();
-  const ep = data.items?.[0];
+  const showId = match[1];
+  const [showRes, epRes] = await Promise.all([
+    fetch('https://api.spotify.com/v1/shows/' + showId + '?market=US', { headers: { Authorization: 'Bearer ' + token } }),
+    fetch('https://api.spotify.com/v1/shows/' + showId + '/episodes?limit=1&market=US', { headers: { Authorization: 'Bearer ' + token } })
+  ]);
+  const showData = await showRes.json();
+  const epData = await epRes.json();
+  const ep = epData.items?.[0];
   if (!ep) return null;
   return {
-    title: ep.title || '',
-    show_name: data.feed?.title || '',
-    summary: (ep.description || ep.content || '').replace(/<[^>]+>/g, '').slice(0, 300),
-    pubDate: ep.pubDate || ''
+    title: ep.name || '',
+    show_name: showData.name || '',
+    summary: (ep.description || '').slice(0, 300),
+    duration_secs: ep.duration_ms ? Math.round(ep.duration_ms / 1000) : null,
+    spotify_url: ep.external_urls?.spotify || showUrl,
+    pubDate: ep.release_date || ''
   };
 }
 
@@ -3916,35 +3919,48 @@ async function listenSubDelete(id) { return sbFetch('listening_subscriptions?id=
 
 async function listenEnrich(id, title) {
   try {
-    let episodeTitle = null, showName = null, summary = null, feedUrl = null;
+    let episodeTitle = null, showName = null, summary = null, durationSecs = null, spotifyUrl = null;
+    const token = await spotifyToken();
 
-    // 1. iTunes search → RSS → latest episode
-    try {
-      const res = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(title) + '&entity=podcast&limit=1');
-      const data = await res.json();
-      const podcast = data.results?.[0];
-      if (podcast) {
-        feedUrl = podcast.feedUrl;
-        showName = podcast.collectionName || podcast.trackName || null;
-      }
-    } catch(e) {}
-
-    if (feedUrl) {
+    if (token) {
       try {
-        const ep = await fetchLatestEpisode(feedUrl);
-        if (ep) {
-          episodeTitle = ep.title;
-          showName = ep.show_name || showName;
-          summary = ep.summary;
+        // If user pasted a Spotify episode URL
+        if (title.includes('open.spotify.com/episode/')) {
+          const epMatch = title.match(/episode\/([A-Za-z0-9]+)/);
+          if (epMatch) {
+            const epRes = await fetch('https://api.spotify.com/v1/episodes/' + epMatch[1] + '?market=US', { headers: { Authorization: 'Bearer ' + token } });
+            const ep = await epRes.json();
+            episodeTitle = ep.name;
+            showName = ep.show?.name;
+            summary = (ep.description || '').slice(0, 300);
+            durationSecs = ep.duration_ms ? Math.round(ep.duration_ms / 1000) : null;
+            spotifyUrl = ep.external_urls?.spotify || title;
+          }
+        } else {
+          // Show URL or show name — search Spotify then get latest episode
+          let showUrl = title.includes('open.spotify.com/show/') ? title : null;
+          if (!showUrl) {
+            const searchRes = await fetch('https://api.spotify.com/v1/search?q=' + encodeURIComponent(title) + '&type=show&limit=1&market=US',
+              { headers: { Authorization: 'Bearer ' + token } });
+            const searchData = await searchRes.json();
+            const show = searchData.shows?.items?.[0];
+            if (show) showUrl = show.external_urls?.spotify || ('https://open.spotify.com/show/' + show.id);
+          }
+          if (showUrl) {
+            const ep = await spotifyFetchLatestEpisode(showUrl);
+            if (ep) {
+              episodeTitle = ep.title;
+              showName = ep.show_name;
+              summary = ep.summary;
+              durationSecs = ep.duration_secs;
+              spotifyUrl = ep.spotify_url;
+            }
+          }
         }
       } catch(e) {}
     }
 
-    // 2. Spotify link (search by show name or original title)
-    const spotifyQuery = showName || title;
-    const spotifyUrl = await spotifySearchShow(spotifyQuery).catch(() => null);
-
-    // 3. Fall back to Claude summary if no RSS data
+    // Fall back to Claude summary if Spotify returned nothing
     if (!summary) {
       try {
         const cd = await callClaude('For this podcast: "' + title + '". Return JSON: {"show_name":"...","summary":"1-2 sentences about what this show covers"}');
@@ -3957,7 +3973,8 @@ async function listenEnrich(id, title) {
       title: episodeTitle || title,
       show_name: showName || '',
       summary: summary || '',
-      spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(spotifyQuery))
+      duration_secs: durationSecs,
+      spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(title))
     };
     await sbFetch('listening_queue?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(patch) });
   } catch(e) {}
@@ -4020,15 +4037,15 @@ async function loadListenScreen() {
       const existingTitles = new Set((existing || []).map(i => i.title.toLowerCase()));
       for (const sub of subs) {
         try {
-          const ep = await fetchLatestEpisode(sub.feed_url);
+          const ep = await spotifyFetchLatestEpisode(sub.feed_url);
           if (!ep) continue;
           if (!existingTitles.has(ep.title.toLowerCase())) {
-            const spotifyUrl = await spotifySearchShow(sub.name);
             const rows = await listenQueueCreate({
               title: ep.title, show_name: ep.show_name || sub.name,
               summary: ep.summary, source: 'subscription',
               subscription_id: sub.id,
-              spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
+              duration_secs: ep.duration_secs,
+              spotify_url: ep.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
             });
             const newItem = Array.isArray(rows) ? rows[0] : rows;
             if (newItem) listenRenderItem(newItem, subEl);
@@ -4155,13 +4172,12 @@ async function renderSubsList() {
 document.getElementById('listen-sub-add').addEventListener('click', async () => {
   const url  = document.getElementById('listen-sub-input').value.trim();
   const name = document.getElementById('listen-sub-name').value.trim();
-  if (!url || !name) { showToast('Enter a URL and name'); return; }
+  if (!url || !name) { showToast('Enter a Spotify show URL and name'); return; }
+  if (!url.includes('open.spotify.com/show/')) { showToast('Paste a Spotify show URL (open.spotify.com/show/…)'); return; }
   const btn = document.getElementById('listen-sub-add');
-  btn.textContent = 'Finding feed…'; btn.disabled = true;
+  btn.textContent = 'Saving…'; btn.disabled = true;
   try {
-    const feedUrl = await appleUrlToFeed(url);
-    if (!feedUrl) { showToast('Could not find RSS feed for that URL'); btn.textContent = 'Add Subscription'; btn.disabled = false; return; }
-    await listenSubCreate({ name, feed_url: feedUrl });
+    await listenSubCreate({ name, feed_url: url });
     document.getElementById('listen-sub-input').value = '';
     document.getElementById('listen-sub-name').value = '';
     showToast('Subscription added ✓');
