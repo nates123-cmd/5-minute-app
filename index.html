@@ -1298,9 +1298,9 @@
       <button class="srs-modal-close" id="srs-preview-close">×</button>
     </div>
     <label class="srs-label">Front</label>
-    <div id="srs-preview-front" style="background:var(--card-bg);border-radius:var(--radius);padding:14px 16px;font-size:0.95rem;line-height:1.5;margin-bottom:2px"></div>
+    <textarea id="srs-preview-front" class="anki-textarea" rows="3"></textarea>
     <label class="srs-label">Back</label>
-    <div id="srs-preview-back" style="background:var(--card-bg);border-radius:var(--radius);padding:14px 16px;font-size:0.95rem;line-height:1.5;margin-bottom:2px"></div>
+    <textarea id="srs-preview-back" class="anki-textarea" rows="4"></textarea>
     <div style="margin-top:18px">
       <button class="btn btn-primary" id="srs-preview-save" style="width:100%">Save</button>
     </div>
@@ -2917,8 +2917,8 @@ function injectRememberIt(slug, getFrontBack) {
     const pair = getFrontBack();
     if (!pair) { showToast('Load a card first'); return; }
     // Pre-fill preview modal
-    document.getElementById('srs-preview-front').textContent = pair.front;
-    document.getElementById('srs-preview-back').textContent = pair.back;
+    document.getElementById('srs-preview-front').value = pair.front;
+    document.getElementById('srs-preview-back').value = pair.back;
     document.getElementById('srs-preview-modal').classList.remove('hidden');
   });
   actions.insertBefore(btn, actions.firstChild);
@@ -2926,8 +2926,8 @@ function injectRememberIt(slug, getFrontBack) {
 
 document.getElementById('srs-preview-close').addEventListener('click', () => document.getElementById('srs-preview-modal').classList.add('hidden'));
 document.getElementById('srs-preview-save').addEventListener('click', async () => {
-  const front = document.getElementById('srs-preview-front').textContent.trim();
-  const back  = document.getElementById('srs-preview-back').textContent.trim();
+  const front = document.getElementById('srs-preview-front').value.trim();
+  const back  = document.getElementById('srs-preview-back').value.trim();
   if (!front || !back) return;
   document.getElementById('srs-preview-save').textContent = 'Saving…';
   try {
@@ -2999,8 +2999,49 @@ function lulRenderAnswer(el, id, data, list) {
     (data.tl_dr ? '<div class="lul-tldr"><span class="lul-tldr-label">TL;DR</span>' + esc(data.tl_dr) + '</div>' : '') +
     '<div class="lul-summary">' + esc(data.summary) + '</div>' +
     (data.links && data.links.length ? '<div class="lul-links">' + data.links.map(l => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title) + '</a>').join('') + '</div>' : '') +
-    '<div style="margin-top:14px"><button class="btn btn-outline lul-done-btn" style="width:100%">Done — remove from queue</button></div>';
+    '<div class="lul-answer-actions" style="display:flex;flex-direction:column;gap:8px;margin-top:14px">' +
+      '<div style="display:flex;gap:8px">' +
+        '<button class="btn btn-outline lul-remember-btn" style="flex:1">Remember It</button>' +
+        '<a class="btn btn-outline lul-google-btn" style="flex:1;text-align:center;text-decoration:none" target="_blank" rel="noopener">Google It</a>' +
+        '<button class="btn btn-outline lul-claude-btn" style="flex:1">Claude It</button>' +
+      '</div>' +
+      '<button class="btn btn-outline lul-done-btn" style="width:100%">Done — remove from queue</button>' +
+    '</div>';
   el.querySelector('.lul-actions').replaceWith(answerEl);
+
+  // Google It
+  const googleA = answerEl.querySelector('.lul-google-btn');
+  googleA.href = 'https://www.google.com/search?q=' + encodeURIComponent(el.querySelector('.lul-question').textContent);
+
+  // Claude It — copy question + summary, open Claude app
+  answerEl.querySelector('.lul-claude-btn').addEventListener('click', async () => {
+    const text = el.querySelector('.lul-question').textContent + '\n\n' + (data.tl_dr || '') + '\n\n' + (data.summary || '');
+    try { await navigator.clipboard.writeText(text); } catch(e) {}
+    showToast('Copied — opening Claude');
+    setTimeout(() => { window.location.href = 'claude://'; }, 600);
+  });
+
+  // Remember It — Claude generates condensed flashcard, open editable preview
+  answerEl.querySelector('.lul-remember-btn').addEventListener('click', async () => {
+    const btn = answerEl.querySelector('.lul-remember-btn');
+    btn.textContent = 'Generating…';
+    btn.disabled = true;
+    const question = el.querySelector('.lul-question').textContent;
+    const context = (data.tl_dr ? data.tl_dr + '\n\n' : '') + (data.summary || '');
+    try {
+      const card = await callClaude(
+        'Condense this into a single flashcard. Front: a clean, specific question. Back: a concise 1–2 sentence answer with the key fact. Question asked: "' + question + '". Full answer: "' + context + '". Return JSON: {"front":"...","back":"..."}'
+      );
+      document.getElementById('srs-preview-front').value = card.front || question;
+      document.getElementById('srs-preview-back').value = card.back || (data.tl_dr || '');
+      document.getElementById('srs-preview-modal').classList.remove('hidden');
+    } catch(e) {
+      showToast('Generation failed: ' + (e.message || 'unknown error'));
+    }
+    btn.textContent = 'Remember It';
+    btn.disabled = false;
+  });
+
   answerEl.querySelector('.lul-done-btn').addEventListener('click', async () => {
     try { await lulDelete(id); } catch(e) {}
     el.remove();
