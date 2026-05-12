@@ -701,6 +701,10 @@
       <h3>Look Up Later</h3>
       <p id="lul-home-subtitle">Queue questions for Claude to research.</p>
     </div>
+    <div class="activity-card" style="grid-column:1/-1" id="listen-home-card">
+      <h3>Something to Listen To</h3>
+      <p id="listen-home-subtitle">Your podcast queue and audiobooks.</p>
+    </div>
     <div class="activity-card" data-activity="history">
       <h3>History Rabbit Hole</h3>
       <p>Dive into something genuinely fascinating</p>
@@ -927,6 +931,18 @@
     <!-- card renders here -->
   </div>
   <div class="srs-controls" id="srs-controls"></div>
+</div>
+
+<!-- SOMETHING TO LISTEN TO -->
+<div id="screen-listen" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Listen</span>
+    <button class="btn-settings" id="listen-manage-btn" style="margin-left:auto">Manage</button>
+  </div>
+  <div id="listen-subscriptions"></div>
+  <div id="listen-queue"></div>
+  <div id="listen-audiobook"></div>
 </div>
 
 <!-- LOOK UP LATER -->
@@ -1258,6 +1274,42 @@
       <button class="btn btn-outline add-menu-opt" data-add="card">Add Card</button>
       <button class="btn btn-outline add-menu-opt" data-add="mantra">Add Mantra</button>
       <button class="btn btn-outline add-menu-opt" data-add="lul">Look Up Later</button>
+      <button class="btn btn-outline add-menu-opt" data-add="listen">Listen Later</button>
+    </div>
+  </div>
+</div>
+
+<!-- Listen Add Modal -->
+<div id="listen-add-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Listen Later</span>
+      <button class="srs-modal-close" id="listen-add-close">×</button>
+    </div>
+    <label class="srs-label">Show or episode</label>
+    <textarea id="listen-add-title" class="anki-textarea" rows="2" placeholder="e.g. Lex Fridman #400 — Sam Altman"></textarea>
+    <label class="srs-label" style="margin-top:12px">Recommended by (optional)</label>
+    <input id="listen-add-recby" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. Dad" />
+    <button class="btn btn-primary" id="listen-add-save" style="width:100%;margin-top:16px">Save</button>
+  </div>
+</div>
+
+<!-- Listen Manage Modal -->
+<div id="listen-manage-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Subscriptions</span>
+      <button class="srs-modal-close" id="listen-manage-close">×</button>
+    </div>
+    <div id="listen-subs-list" style="margin-bottom:16px"></div>
+    <label class="srs-label">Add show (paste Apple Podcasts URL)</label>
+    <input id="listen-sub-input" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="https://podcasts.apple.com/us/podcast/..." />
+    <label class="srs-label" style="margin-top:12px">Show name</label>
+    <input id="listen-sub-name" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. Interesting Times with Ross Douthat" />
+    <button class="btn btn-primary" id="listen-sub-add" style="width:100%;margin-top:16px">Add Subscription</button>
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:10px" id="listen-spotify-status">Spotify: not connected</div>
+      <button class="btn btn-outline" id="listen-spotify-connect" style="width:100%">Connect Spotify</button>
     </div>
   </div>
 </div>
@@ -1632,6 +1684,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'anki-input')        resetAnkiInput();
     if (a === 'mantra')            mantraLoad();
     if (a === 'look-up-later')     loadLulScreen();
+    if (a === 'listen')            loadListenScreen();
   }
 }
 
@@ -3748,8 +3801,368 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
       document.getElementById('lul-add-modal').classList.remove('hidden');
       setTimeout(() => document.getElementById('lul-question-input').focus(), 60);
     }
+    if (btn.dataset.add === 'listen') {
+      document.getElementById('listen-add-title').value = '';
+      document.getElementById('listen-add-recby').value = '';
+      document.getElementById('listen-add-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('listen-add-title').focus(), 60);
+    }
   });
 });
+
+// ── Something to Listen To ───────────────────────────────
+
+// Spotify PKCE
+const SPOTIFY_CLIENT_ID = '061fec005203410d94eabe844d3f5d22';
+const SPOTIFY_REDIRECT   = 'https://nates123-cmd.github.io/5-minute-app/';
+
+async function spotifyLogin() {
+  const arr = crypto.getRandomValues(new Uint8Array(32));
+  const verifier = btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  localStorage.setItem('spotify_verifier', verifier);
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
+  const challenge = btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+  location.href = 'https://accounts.spotify.com/authorize?client_id=' + SPOTIFY_CLIENT_ID +
+    '&response_type=code&redirect_uri=' + encodeURIComponent(SPOTIFY_REDIRECT) +
+    '&code_challenge_method=S256&code_challenge=' + challenge;
+}
+
+async function spotifyHandleCallback(code) {
+  const verifier = localStorage.getItem('spotify_verifier') || '';
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'authorization_code', code,
+      redirect_uri: SPOTIFY_REDIRECT, client_id: SPOTIFY_CLIENT_ID, code_verifier: verifier })
+  });
+  const data = await res.json();
+  if (data.access_token) {
+    localStorage.setItem('spotify_token', data.access_token);
+    localStorage.setItem('spotify_refresh', data.refresh_token || '');
+    localStorage.setItem('spotify_expires', String(Date.now() + (data.expires_in || 3600) * 1000));
+    localStorage.removeItem('spotify_verifier');
+  }
+}
+
+async function spotifyToken() {
+  if (Date.now() < Number(localStorage.getItem('spotify_expires') || 0) - 60000)
+    return localStorage.getItem('spotify_token') || '';
+  const refresh = localStorage.getItem('spotify_refresh');
+  if (!refresh) return '';
+  const res = await fetch('https://accounts.spotify.com/api/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh, client_id: SPOTIFY_CLIENT_ID })
+  });
+  const data = await res.json();
+  if (data.access_token) {
+    localStorage.setItem('spotify_token', data.access_token);
+    localStorage.setItem('spotify_expires', String(Date.now() + (data.expires_in || 3600) * 1000));
+    return data.access_token;
+  }
+  return '';
+}
+
+async function spotifySearchShow(query) {
+  try {
+    const token = await spotifyToken();
+    if (!token) return null;
+    const res = await fetch('https://api.spotify.com/v1/search?q=' + encodeURIComponent(query) + '&type=show&limit=1&market=US',
+      { headers: { 'Authorization': 'Bearer ' + token } });
+    const data = await res.json();
+    return data.shows?.items?.[0]?.external_urls?.spotify || null;
+  } catch(e) { return null; }
+}
+
+// Handle Spotify OAuth callback on page load
+(async () => {
+  const code = new URLSearchParams(location.search).get('code');
+  if (code) {
+    await spotifyHandleCallback(code);
+    history.replaceState({}, '', location.pathname);
+    showToast('Spotify connected ✓');
+  }
+})();
+
+// Podcast feed helpers
+async function appleUrlToFeed(appleUrl) {
+  const match = appleUrl.match(/id(\d+)/);
+  if (!match) return null;
+  const res = await fetch('https://itunes.apple.com/lookup?id=' + match[1] + '&entity=podcast');
+  const data = await res.json();
+  return data.results?.[0]?.feedUrl || null;
+}
+
+async function fetchLatestEpisode(feedUrl) {
+  const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(feedUrl) + '&count=1');
+  const data = await res.json();
+  const ep = data.items?.[0];
+  if (!ep) return null;
+  return {
+    title: ep.title || '',
+    show_name: data.feed?.title || '',
+    summary: (ep.description || ep.content || '').replace(/<[^>]+>/g, '').slice(0, 300),
+    pubDate: ep.pubDate || ''
+  };
+}
+
+// Supabase helpers
+async function listenSubsFetch() { return sbFetch('listening_subscriptions?order=created_at.asc'); }
+async function listenQueueFetch() { return sbFetch('listening_queue?listened=eq.false&order=created_at.desc'); }
+async function listenQueueCreate(row) { return sbFetch('listening_queue', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(row) }); }
+async function listenQueueDismiss(id) { return sbFetch('listening_queue?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ listened: true }) }); }
+async function listenSubCreate(row) { return sbFetch('listening_subscriptions', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(row) }); }
+async function listenSubDelete(id) { return sbFetch('listening_subscriptions?id=eq.' + id, { method: 'DELETE' }); }
+
+async function listenEnrich(id, title) {
+  try {
+    const [spotifyUrl, claudeData] = await Promise.all([
+      spotifySearchShow(title),
+      callClaude('For this podcast: "' + title + '". Return JSON: {"show_name":"...","summary":"1-2 sentences about what this show covers"}').catch(() => null)
+    ]);
+    const patch = {
+      show_name: typeof claudeData?.show_name === 'string' ? claudeData.show_name : '',
+      summary: typeof claudeData?.summary === 'string' ? claudeData.summary : '',
+      spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(title))
+    };
+    await sbFetch('listening_queue?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(patch) });
+  } catch(e) {}
+}
+
+async function updateListenBadge() {
+  try {
+    const items = await listenQueueFetch();
+    const n = Array.isArray(items) ? items.length : 0;
+    const el = document.getElementById('listen-home-subtitle');
+    if (el) el.textContent = n === 0 ? 'Your podcast queue and audiobooks.' : n === 1 ? '1 episode waiting' : n + ' episodes waiting';
+  } catch(e) {}
+}
+
+function listenRenderItem(item, container) {
+  const div = document.createElement('div');
+  div.className = 'lul-item';
+  div.dataset.id = item.id;
+  const dur = item.duration_secs ? Math.round(item.duration_secs / 60) + ' min' : '';
+  const meta = [item.show_name, dur].filter(Boolean).join(' · ');
+  const recBy = item.recommended_by ? '<div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Rec by ' + esc(item.recommended_by) + '</div>' : '';
+  const summary = item.summary ? '<div class="lul-summary" style="margin-top:8px">' + esc(item.summary) + '</div>' : '';
+  const spotifyUrl = item.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(item.title));
+  div.innerHTML =
+    '<div class="lul-question">' + esc(item.title) + '</div>' +
+    (meta ? '<div style="font-size:0.78rem;color:var(--muted);margin-top:2px">' + esc(meta) + '</div>' : '') +
+    recBy + summary +
+    '<div class="lul-actions" style="margin-top:12px">' +
+      '<a class="btn btn-primary" href="' + esc(spotifyUrl) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">Open in Spotify</a>' +
+      '<button class="btn btn-outline listen-dismiss" style="flex:1">Dismiss</button>' +
+    '</div>';
+  div.querySelector('.listen-dismiss').addEventListener('click', async () => {
+    try { await listenQueueDismiss(item.id); } catch(e) {}
+    div.remove();
+    if (!container.querySelector('.lul-item')) container.innerHTML = '<p class="lul-empty">Nothing queued.</p>';
+    updateListenBadge();
+  });
+  container.appendChild(div);
+}
+
+async function loadListenScreen() {
+  const subEl   = document.getElementById('listen-subscriptions');
+  const queueEl = document.getElementById('listen-queue');
+  const bookEl  = document.getElementById('listen-audiobook');
+  subEl.innerHTML = '<p class="lul-empty" style="padding:12px 0">Checking subscriptions…</p>';
+  queueEl.innerHTML = '';
+
+  // Section headers
+  const subHeader   = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:8px">Subscriptions</div>';
+  const queueHeader = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:16px 0 8px">Your Queue</div>';
+
+  // A. Subscriptions
+  try {
+    const subs = await listenSubsFetch();
+    if (!subs || subs.length === 0) {
+      subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">No subscriptions yet. Tap Manage to add shows.</p>';
+    } else {
+      subEl.innerHTML = subHeader;
+      const existing = await listenQueueFetch();
+      const existingTitles = new Set((existing || []).map(i => i.title.toLowerCase()));
+      for (const sub of subs) {
+        try {
+          const ep = await fetchLatestEpisode(sub.feed_url);
+          if (!ep) continue;
+          if (!existingTitles.has(ep.title.toLowerCase())) {
+            const spotifyUrl = await spotifySearchShow(sub.name);
+            const rows = await listenQueueCreate({
+              title: ep.title, show_name: ep.show_name || sub.name,
+              summary: ep.summary, source: 'subscription',
+              subscription_id: sub.id,
+              spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
+            });
+            const newItem = Array.isArray(rows) ? rows[0] : rows;
+            if (newItem) listenRenderItem(newItem, subEl);
+          } else {
+            const match = (existing || []).find(i => i.title.toLowerCase() === ep.title.toLowerCase());
+            if (match) listenRenderItem(match, subEl);
+          }
+        } catch(e) {}
+      }
+      if (!subEl.querySelector('.lul-item')) subEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">No new episodes.</p>';
+    }
+  } catch(e) {
+    subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">Failed to load subscriptions.</p>';
+  }
+
+  // B. Manual queue
+  try {
+    const items = (await listenQueueFetch() || []).filter(i => i.source === 'manual');
+    queueEl.innerHTML = queueHeader;
+    if (items.length === 0) {
+      queueEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">Nothing queued. Tap + to add.</p>';
+    } else {
+      items.forEach(item => listenRenderItem(item, queueEl));
+    }
+  } catch(e) {}
+
+  // C. Currently listening (audiobook)
+  renderAudiobookCard(bookEl);
+}
+
+function renderAudiobookCard(el) {
+  const book = (() => { try { return JSON.parse(localStorage.getItem('listen_current_book') || 'null'); } catch(e) { return null; } })();
+  el.innerHTML = '';
+  const div = document.createElement('div');
+  div.className = 'lul-item';
+  div.style.marginTop = '8px';
+  if (book) {
+    const appUrl = book.app === 'libby' ? 'libbyapp://' : 'audible://';
+    const appLabel = book.app === 'libby' ? 'Open Libby' : 'Open Audible';
+    div.innerHTML =
+      '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:6px">Currently Listening</div>' +
+      '<div class="lul-question">' + esc(book.title) + '</div>' +
+      (book.author ? '<div style="font-size:0.82rem;color:var(--muted);margin-top:2px">' + esc(book.author) + '</div>' : '') +
+      '<div class="lul-actions" style="margin-top:12px">' +
+        '<a class="btn btn-primary" href="' + appUrl + '" style="flex:1;text-align:center;text-decoration:none">' + appLabel + '</a>' +
+        '<button class="btn btn-outline listen-book-change" style="flex:1">Change</button>' +
+      '</div>';
+    div.querySelector('.listen-book-change').addEventListener('click', () => openBookForm(el));
+  } else {
+    div.innerHTML =
+      '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:8px">Currently Listening</div>' +
+      '<button class="btn btn-outline listen-book-add" style="width:100%">Reading or listening to something? Add it.</button>';
+    div.querySelector('.listen-book-add').addEventListener('click', () => openBookForm(el));
+  }
+  el.appendChild(div);
+}
+
+function openBookForm(el) {
+  const book = (() => { try { return JSON.parse(localStorage.getItem('listen_current_book') || 'null'); } catch(e) { return null; } })();
+  const div = el.querySelector('.lul-item');
+  div.innerHTML =
+    '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:10px">Currently Listening</div>' +
+    '<input id="book-title-input" class="anki-textarea" style="height:auto;padding:10px 14px;margin-bottom:8px" placeholder="Title" value="' + esc(book?.title || '') + '" />' +
+    '<input id="book-author-input" class="anki-textarea" style="height:auto;padding:10px 14px;margin-bottom:8px" placeholder="Author" value="' + esc(book?.author || '') + '" />' +
+    '<div style="display:flex;gap:8px;margin-bottom:12px">' +
+      '<button class="btn ' + (book?.app !== 'audible' ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="libby" style="flex:1">Libby</button>' +
+      '<button class="btn ' + (book?.app === 'audible' ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="audible" style="flex:1">Audible</button>' +
+    '</div>' +
+    '<div style="display:flex;gap:8px">' +
+      '<button class="btn btn-primary" id="book-save-btn" style="flex:1">Save</button>' +
+      (book ? '<button class="btn btn-outline" id="book-clear-btn" style="flex:1">Clear</button>' : '') +
+    '</div>';
+  let selectedApp = book?.app || 'libby';
+  div.querySelectorAll('.book-app-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      selectedApp = b.dataset.app;
+      div.querySelectorAll('.book-app-btn').forEach(x => x.className = 'btn btn-outline book-app-btn');
+      b.className = 'btn btn-primary book-app-btn';
+    });
+  });
+  div.querySelector('#book-save-btn').addEventListener('click', () => {
+    const title = div.querySelector('#book-title-input').value.trim();
+    if (!title) { showToast('Enter a title'); return; }
+    localStorage.setItem('listen_current_book', JSON.stringify({
+      title, author: div.querySelector('#book-author-input').value.trim(), app: selectedApp
+    }));
+    renderAudiobookCard(el);
+  });
+  if (book) div.querySelector('#book-clear-btn')?.addEventListener('click', () => {
+    localStorage.removeItem('listen_current_book');
+    renderAudiobookCard(el);
+  });
+}
+
+// Manage subscriptions modal
+document.getElementById('listen-manage-btn').addEventListener('click', async () => {
+  await renderSubsList();
+  const token = localStorage.getItem('spotify_token');
+  document.getElementById('listen-spotify-status').textContent = token ? 'Spotify: connected ✓' : 'Spotify: not connected';
+  document.getElementById('listen-manage-modal').classList.remove('hidden');
+});
+document.getElementById('listen-manage-close').addEventListener('click', () =>
+  document.getElementById('listen-manage-modal').classList.add('hidden'));
+
+async function renderSubsList() {
+  const el = document.getElementById('listen-subs-list');
+  el.innerHTML = 'Loading…';
+  const subs = await listenSubsFetch().catch(() => []);
+  if (!subs || subs.length === 0) { el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No subscriptions yet.</p>'; return; }
+  el.innerHTML = subs.map(s =>
+    '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
+      '<span style="font-size:0.9rem">' + esc(s.name) + '</span>' +
+      '<button class="btn-settings" style="color:#c44" data-sub-id="' + s.id + '">Remove</button>' +
+    '</div>'
+  ).join('');
+  el.querySelectorAll('[data-sub-id]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      await listenSubDelete(btn.dataset.subId);
+      await renderSubsList();
+    });
+  });
+}
+
+document.getElementById('listen-sub-add').addEventListener('click', async () => {
+  const url  = document.getElementById('listen-sub-input').value.trim();
+  const name = document.getElementById('listen-sub-name').value.trim();
+  if (!url || !name) { showToast('Enter a URL and name'); return; }
+  const btn = document.getElementById('listen-sub-add');
+  btn.textContent = 'Finding feed…'; btn.disabled = true;
+  try {
+    const feedUrl = await appleUrlToFeed(url);
+    if (!feedUrl) { showToast('Could not find RSS feed for that URL'); btn.textContent = 'Add Subscription'; btn.disabled = false; return; }
+    await listenSubCreate({ name, feed_url: feedUrl });
+    document.getElementById('listen-sub-input').value = '';
+    document.getElementById('listen-sub-name').value = '';
+    showToast('Subscription added ✓');
+    await renderSubsList();
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.textContent = 'Add Subscription'; btn.disabled = false;
+});
+
+document.getElementById('listen-spotify-connect').addEventListener('click', () => spotifyLogin());
+
+// Listen add modal
+document.getElementById('listen-add-close').addEventListener('click', () =>
+  document.getElementById('listen-add-modal').classList.add('hidden'));
+document.getElementById('listen-add-save').addEventListener('click', async () => {
+  const title = document.getElementById('listen-add-title').value.trim();
+  const recBy = document.getElementById('listen-add-recby').value.trim();
+  if (!title) { showToast('Enter a show or episode name'); return; }
+  const btn = document.getElementById('listen-add-save');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    const rows = await listenQueueCreate({ title, recommended_by: recBy || null, source: 'manual' });
+    const newRow = Array.isArray(rows) ? rows[0] : rows;
+    document.getElementById('listen-add-modal').classList.add('hidden');
+    document.getElementById('listen-add-title').value = '';
+    document.getElementById('listen-add-recby').value = '';
+    showToast('Saved — enriching in background ✓');
+    updateListenBadge();
+    if (newRow?.id) listenEnrich(newRow.id, title);
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.textContent = 'Save'; btn.disabled = false;
+});
+
+document.getElementById('listen-home-card').addEventListener('click', () => navigateToActivity('listen'));
+
+updateListenBadge();
 
 // ── Timer Menu ───────────────────────────────────────────
 document.getElementById('btn-timer-menu').addEventListener('click', () =>
