@@ -3885,28 +3885,31 @@ async function spotifySearchShow(query) {
 })();
 
 // Podcast feed helpers
-async function spotifyFetchLatestEpisode(showUrl) {
+async function spotifyFetchLatestEpisodes(showUrl, count = 2) {
   const token = await spotifyToken();
-  if (!token) return null;
+  if (!token) return [];
   const match = showUrl.match(/show\/([A-Za-z0-9]+)/);
-  if (!match) return null;
+  if (!match) return [];
   const showId = match[1];
   const [showRes, epRes] = await Promise.all([
     fetch('https://api.spotify.com/v1/shows/' + showId + '?market=US', { headers: { Authorization: 'Bearer ' + token } }),
-    fetch('https://api.spotify.com/v1/shows/' + showId + '/episodes?limit=1&market=US', { headers: { Authorization: 'Bearer ' + token } })
+    fetch('https://api.spotify.com/v1/shows/' + showId + '/episodes?limit=' + count + '&market=US', { headers: { Authorization: 'Bearer ' + token } })
   ]);
   const showData = await showRes.json();
   const epData = await epRes.json();
-  const ep = epData.items?.[0];
-  if (!ep) return null;
-  return {
+  return (epData.items || []).map(ep => ({
     title: ep.name || '',
     show_name: showData.name || '',
     summary: (ep.description || '').slice(0, 300),
     duration_secs: ep.duration_ms ? Math.round(ep.duration_ms / 1000) : null,
     spotify_url: ep.external_urls?.spotify || showUrl,
     pubDate: ep.release_date || ''
-  };
+  }));
+}
+
+async function spotifyFetchLatestEpisode(showUrl) {
+  const eps = await spotifyFetchLatestEpisodes(showUrl, 1);
+  return eps[0] || null;
 }
 
 // Supabase helpers
@@ -4037,21 +4040,24 @@ async function loadListenScreen() {
       const existingTitles = new Set((existing || []).map(i => i.title.toLowerCase()));
       for (const sub of subs) {
         try {
-          const ep = await spotifyFetchLatestEpisode(sub.feed_url);
-          if (!ep) continue;
-          if (!existingTitles.has(ep.title.toLowerCase())) {
-            const rows = await listenQueueCreate({
-              title: ep.title, show_name: ep.show_name || sub.name,
-              summary: ep.summary, source: 'subscription',
-              subscription_id: sub.id,
-              duration_secs: ep.duration_secs,
-              spotify_url: ep.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
-            });
-            const newItem = Array.isArray(rows) ? rows[0] : rows;
-            if (newItem) listenRenderItem(newItem, subEl);
-          } else {
-            const match = (existing || []).find(i => i.title.toLowerCase() === ep.title.toLowerCase());
-            if (match) listenRenderItem(match, subEl);
+          const eps = await spotifyFetchLatestEpisodes(sub.feed_url, 2);
+          const subExisting = (existing || []).filter(i => i.subscription_id === sub.id);
+          let subCount = subExisting.length;
+          for (const ep of eps) {
+            if (existingTitles.has(ep.title.toLowerCase())) {
+              const match = subExisting.find(i => i.title.toLowerCase() === ep.title.toLowerCase());
+              if (match) listenRenderItem(match, subEl);
+            } else if (subCount < 2) {
+              const rows = await listenQueueCreate({
+                title: ep.title, show_name: ep.show_name || sub.name,
+                summary: ep.summary, source: 'subscription',
+                subscription_id: sub.id,
+                duration_secs: ep.duration_secs,
+                spotify_url: ep.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
+              });
+              const newItem = Array.isArray(rows) ? rows[0] : rows;
+              if (newItem) { listenRenderItem(newItem, subEl); subCount++; }
+            }
           }
         } catch(e) {}
       }
