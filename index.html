@@ -3916,14 +3916,48 @@ async function listenSubDelete(id) { return sbFetch('listening_subscriptions?id=
 
 async function listenEnrich(id, title) {
   try {
-    const [spotifyUrl, claudeData] = await Promise.all([
-      spotifySearchShow(title),
-      callClaude('For this podcast: "' + title + '". Return JSON: {"show_name":"...","summary":"1-2 sentences about what this show covers"}').catch(() => null)
-    ]);
+    let episodeTitle = null, showName = null, summary = null, feedUrl = null;
+
+    // 1. iTunes search → RSS → latest episode
+    try {
+      const res = await fetch('https://itunes.apple.com/search?term=' + encodeURIComponent(title) + '&entity=podcast&limit=1');
+      const data = await res.json();
+      const podcast = data.results?.[0];
+      if (podcast) {
+        feedUrl = podcast.feedUrl;
+        showName = podcast.collectionName || podcast.trackName || null;
+      }
+    } catch(e) {}
+
+    if (feedUrl) {
+      try {
+        const ep = await fetchLatestEpisode(feedUrl);
+        if (ep) {
+          episodeTitle = ep.title;
+          showName = ep.show_name || showName;
+          summary = ep.summary;
+        }
+      } catch(e) {}
+    }
+
+    // 2. Spotify link (search by show name or original title)
+    const spotifyQuery = showName || title;
+    const spotifyUrl = await spotifySearchShow(spotifyQuery).catch(() => null);
+
+    // 3. Fall back to Claude summary if no RSS data
+    if (!summary) {
+      try {
+        const cd = await callClaude('For this podcast: "' + title + '". Return JSON: {"show_name":"...","summary":"1-2 sentences about what this show covers"}');
+        if (!showName && typeof cd?.show_name === 'string') showName = cd.show_name;
+        if (typeof cd?.summary === 'string') summary = cd.summary;
+      } catch(e) {}
+    }
+
     const patch = {
-      show_name: typeof claudeData?.show_name === 'string' ? claudeData.show_name : '',
-      summary: typeof claudeData?.summary === 'string' ? claudeData.summary : '',
-      spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(title))
+      title: episodeTitle || title,
+      show_name: showName || '',
+      summary: summary || '',
+      spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(spotifyQuery))
     };
     await sbFetch('listening_queue?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(patch) });
   } catch(e) {}
