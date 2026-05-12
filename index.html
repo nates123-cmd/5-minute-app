@@ -2650,27 +2650,61 @@ function updateSavedCount() {
 
 // ── App icon ──────────────────────────────────
 (function generateIcon() {
+  const S = 180, s = S / 100;
   const canvas = document.createElement('canvas');
-  canvas.width = 180; canvas.height = 180;
+  canvas.width = S; canvas.height = S;
   const ctx = canvas.getContext('2d');
 
-  ctx.fillStyle = '#1C1C1C';
-  ctx.fillRect(0, 0, 180, 180);
-
-  ctx.textBaseline = 'middle';
-  ctx.textAlign = 'left';
-  ctx.font = 'bold 78px -apple-system, BlinkMacSystemFont, sans-serif';
-
-  const fiveW = ctx.measureText('5').width;
-  const mW    = ctx.measureText('M').width;
-  const gap   = 3;
-  const x = (180 - fiveW - gap - mW) / 2;
-  const y = 91;
-
-  ctx.fillStyle = '#F5F2EE';
-  ctx.fillText('5', x, y);
+  // Background
+  const r = 22 * s;
+  ctx.beginPath();
+  ctx.moveTo(r, 0); ctx.lineTo(S - r, 0);
+  ctx.quadraticCurveTo(S, 0, S, r);
+  ctx.lineTo(S, S - r); ctx.quadraticCurveTo(S, S, S - r, S);
+  ctx.lineTo(r, S); ctx.quadraticCurveTo(0, S, 0, S - r);
+  ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
   ctx.fillStyle = '#A89880';
-  ctx.fillText('M', x + fiveW + gap, y);
+  ctx.fill();
+
+  ctx.strokeStyle = '#F5F2EE';
+  ctx.lineCap = 'round';
+
+  // Steam wisps
+  ctx.lineWidth = 3.5 * s;
+  [[38,35,36,29,40,25,38,19],[50,33,48,27,52,23,50,17],[62,35,60,29,64,25,62,19]].forEach(([x1,y1,cx1,cy1,cx2,cy2,x2,y2]) => {
+    ctx.beginPath();
+    ctx.moveTo(x1*s,y1*s); ctx.bezierCurveTo(cx1*s,cy1*s,cx2*s,cy2*s,x2*s,y2*s);
+    ctx.stroke();
+  });
+
+  // Mug body
+  ctx.fillStyle = '#F5F2EE';
+  const bx=22*s,by=42*s,bw=44*s,bh=34*s,br=7*s;
+  ctx.beginPath();
+  ctx.moveTo(bx+br,by); ctx.lineTo(bx+bw-br,by);
+  ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+br);
+  ctx.lineTo(bx+bw,by+bh-br); ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-br,by+bh);
+  ctx.lineTo(bx+br,by+bh); ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-br);
+  ctx.lineTo(bx,by+br); ctx.quadraticCurveTo(bx,by,bx+br,by);
+  ctx.fill();
+
+  // Handle
+  ctx.lineWidth = 6 * s;
+  ctx.beginPath();
+  ctx.moveTo(66*s,50*s); ctx.quadraticCurveTo(80*s,50*s,80*s,59*s);
+  ctx.quadraticCurveTo(80*s,68*s,66*s,68*s);
+  ctx.stroke();
+
+  // Saucer
+  ctx.fillStyle = '#F5F2EE';
+  const sx=16*s,sy=76*s,sw=56*s,sh=7*s,sr=3.5*s;
+  ctx.beginPath();
+  ctx.moveTo(sx+sr,sy); ctx.lineTo(sx+sw-sr,sy);
+  ctx.quadraticCurveTo(sx+sw,sy,sx+sw,sy+sr);
+  ctx.lineTo(sx+sw,sy+sh-sr); ctx.quadraticCurveTo(sx+sw,sy+sh,sx+sw-sr,sy+sh);
+  ctx.lineTo(sx+sr,sy+sh); ctx.quadraticCurveTo(sx,sy+sh,sx,sy+sh-sr);
+  ctx.lineTo(sx,sy+sr); ctx.quadraticCurveTo(sx,sy,sx+sr,sy);
+  ctx.fill();
 
   const link = document.createElement('link');
   link.rel = 'apple-touch-icon';
