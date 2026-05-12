@@ -530,6 +530,19 @@
     .srs-add-zone { flex: 0 0 56px; margin: 0; display: flex; align-items: center; justify-content: center; }
     .srs-add-plus { font-size: 1.6rem; font-weight: 300; color: var(--accent); line-height: 1; }
 
+    /* ── Look Up Later ───────────────────────── */
+    .lul-item { background: var(--card-bg); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+    .lul-question { font-weight: 600; font-size: 0.95rem; line-height: 1.45; margin-bottom: 12px; }
+    .lul-actions { display: flex; gap: 10px; }
+    .lul-actions .btn { flex: 1; padding: 11px 8px; font-size: 0.88rem; }
+    .lul-answer { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .lul-tldr { font-size: 0.88rem; font-weight: 600; color: var(--text); background: var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.45; }
+    .lul-tldr-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: block; margin-bottom: 4px; }
+    .lul-summary { font-size: 0.9rem; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
+    .lul-links { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
+    .lul-links a { font-size: 0.85rem; color: var(--accent); text-decoration: underline; word-break: break-all; }
+    .lul-empty { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 40px 0; line-height: 1.6; }
+
     /* ── SRS Flashcards ──────────────────────── */
     .srs-progress { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 16px; min-height: 1.2em; }
     .srs-card-area { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
@@ -690,6 +703,15 @@
         <p>Your personal collection of reminders and principles.</p>
       </div>
       <div class="activity-card srs-add-zone" id="mantra-home-add-btn" title="Add mantra">
+        <span class="srs-add-plus">+</span>
+      </div>
+    </div>
+    <div class="srs-home-row" style="grid-column:1/-1">
+      <div class="activity-card srs-review-zone" id="lul-home-card">
+        <h3>Look Up Later</h3>
+        <p id="lul-home-subtitle">Queue questions for Claude to research.</p>
+      </div>
+      <div class="activity-card srs-add-zone" id="lul-add-btn" title="Add question">
         <span class="srs-add-plus">+</span>
       </div>
     </div>
@@ -919,6 +941,15 @@
     <!-- card renders here -->
   </div>
   <div class="srs-controls" id="srs-controls"></div>
+</div>
+
+<!-- LOOK UP LATER -->
+<div id="screen-look-up-later" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Look Up Later</span>
+  </div>
+  <div id="lul-list"></div>
 </div>
 
 <!-- JOURNAL -->
@@ -1227,6 +1258,19 @@
   </div>
   <div id="quiz-body">
     <!-- question, options, actions render here -->
+  </div>
+</div>
+
+<!-- Look Up Later Modal -->
+<div id="lul-add-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Look Up Later</span>
+      <button class="srs-modal-close" id="lul-add-close">×</button>
+    </div>
+    <label class="srs-label">Question or topic</label>
+    <textarea id="lul-question-input" class="anki-textarea" rows="4" placeholder="e.g. How much did USSR and US spies actually kill each other?"></textarea>
+    <button class="btn btn-primary" id="lul-add-save" style="width:100%;margin-top:16px">Save</button>
   </div>
 </div>
 
@@ -1570,6 +1614,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'anki-input')        resetAnkiInput();
     if (a === 'mantra')            mantraLoad();
+    if (a === 'look-up-later')     loadLulScreen();
   }
 }
 
@@ -2919,6 +2964,137 @@ wireRememberIt('geography-fact', d => d.location, d => d.fact + (d.context ? '\n
 wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '');
 wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''));
 wireRememberIt('health-insight',    d => d.topic + ': ' + d.insight.slice(0, 80) + '…', d => d.tryThis);
+
+// ── Look Up Later ────────────────────────────────────────
+async function lulFetch() { return sbFetch('look_up_later?status=eq.pending&order=created_at.asc'); }
+async function lulCreate(q) { return sbFetch('look_up_later', { method: 'POST', prefer: 'return=representation', body: JSON.stringify({ question: q }) }); }
+async function lulUpdate(id, answer, tl_dr, links) {
+  return sbFetch('look_up_later?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ answer, tl_dr, links }) });
+}
+async function lulDelete(id) { return sbFetch('look_up_later?id=eq.' + id, { method: 'DELETE' }); }
+
+async function lulResearch(id, question) {
+  try {
+    const data = await callClaude(
+      'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}'
+    );
+    await lulUpdate(id, data.summary, data.links || []);
+  } catch(e) {}
+}
+
+async function updateLulBadge() {
+  try {
+    const items = await lulFetch();
+    const n = Array.isArray(items) ? items.length : 0;
+    document.getElementById('lul-home-subtitle').textContent =
+      n === 0 ? 'Queue questions for Claude to research.' :
+      n === 1 ? '1 question waiting' : n + ' questions waiting';
+  } catch(e) {}
+}
+
+function lulRenderAnswer(el, id, data, list) {
+  const answerEl = document.createElement('div');
+  answerEl.className = 'lul-answer';
+  answerEl.innerHTML =
+    (data.tl_dr ? '<div class="lul-tldr"><span class="lul-tldr-label">TL;DR</span>' + esc(data.tl_dr) + '</div>' : '') +
+    '<div class="lul-summary">' + esc(data.summary) + '</div>' +
+    (data.links && data.links.length ? '<div class="lul-links">' + data.links.map(l => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title) + '</a>').join('') + '</div>' : '') +
+    '<div style="margin-top:14px"><button class="btn btn-outline lul-done-btn" style="width:100%">Done — remove from queue</button></div>';
+  el.querySelector('.lul-actions').replaceWith(answerEl);
+  answerEl.querySelector('.lul-done-btn').addEventListener('click', async () => {
+    try { await lulDelete(id); } catch(e) {}
+    el.remove();
+    if (!list.querySelector('.lul-item')) list.innerHTML = '<div class="lul-empty">Nothing queued yet.<br>Tap + to add a question.</div>';
+    updateLulBadge();
+  });
+}
+
+async function loadLulScreen() {
+  const list = document.getElementById('lul-list');
+  list.innerHTML = '<p class="lul-empty">Loading…</p>';
+  let items;
+  try { items = await lulFetch(); } catch(e) { list.innerHTML = '<p class="lul-empty">Failed to load. Check your connection.</p>'; return; }
+  if (!items || items.length === 0) {
+    list.innerHTML = '<div class="lul-empty">Nothing queued yet.<br>Tap + to add a question.</div>';
+    return;
+  }
+  list.innerHTML = items.map(item => `
+    <div class="lul-item" data-id="${item.id}">
+      <div class="lul-question">${esc(item.question)}</div>
+      <div class="lul-actions">
+        <button class="btn btn-primary lul-research-btn">${item.answer ? 'Read Answer' : 'Research It'}</button>
+        <button class="btn btn-outline lul-dismiss-btn">Dismiss</button>
+      </div>
+    </div>`).join('');
+
+  list.querySelectorAll('.lul-item').forEach((el, i) => {
+    const item = items[i];
+    const id = item.id;
+    const question = item.question;
+
+    el.querySelector('.lul-dismiss-btn').addEventListener('click', async () => {
+      try { await lulDelete(id); } catch(e) {}
+      el.remove();
+      if (!list.querySelector('.lul-item')) list.innerHTML = '<div class="lul-empty">Nothing queued yet.<br>Tap + to add a question.</div>';
+      updateLulBadge();
+    });
+
+    el.querySelector('.lul-research-btn').addEventListener('click', async () => {
+      if (item.answer) {
+        lulRenderAnswer(el, id, { tl_dr: item.tl_dr, summary: item.answer, links: item.links || [] }, list);
+        return;
+      }
+      const btn = el.querySelector('.lul-research-btn');
+      btn.textContent = 'Researching…';
+      btn.disabled = true;
+      el.querySelector('.lul-dismiss-btn').disabled = true;
+      try {
+        const data = await callClaude(
+          'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}'
+        );
+        await lulUpdate(id, data.summary, data.tl_dr || '', data.links || []);
+        lulRenderAnswer(el, id, data, list);
+      } catch(e) {
+        showToast('Research failed: ' + (e.message || 'unknown error'));
+        btn.textContent = 'Research It';
+        btn.disabled = false;
+        el.querySelector('.lul-dismiss-btn').disabled = false;
+      }
+    });
+
+    // Auto-expand if already answered
+    if (item.answer) {
+      el.querySelector('.lul-research-btn').textContent = 'Read Answer';
+    }
+  });
+}
+
+document.getElementById('lul-home-card').addEventListener('click', () => navigateToActivity('look-up-later'));
+document.getElementById('lul-add-btn').addEventListener('click', () => {
+  document.getElementById('lul-question-input').value = '';
+  document.getElementById('lul-add-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('lul-question-input').focus(), 60);
+});
+document.getElementById('lul-add-close').addEventListener('click', () => document.getElementById('lul-add-modal').classList.add('hidden'));
+document.getElementById('lul-add-save').addEventListener('click', async () => {
+  const q = document.getElementById('lul-question-input').value.trim();
+  if (!q) { showToast('Enter a question first'); return; }
+  const btn = document.getElementById('lul-add-save');
+  btn.textContent = 'Saving…';
+  btn.disabled = true;
+  try {
+    const rows = await lulCreate(q);
+    const newId = Array.isArray(rows) ? rows[0]?.id : rows?.id;
+    document.getElementById('lul-add-modal').classList.add('hidden');
+    showToast('Saved — researching in background ✓');
+    updateLulBadge();
+    if (newId) lulResearch(newId, q); // fire and forget
+  } catch(e) { showToast('Error: ' + e.message); }
+  btn.textContent = 'Save';
+  btn.disabled = false;
+});
+
+updateLulBadge();
 
 // Show FAB only on srs-review screen and hide elsewhere
 const srsFab = document.getElementById('srs-fab');
