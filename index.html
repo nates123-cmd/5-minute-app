@@ -1286,8 +1286,20 @@
       <span class="srs-modal-title">Listen Later</span>
       <button class="srs-modal-close" id="listen-add-close">×</button>
     </div>
-    <label class="srs-label">Show or episode</label>
-    <textarea id="listen-add-title" class="anki-textarea" rows="2" placeholder="Show name or paste a Spotify URL"></textarea>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn btn-primary listen-add-tab" data-tab="podcast" style="flex:1">Podcast</button>
+      <button class="btn btn-outline listen-add-tab" data-tab="custom" style="flex:1">Custom</button>
+    </div>
+    <div id="listen-tab-podcast">
+      <label class="srs-label">Show or episode</label>
+      <textarea id="listen-add-title" class="anki-textarea" rows="2" placeholder="Show name or paste a Spotify URL"></textarea>
+    </div>
+    <div id="listen-tab-custom" class="hidden">
+      <label class="srs-label">Title</label>
+      <textarea id="listen-add-custom-title" class="anki-textarea" rows="2" placeholder="e.g. Veritasium — Why Planes Disappear"></textarea>
+      <label class="srs-label" style="margin-top:12px">Duration (minutes)</label>
+      <input id="listen-add-duration" type="number" min="1" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. 20" />
+    </div>
     <label class="srs-label" style="margin-top:12px">Recommended by (optional)</label>
     <input id="listen-add-recby" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. Dad" />
     <button class="btn btn-primary" id="listen-add-save" style="width:100%;margin-top:16px">Save</button>
@@ -3804,7 +3816,14 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
     }
     if (btn.dataset.add === 'listen') {
       document.getElementById('listen-add-title').value = '';
+      document.getElementById('listen-add-custom-title').value = '';
+      document.getElementById('listen-add-duration').value = '';
       document.getElementById('listen-add-recby').value = '';
+      // Reset to podcast tab
+      document.querySelectorAll('.listen-add-tab').forEach(t => t.className = 'btn btn-outline listen-add-tab');
+      document.querySelector('.listen-add-tab[data-tab="podcast"]').className = 'btn btn-primary listen-add-tab';
+      document.getElementById('listen-tab-podcast').classList.remove('hidden');
+      document.getElementById('listen-tab-custom').classList.add('hidden');
       document.getElementById('listen-add-modal').classList.remove('hidden');
       setTimeout(() => document.getElementById('listen-add-title').focus(), 60);
     }
@@ -4001,14 +4020,14 @@ function listenRenderItem(item, container) {
   const meta = [item.show_name, dur].filter(Boolean).join(' · ');
   const recBy = item.recommended_by ? '<div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Rec by ' + esc(item.recommended_by) + '</div>' : '';
   const summary = item.summary ? '<div class="lul-summary" style="margin-top:8px">' + esc(item.summary) + '</div>' : '';
-  const spotifyUrl = item.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(item.title));
+  const spotifyUrl = item.source !== 'custom' ? (item.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(item.title))) : null;
   div.innerHTML =
     '<div class="lul-question">' + esc(item.title) + '</div>' +
     (meta ? '<div style="font-size:0.78rem;color:var(--muted);margin-top:2px">' + esc(meta) + '</div>' : '') +
     recBy + summary +
     '<div class="lul-actions" style="margin-top:12px">' +
-      '<a class="btn btn-primary" href="' + esc(spotifyUrl) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">Open in Spotify</a>' +
-      '<button class="btn btn-outline listen-dismiss" style="flex:1">Dismiss</button>' +
+      (spotifyUrl ? '<a class="btn btn-primary" href="' + esc(spotifyUrl) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">Open in Spotify</a>' : '') +
+      '<button class="btn ' + (spotifyUrl ? 'btn-outline' : 'btn-primary') + ' listen-dismiss" style="flex:1">Dismiss</button>' +
     '</div>';
   div.querySelector('.listen-dismiss').addEventListener('click', async () => {
     try { await listenQueueDismiss(item.id); } catch(e) {}
@@ -4070,7 +4089,7 @@ async function loadListenScreen() {
 
   // B. Manual queue
   try {
-    const items = (await listenQueueFetch() || []).filter(i => i.source === 'manual');
+    const items = (await listenQueueFetch() || []).filter(i => i.source === 'manual' || i.source === 'custom');
     queueEl.innerHTML = queueHeader;
     if (items.length === 0) {
       queueEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">Nothing queued. Tap + to add.</p>';
@@ -4198,21 +4217,44 @@ document.getElementById('listen-spotify-connect').addEventListener('click', () =
 // Listen add modal
 document.getElementById('listen-add-close').addEventListener('click', () =>
   document.getElementById('listen-add-modal').classList.add('hidden'));
+
+document.querySelectorAll('.listen-add-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.listen-add-tab').forEach(t => t.className = 'btn btn-outline listen-add-tab');
+    tab.className = 'btn btn-primary listen-add-tab';
+    const isCustom = tab.dataset.tab === 'custom';
+    document.getElementById('listen-tab-podcast').classList.toggle('hidden', isCustom);
+    document.getElementById('listen-tab-custom').classList.toggle('hidden', !isCustom);
+  });
+});
+
 document.getElementById('listen-add-save').addEventListener('click', async () => {
-  const title = document.getElementById('listen-add-title').value.trim();
+  const isCustom = document.querySelector('.listen-add-tab[data-tab="custom"]').classList.contains('btn-primary');
   const recBy = document.getElementById('listen-add-recby').value.trim();
-  if (!title) { showToast('Enter a show or episode name'); return; }
+  let title, row;
+  if (isCustom) {
+    title = document.getElementById('listen-add-custom-title').value.trim();
+    if (!title) { showToast('Enter a title'); return; }
+    const mins = parseInt(document.getElementById('listen-add-duration').value) || 0;
+    row = { title, recommended_by: recBy || null, source: 'custom', duration_secs: mins > 0 ? mins * 60 : null };
+  } else {
+    title = document.getElementById('listen-add-title').value.trim();
+    if (!title) { showToast('Enter a show or episode name'); return; }
+    row = { title, recommended_by: recBy || null, source: 'manual' };
+  }
   const btn = document.getElementById('listen-add-save');
   btn.textContent = 'Saving…'; btn.disabled = true;
   try {
-    const rows = await listenQueueCreate({ title, recommended_by: recBy || null, source: 'manual' });
+    const rows = await listenQueueCreate(row);
     const newRow = Array.isArray(rows) ? rows[0] : rows;
     document.getElementById('listen-add-modal').classList.add('hidden');
     document.getElementById('listen-add-title').value = '';
+    document.getElementById('listen-add-custom-title').value = '';
+    document.getElementById('listen-add-duration').value = '';
     document.getElementById('listen-add-recby').value = '';
-    showToast('Saved — enriching in background ✓');
+    showToast(isCustom ? 'Saved ✓' : 'Saved — enriching in background ✓');
     updateListenBadge();
-    if (newRow?.id) listenEnrich(newRow.id, title);
+    if (!isCustom && newRow?.id) listenEnrich(newRow.id, title);
   } catch(e) { showToast('Error: ' + e.message); }
   btn.textContent = 'Save'; btn.disabled = false;
 });
