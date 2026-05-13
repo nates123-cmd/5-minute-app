@@ -635,6 +635,29 @@
     #offline-banner { display:none; background:#e8d5d5; color:#7a2525; font-size:0.8rem; font-weight:500; text-align:center; padding:9px 16px; position:fixed; top:0; left:0; right:0; z-index:1000; }
     body.offline-active { padding-top: 36px; }
 
+    /* ── Listen pull-to-refresh ─────────────── */
+    #screen-listen { position: relative; }
+    #listen-pull-indicator {
+      position: absolute;
+      top: 0; left: 50%;
+      transform: translate(-50%, -100%);
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 50;
+    }
+    .listen-pull-spinner {
+      width: 22px; height: 22px;
+      border: 2.5px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+    }
+    #listen-pull-indicator.refreshing .listen-pull-spinner {
+      animation: listen-pull-spin 0.8s linear infinite;
+    }
+    @keyframes listen-pull-spin { to { transform: rotate(360deg); } }
+
   </style>
 </head>
 <body>
@@ -4142,6 +4165,67 @@ document.getElementById('listen-manage-btn').addEventListener('click', async () 
 });
 document.getElementById('listen-manage-close').addEventListener('click', () =>
   document.getElementById('listen-manage-modal').classList.add('hidden'));
+
+// Pull-to-refresh on the Listen screen
+(function setupListenPullToRefresh() {
+  const screen = document.getElementById('screen-listen');
+  if (!screen) return;
+  const ind = document.createElement('div');
+  ind.id = 'listen-pull-indicator';
+  ind.innerHTML = '<div class="listen-pull-spinner"></div>';
+  screen.insertBefore(ind, screen.firstChild);
+
+  const THRESHOLD = 70;
+  let startY = null;
+  let currentPull = 0;
+  let pulling = false;
+  let refreshing = false;
+
+  function reset(animate) {
+    ind.style.transition = animate ? 'transform 0.25s ease, opacity 0.25s ease' : 'none';
+    ind.style.transform = 'translate(-50%, -100%)';
+    ind.style.opacity = '0';
+    ind.classList.remove('refreshing');
+    if (animate) setTimeout(() => { ind.style.transition = ''; }, 280);
+  }
+
+  screen.addEventListener('touchstart', (e) => {
+    if (refreshing) return;
+    if (window.scrollY > 0) return;
+    startY = e.touches[0].clientY;
+    currentPull = 0;
+    pulling = true;
+    ind.style.transition = 'none';
+  }, { passive: true });
+
+  screen.addEventListener('touchmove', (e) => {
+    if (!pulling || refreshing) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) { currentPull = 0; ind.style.opacity = '0'; ind.style.transform = 'translate(-50%, -100%)'; return; }
+    currentPull = Math.min(dy * 0.5, 120);
+    ind.style.transform = 'translate(-50%, calc(-100% + ' + currentPull + 'px))';
+    ind.style.opacity = String(Math.min(currentPull / THRESHOLD, 1));
+  }, { passive: true });
+
+  const onEnd = async () => {
+    if (!pulling || refreshing) { pulling = false; return; }
+    pulling = false;
+    if (currentPull >= THRESHOLD) {
+      refreshing = true;
+      ind.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+      ind.style.transform = 'translate(-50%, calc(-100% + ' + THRESHOLD + 'px))';
+      ind.style.opacity = '1';
+      ind.classList.add('refreshing');
+      try { await loadListenScreen(); } catch(e) {}
+      refreshing = false;
+      reset(true);
+    } else {
+      reset(true);
+    }
+  };
+  screen.addEventListener('touchend', onEnd, { passive: true });
+  screen.addEventListener('touchcancel', onEnd, { passive: true });
+})();
 
 async function renderSubsList() {
   const el = document.getElementById('listen-subs-list');
