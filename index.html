@@ -635,24 +635,6 @@
     #offline-banner { display:none; background:#e8d5d5; color:#7a2525; font-size:0.8rem; font-weight:500; text-align:center; padding:9px 16px; position:fixed; top:0; left:0; right:0; z-index:1000; }
     body.offline-active { padding-top: 36px; }
 
-    /* ── Mantra ──────────────────────────────── */
-    .mantra-text-area { display:flex; flex:1; align-items:center; justify-content:center; padding:20px 0; }
-    .mantra-text { font-size:1.55rem; font-weight:600; letter-spacing:-0.4px; line-height:1.5; text-align:center; color:var(--text); }
-    .mantra-empty { text-align:center; color:var(--muted); padding:48px 0; line-height:1.8; font-size:0.93rem; }
-    .mantra-list-item { display:flex; align-items:flex-start; gap:12px; background:var(--card-bg); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; }
-    .mantra-list-text { flex:1; font-size:0.93rem; line-height:1.55; }
-    .mantra-list-actions { display:flex; gap:6px; flex-shrink:0; margin-top:2px; }
-    .btn-mantra-icon { background:none; border:1.5px solid var(--border); border-radius:8px; color:var(--muted); font-size:0.85rem; cursor:pointer; padding:4px 8px; line-height:1; }
-    .mantra-modal { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:flex-end; justify-content:center; z-index:500; }
-    .mantra-modal.hidden { display:none; }
-    .mantra-modal-box { background:var(--bg); border-radius:20px 20px 0 0; padding:24px 20px calc(32px + env(safe-area-inset-bottom)); width:100%; max-width:600px; }
-    .mantra-confirm { position:fixed; inset:0; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:600; }
-    .mantra-confirm.hidden { display:none; }
-    .mantra-confirm-box { background:var(--bg); border-radius:var(--radius); padding:28px 24px; max-width:320px; width:90%; text-align:center; }
-    .mantra-confirm-msg { font-size:1rem; font-weight:600; margin-bottom:6px; }
-    .mantra-confirm-preview { font-size:0.82rem; color:var(--muted); font-style:italic; margin-top:4px; }
-    .mantra-confirm-btns { display:flex; gap:10px; margin-top:20px; }
-    .mantra-confirm-btns .btn { flex:1; }
   </style>
 </head>
 <body>
@@ -695,10 +677,6 @@
     <div class="activity-card" style="grid-column:1/-1" id="srs-due-card" data-activity="srs-review">
       <h3>Review Due</h3>
       <p>Loading…</p>
-    </div>
-    <div class="activity-card" style="grid-column:1/-1" data-activity="mantra">
-      <h3>Mantras</h3>
-      <p>Your personal collection of reminders and principles.</p>
     </div>
     <div class="activity-card" style="grid-column:1/-1" id="lul-home-card">
       <h3>Look Up Later</h3>
@@ -857,7 +835,6 @@
   <button class="btn-refresh" id="stoic-refresh">New passage</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="stoic-still-btn">Reflect on it in Still</button>
-    <button class="btn btn-outline" id="stoic-mantra-btn">Add Mantra</button>
   </div>
 </div>
 
@@ -871,7 +848,6 @@
   <button class="btn-refresh" id="stoic-reminder-refresh">New reminder</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="stoic-reminder-still-btn">Reflect on it in Still</button>
-    <button class="btn btn-outline" id="stoic-reminder-mantra-btn">Add to Mantras</button>
   </div>
 </div>
 
@@ -1002,7 +978,6 @@
   <button class="btn-refresh" id="introspection-refresh">New question</button>
   <div class="activity-actions">
     <button class="btn btn-outline" id="introspection-still-btn">Reflect on it in Still</button>
-    <button class="btn btn-outline" id="introspection-mantra-btn">Add to Mantras</button>
   </div>
 </div>
 
@@ -1116,9 +1091,7 @@
   </div>
   <div id="thought-experiment-content"></div>
   <button class="btn-refresh" id="thought-experiment-refresh">New experiment</button>
-  <div class="activity-actions">
-    <button class="btn btn-outline" id="thought-experiment-mantra-btn">Add to Mantras</button>
-  </div>
+  <div class="activity-actions"></div>
 </div>
 
 <!-- ETYMOLOGY -->
@@ -1140,9 +1113,7 @@
   </div>
   <div id="cognitive-bias-content"></div>
   <button class="btn-refresh" id="cognitive-bias-refresh">New bias</button>
-  <div class="activity-actions">
-    <button class="btn btn-outline" id="cognitive-bias-mantra-btn">Add to Mantras</button>
-  </div>
+  <div class="activity-actions"></div>
 </div>
 
 <!-- BRAIN TEASER -->
@@ -1215,52 +1186,6 @@
   <button class="btn btn-primary" id="done-home-btn" style="width:180px;">Back to home</button>
 </div>
 
-<!-- MANTRA SESSION -->
-<div id="screen-mantra" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Mantras</span>
-    <button class="btn-settings" id="mantra-manage-btn" style="margin-left:auto">Manage</button>
-  </div>
-  <div id="mantra-session-body" style="display:flex;flex-direction:column;flex:1;"></div>
-  <div class="activity-actions" id="mantra-session-actions"></div>
-</div>
-
-<!-- MANTRA MANAGE -->
-<div id="screen-mantra-manage" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" id="mantra-back-btn">←</button>
-    <span class="activity-title">Manage Mantras</span>
-    <button class="btn-settings" id="mantra-add-new-btn" style="margin-left:auto">+ Add</button>
-  </div>
-  <div id="mantra-list-container"></div>
-</div>
-
-<!-- Mantra Add/Edit Modal -->
-<div id="mantra-edit-modal" class="mantra-modal hidden">
-  <div class="mantra-modal-box">
-    <div class="srs-modal-header">
-      <span class="srs-modal-title" id="mantra-edit-title">Add Mantra</span>
-      <button class="srs-modal-close" id="mantra-edit-close">×</button>
-    </div>
-    <label class="srs-label" style="margin-top:4px">Mantra</label>
-    <textarea id="mantra-edit-text" class="anki-textarea" rows="4" placeholder="e.g. You are what you repeatedly do."></textarea>
-    <button class="btn btn-primary" id="mantra-edit-save" style="width:100%;margin-top:16px">Save</button>
-  </div>
-</div>
-
-<!-- Mantra Delete Confirm -->
-<div id="mantra-delete-confirm" class="mantra-confirm hidden">
-  <div class="mantra-confirm-box">
-    <div class="mantra-confirm-msg">Remove this mantra?</div>
-    <div class="mantra-confirm-preview" id="mantra-delete-preview"></div>
-    <div class="mantra-confirm-btns">
-      <button class="btn btn-outline" id="mantra-delete-cancel">Cancel</button>
-      <button class="btn btn-primary" id="mantra-delete-yes">Remove</button>
-    </div>
-  </div>
-</div>
-
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
@@ -1295,7 +1220,6 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-outline add-menu-opt" data-add="card">Add Card</button>
-      <button class="btn btn-outline add-menu-opt" data-add="mantra">Add Mantra</button>
       <button class="btn btn-outline add-menu-opt" data-add="lul">Look Up Later</button>
       <button class="btn btn-outline add-menu-opt" data-add="listen">Listen Later</button>
     </div>
@@ -1584,7 +1508,7 @@ const DURATION_ACTIVITIES = {
   '5min': ['history','cooking','stoic','reading','mindfulness','breathe','journal',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
            'thought-experiment','cognitive-bias','brain-teaser','health-insight'],
-  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection','mantra'],
+  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment','health-insight','productivity-insight'],
@@ -1592,7 +1516,7 @@ const DURATION_ACTIVITIES = {
   'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
-                   'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight','mantra',
+                   'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight',
                    'quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
 };
 
@@ -1734,7 +1658,6 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'anki-input')        resetAnkiInput();
-    if (a === 'mantra')            mantraLoad();
     if (a === 'look-up-later')     loadLulScreen();
     if (a === 'listen')            loadListenScreen();
   }
@@ -1984,25 +1907,6 @@ document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
 document.getElementById('stoic-still-btn').addEventListener('click', async () => {
   if (!stoicData) return;
   openInStill('"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation);
-});
-
-document.getElementById('stoic-mantra-btn').addEventListener('click', async () => {
-  if (!stoicData) return;
-  const btn = document.getElementById('stoic-mantra-btn');
-  btn.disabled = true;
-  btn.textContent = 'Generating…';
-  try {
-    const d = await callClaude(
-      'Distill this Stoic passage into a personal mantra — 1 to 3 punchy sentences someone could repeat to themselves. Write it in the second person ("you") or as a direct principle. No quotes, no attribution.\n\nPassage: "' + stoicData.passage + '"\n\nExplanation: ' + stoicData.explanation + '\n\nReturn JSON: {mantra}'
-    );
-    openMantraEdit(null);
-    document.getElementById('mantra-edit-text').value = d.mantra || '';
-  } catch(e) {
-    showToast('Could not generate mantra');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Add Mantra';
-  }
 });
 
 // ── Journal ───────────────────────────────────
@@ -2317,39 +2221,6 @@ document.getElementById('stoic-reminder-still-btn').addEventListener('click', as
   if (!stoicReminderData) return;
   openInStill(stoicReminderData.reminder + '\n\n' + stoicReminderData.context);
 });
-
-async function addToMantras(text) {
-  if (!text) return;
-  try {
-    await sbFetch('mantras', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify({ text }) });
-    showToast('Added to mantras');
-  } catch(e) {
-    showToast('Could not save mantra');
-  }
-}
-
-document.getElementById('stoic-reminder-mantra-btn').addEventListener('click', () => {
-  if (!stoicReminderData) return;
-  addToMantras(stoicReminderData.reminder);
-});
-
-document.getElementById('introspection-mantra-btn').addEventListener('click', () => {
-  if (!introspectionData) return;
-  addToMantras(introspectionData.question);
-});
-
-document.getElementById('thought-experiment-mantra-btn').addEventListener('click', () => {
-  const d = ankiData['thought-experiment'];
-  if (!d) return;
-  addToMantras(d.name + ': ' + d.question);
-});
-
-document.getElementById('cognitive-bias-mantra-btn').addEventListener('click', () => {
-  const d = ankiData['cognitive-bias'];
-  if (!d) return;
-  addToMantras(d.name + ' — ' + d.antidote);
-});
-
 
 // ── Anki Input screen ─────────────────────────
 function resetAnkiInput() {
@@ -3076,7 +2947,7 @@ document.getElementById('srs-add-save').addEventListener('click', async () => {
 });
 
 // "Remember It" — condense long activity content into a flashcard via Claude,
-// then open the editable preview modal. Mirrors the Stoic→Mantra distill flow.
+// then open the editable preview modal for review.
 let currentRememberSource = null;
 
 async function generateRememberCard(source, seed) {
@@ -3827,160 +3698,6 @@ document.getElementById('quiz-back').addEventListener('click', closeQuiz);
 // Init SRS on page load
 updateDueBadge();
 
-// ── Mantras ───────────────────────────────────
-let mantraList     = [];
-let mantraShuffled = [];
-let mantraIdx      = 0;
-let mantraEditId   = null;
-let mantraDeleteId = null;
-
-async function mantraLoad() {
-  const body = document.getElementById('mantra-session-body');
-  body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:48px 0">Loading…</p>';
-  document.getElementById('mantra-session-actions').innerHTML = '';
-  if (!navigator.onLine) { showToast('Mantras require a connection'); showScreen('home'); return; }
-  try {
-    mantraList = await sbFetch('mantras?order=created_at.asc&select=*') || [];
-  } catch(e) {
-    mantraList = [];
-    body.innerHTML = '<p style="color:var(--muted);text-align:center;padding:48px 0">Couldn\'t load mantras.<br><small>' + esc(e.message) + '</small></p>';
-    return;
-  }
-  mantraShuffle();
-}
-
-function mantraShuffle() {
-  mantraShuffled = [...mantraList].sort(() => Math.random() - 0.5);
-  mantraIdx = 0;
-  mantraRenderSession();
-}
-
-function mantraRenderSession() {
-  const body    = document.getElementById('mantra-session-body');
-  const actions = document.getElementById('mantra-session-actions');
-  if (!mantraShuffled.length) {
-    body.innerHTML = '<div class="mantra-empty">No mantras yet.<br>Add your first one below.</div>';
-    actions.innerHTML = '<button class="btn btn-primary" id="mantra-empty-add-btn">Add Mantra</button>';
-    document.getElementById('mantra-empty-add-btn').addEventListener('click', () => {
-      showScreen('mantra-manage');
-      mantraRenderList();
-      openMantraEdit(null);
-    });
-    return;
-  }
-  const m = mantraShuffled[mantraIdx];
-  body.innerHTML = '<div class="mantra-text-area"><div class="mantra-text">' + esc(m.text) + '</div></div>';
-  actions.innerHTML =
-    '<button class="btn btn-outline" id="mantra-still-btn">Reflect in Still</button>' +
-    '<button class="btn btn-primary" id="mantra-next-btn">Next</button>';
-  document.getElementById('mantra-next-btn').addEventListener('click', () => {
-    mantraIdx++;
-    if (mantraIdx >= mantraShuffled.length) mantraShuffle();
-    else mantraRenderSession();
-  });
-  document.getElementById('mantra-still-btn').addEventListener('click', () => openInStill(m.text));
-}
-
-// Manage screen
-function mantraRenderList() {
-  const container = document.getElementById('mantra-list-container');
-  if (!mantraList.length) {
-    container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:48px 0">No mantras yet</p>';
-    return;
-  }
-  container.innerHTML = mantraList.map(m =>
-    '<div class="mantra-list-item" data-mid="' + esc(m.id) + '">' +
-      '<div class="mantra-list-text">' + esc(m.text) + '</div>' +
-      '<div class="mantra-list-actions">' +
-        '<button class="btn-mantra-icon" data-edit="' + esc(m.id) + '" title="Edit">✎</button>' +
-        '<button class="btn-mantra-icon" data-delete="' + esc(m.id) + '" title="Delete">✕</button>' +
-      '</div>' +
-    '</div>'
-  ).join('');
-}
-
-document.getElementById('mantra-list-container').addEventListener('click', e => {
-  const eb = e.target.closest('[data-edit]');
-  if (eb) { openMantraEdit(eb.dataset.edit); return; }
-  const db = e.target.closest('[data-delete]');
-  if (db) { openMantraDelete(db.dataset.delete); }
-});
-
-function openMantraEdit(id) {
-  mantraEditId = id || null;
-  document.getElementById('mantra-edit-title').textContent = id ? 'Edit Mantra' : 'Add Mantra';
-  const m = id ? mantraList.find(x => x.id === id) : null;
-  document.getElementById('mantra-edit-text').value = m ? m.text : '';
-  document.getElementById('mantra-edit-modal').classList.remove('hidden');
-  setTimeout(() => document.getElementById('mantra-edit-text').focus(), 60);
-}
-
-document.getElementById('mantra-edit-close').addEventListener('click', () =>
-  document.getElementById('mantra-edit-modal').classList.add('hidden')
-);
-
-document.getElementById('mantra-edit-save').addEventListener('click', async () => {
-  const text = document.getElementById('mantra-edit-text').value.trim();
-  if (!text) { showToast('Enter a mantra'); return; }
-  const btn = document.getElementById('mantra-edit-save');
-  btn.textContent = 'Saving…';
-  try {
-    if (mantraEditId) {
-      await sbFetch('mantras?id=eq.' + mantraEditId, {
-        method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ text }),
-      });
-      const m = mantraList.find(x => x.id === mantraEditId);
-      if (m) m.text = text;
-    } else {
-      const created = await sbFetch('mantras', {
-        method: 'POST', prefer: 'return=representation', body: JSON.stringify({ text }),
-      });
-      if (created && created.length) mantraList.push(created[0]);
-    }
-    document.getElementById('mantra-edit-modal').classList.add('hidden');
-    mantraRenderList();
-    showToast('Saved ✓');
-  } catch(e) { showToast('Error: ' + e.message); }
-  btn.textContent = 'Save';
-});
-
-function openMantraDelete(id) {
-  mantraDeleteId = id;
-  const m = mantraList.find(x => x.id === id);
-  document.getElementById('mantra-delete-preview').textContent =
-    m ? (m.text.length > 70 ? m.text.slice(0, 70) + '…' : m.text) : '';
-  document.getElementById('mantra-delete-confirm').classList.remove('hidden');
-}
-
-document.getElementById('mantra-delete-cancel').addEventListener('click', () => {
-  document.getElementById('mantra-delete-confirm').classList.add('hidden');
-  mantraDeleteId = null;
-});
-
-document.getElementById('mantra-delete-yes').addEventListener('click', async () => {
-  if (!mantraDeleteId) return;
-  try {
-    await sbFetch('mantras?id=eq.' + mantraDeleteId, { method: 'DELETE', prefer: 'return=minimal' });
-    mantraList = mantraList.filter(x => x.id !== mantraDeleteId);
-    document.getElementById('mantra-delete-confirm').classList.add('hidden');
-    mantraDeleteId = null;
-    mantraRenderList();
-    showToast('Removed ✓');
-  } catch(e) { showToast('Error: ' + e.message); }
-});
-
-document.getElementById('mantra-manage-btn').addEventListener('click', () => {
-  showScreen('mantra-manage');
-  mantraRenderList();
-});
-
-document.getElementById('mantra-back-btn').addEventListener('click', () => {
-  showScreen('mantra');
-  mantraLoad();
-});
-
-document.getElementById('mantra-add-new-btn').addEventListener('click', () => openMantraEdit(null));
-
 // ── Global Add Menu ──────────────────────────────────────
 document.getElementById('btn-add-menu').addEventListener('click', () =>
   document.getElementById('add-menu-modal').classList.remove('hidden'));
@@ -3990,7 +3707,6 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('add-menu-modal').classList.add('hidden');
     if (btn.dataset.add === 'card')   navigateToActivity('anki-input');
-    if (btn.dataset.add === 'mantra') openMantraEdit(null);
     if (btn.dataset.add === 'lul') {
       document.getElementById('lul-question-input').value = '';
       document.getElementById('lul-add-modal').classList.remove('hidden');
