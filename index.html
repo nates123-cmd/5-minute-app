@@ -3942,12 +3942,22 @@ async function updateListenBadge() {
   } catch(e) {}
 }
 
+function fmtListenDate(d) {
+  if (!d) return '';
+  const date = new Date(d);
+  if (isNaN(date.getTime())) return '';
+  const now = new Date();
+  const opts = { month: 'short', day: 'numeric' };
+  if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
+  return date.toLocaleDateString('en-US', opts);
+}
 function listenRenderItem(item, container) {
   const div = document.createElement('div');
   div.className = 'lul-item';
   div.dataset.id = item.id;
   const dur = item.duration_secs ? Math.round(item.duration_secs / 60) + ' min' : '';
-  const meta = [item.show_name, dur].filter(Boolean).join(' · ');
+  const dateStr = fmtListenDate(item.pub_date);
+  const meta = [item.show_name, dateStr, dur].filter(Boolean).join(' · ');
   const recBy = item.recommended_by ? '<div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Rec by ' + esc(item.recommended_by) + '</div>' : '';
   const summary = item.summary ? '<div class="lul-summary" style="margin-top:8px">' + esc(item.summary) + '</div>' : '';
   const spotifyUrl = item.source !== 'custom' ? (item.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(item.title))) : null;
