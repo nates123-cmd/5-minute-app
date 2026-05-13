@@ -854,7 +854,7 @@
   <div id="stoic-content"></div>
   <button class="btn-refresh" id="stoic-refresh">New passage</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="stoic-journal-btn">Journal about it</button>
+    <button class="btn btn-outline" id="stoic-still-btn">Reflect on it in Still</button>
     <button class="btn btn-outline" id="stoic-mantra-btn">Add Mantra</button>
   </div>
 </div>
@@ -975,7 +975,8 @@
   </div>
   <button class="btn-refresh" id="journal-refresh">New prompt</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="journal-notion-btn">Copy &amp; Open Notion</button><!-- TODO: specific Notion page deep link -->  </div>
+    <button class="btn btn-outline" id="journal-still-btn">Reflect on it in Still</button>
+  </div>
 </div>
 
 <!-- FUN FACT -->
@@ -998,7 +999,7 @@
   <div id="introspection-content"></div>
   <button class="btn-refresh" id="introspection-refresh">New question</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="introspection-notion-btn">Copy &amp; Open Notion</button>
+    <button class="btn btn-outline" id="introspection-still-btn">Reflect on it in Still</button>
     <button class="btn btn-outline" id="introspection-mantra-btn">Add to Mantras</button>
   </div>
 </div>
@@ -1430,6 +1431,14 @@ async function journalToNotion(type, payload) {
   showToast('Copied — opening Shortcuts');
   const name = type === 'stoic' ? 'Stoic%20Journal' : 'Notes%20to%20Notion';
   setTimeout(() => { window.location.href = 'shortcuts://run-shortcut?name=' + name; }, 600);
+}
+
+async function openInStill(text) {
+  if (!text) return;
+  try { await navigator.clipboard.writeText(text); } catch(e) {}
+  showToast('Opening Still');
+  const url = 'https://nates123-cmd.github.io/Still-App/?capture=' + encodeURIComponent(text);
+  setTimeout(() => { window.open(url, '_blank', 'noopener'); }, 400);
 }
 
 // ── Persistent storage helpers ────────────────
@@ -1969,12 +1978,9 @@ function renderStoic(d) {
 
 document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
 
-document.getElementById('stoic-journal-btn').addEventListener('click', async () => {
+document.getElementById('stoic-still-btn').addEventListener('click', async () => {
   if (!stoicData) return;
-  journalToNotion('stoic', {
-    title: stoicData.author,
-    content: '"' + stoicData.passage + '"\n\n' + stoicData.explanation,
-  });
+  openInStill('"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation);
 });
 
 document.getElementById('stoic-mantra-btn').addEventListener('click', async () => {
@@ -2023,11 +2029,9 @@ async function loadJournal() {
 
 document.getElementById('journal-refresh').addEventListener('click', loadJournal);
 
-document.getElementById('journal-notion-btn').addEventListener('click', async () => {
-  journalToNotion('stoic', {
-    title: journalData ? journalData.question : 'Journal',
-    content: (journalData ? journalData.question + '\n\n' + journalData.instruction : ''),
-  });
+document.getElementById('journal-still-btn').addEventListener('click', async () => {
+  if (!journalData) return;
+  openInStill(journalData.question + '\n\n' + journalData.instruction);
 });
 
 // ── Shared loader helper ─────────────────────
@@ -2087,12 +2091,9 @@ const loadIntrospection = makeLoader(
   { question: 'What would you do differently if no one would ever find out?', prompt: 'Write for 60 seconds without stopping. Don\'t edit.' }
 );
 document.getElementById('introspection-refresh').addEventListener('click', loadIntrospection);
-document.getElementById('introspection-notion-btn').addEventListener('click', async () => {
+document.getElementById('introspection-still-btn').addEventListener('click', async () => {
   if (!introspectionData) return;
-  journalToNotion('stoic', {
-    title: introspectionData.question,
-    content: introspectionData.question + '\n\n' + introspectionData.prompt,
-  });
+  openInStill(introspectionData.question + '\n\n' + introspectionData.prompt);
 });
 
 // ── Mental Math ───────────────────────────────
@@ -2311,11 +2312,7 @@ document.getElementById('stoic-reminder-refresh').addEventListener('click', load
 
 document.getElementById('stoic-reminder-still-btn').addEventListener('click', async () => {
   if (!stoicReminderData) return;
-  const text = stoicReminderData.reminder + '\n\n' + stoicReminderData.context;
-  try { await navigator.clipboard.writeText(text); } catch(e) {}
-  showToast('Opening Still');
-  const url = 'https://nates123-cmd.github.io/Still-App/?capture=' + encodeURIComponent(text);
-  setTimeout(() => { window.open(url, '_blank', 'noopener'); }, 400);
+  openInStill(stoicReminderData.reminder + '\n\n' + stoicReminderData.context);
 });
 
 async function addToMantras(text) {
@@ -3846,12 +3843,7 @@ function mantraRenderSession() {
     if (mantraIdx >= mantraShuffled.length) mantraShuffle();
     else mantraRenderSession();
   });
-  document.getElementById('mantra-still-btn').addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(m.text); } catch(e) {}
-    showToast('Opening Still');
-    const url = 'https://nates123-cmd.github.io/Still-App/?capture=' + encodeURIComponent(m.text);
-    setTimeout(() => { window.open(url, '_blank', 'noopener'); }, 400);
-  });
+  document.getElementById('mantra-still-btn').addEventListener('click', () => openInStill(m.text));
 }
 
 // Manage screen
