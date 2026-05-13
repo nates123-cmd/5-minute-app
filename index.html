@@ -3976,6 +3976,12 @@ const LISTEN_QUEUE_HEADER = '<div style="font-size:0.75rem;font-weight:700;text-
 
 function getListenSort() { return localStorage.getItem('listen_sort') || 'recent'; }
 function setListenSort(v) { localStorage.setItem('listen_sort', v); }
+function listenRecencyTime(item) {
+  // Prefer real episode publish date; fall back to when it was added.
+  const t = item.pub_date ? new Date(item.pub_date).getTime() : NaN;
+  if (!isNaN(t)) return t;
+  return new Date(item.created_at || 0).getTime();
+}
 function sortListenItems(items) {
   const mode = getListenSort();
   return items.slice().sort((a, b) => {
@@ -3984,7 +3990,7 @@ function sortListenItems(items) {
       const db = (b.duration_secs == null) ? Infinity : b.duration_secs;
       if (da !== db) return da - db;
     }
-    return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    return listenRecencyTime(b) - listenRecencyTime(a);
   });
 }
 function updateListenSortUI() {
@@ -4059,6 +4065,7 @@ async function loadListenScreen() {
             const titleLc = ep.title.toLowerCase();
             const matchPending = subPending.find(i => i.title.toLowerCase() === titleLc);
             if (matchPending) {
+              matchPending.pub_date = ep.pubDate || matchPending.pub_date || null;
               _listenSubsItems.push(matchPending);
             } else if (!seenTitles.has(titleLc) && subCount < 2) {
               // Genuinely new episode — add up to a max of 2 pending per show
@@ -4070,7 +4077,11 @@ async function loadListenScreen() {
                 spotify_url: ep.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
               });
               const newItem = Array.isArray(rows) ? rows[0] : rows;
-              if (newItem) { _listenSubsItems.push(newItem); subCount++; }
+              if (newItem) {
+                newItem.pub_date = ep.pubDate || null;
+                _listenSubsItems.push(newItem);
+                subCount++;
+              }
             }
             // else: episode was previously in queue (dismissed) — skip
           }
