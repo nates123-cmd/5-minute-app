@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Break" />
@@ -18,6 +18,14 @@
   <title>Break</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    /* Lock horizontal motion + pinch zoom at the document level. Inner
+       elements with their own gestures still work because they declare
+       their own touch-action. */
+    html, body {
+      overflow-x: hidden;
+      overscroll-behavior-x: none;
+      touch-action: pan-y;
+    }
 
     :root {
       /* Surfaces */
@@ -64,6 +72,8 @@
       color: var(--text);
       font-family: var(--font-sans);
       -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      overscroll-behavior-x: none;
     }
 
     body {
@@ -71,6 +81,7 @@
       flex-direction: column;
       min-height: 100dvh;
       padding-bottom: env(safe-area-inset-bottom);
+      touch-action: pan-y;
     }
 
     .screen {
@@ -297,25 +308,6 @@
       margin-bottom: 20px;
     }
 
-    /* Journal */
-    .journal-prompt {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-    .journal-prompt .question {
-      font-size: 1.15rem;
-      font-weight: 600;
-      margin-bottom: 10px;
-      letter-spacing: -0.2px;
-    }
-    .journal-prompt .instruction {
-      font-size: 0.87rem;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-
     /* Card footer (thumbs + bookmark) */
     .card-actions {
       display: flex;
@@ -330,7 +322,7 @@
       color: var(--muted);
       margin-right: auto;
     }
-    .btn-thumb, .btn-bookmark, .btn-share {
+    .btn-thumb, .btn-lul-save, .btn-share {
       background: none;
       border: 1.5px solid var(--border);
       border-radius: 8px;
@@ -343,37 +335,7 @@
     .btn-share { font-size: 0.78rem; padding: 5px 8px; }
     .btn-thumb.active-up   { background: #d4edda; border-color: #5cb85c; }
     .btn-thumb.active-down { background: #f8d7da; border-color: #d9534f; }
-    .btn-bookmark.saved    { color: var(--accent); border-color: var(--accent); }
-
-    /* Saved screen */
-    #screen-saved { gap: 16px; }
-    .saved-item {
-      background: var(--card-bg);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
-    .saved-item:active { opacity: 0.7; }
-    .saved-item-body { flex: 1; min-width: 0; }
-    .saved-item-title { font-size: 0.93rem; font-weight: 600; margin-bottom: 4px; }
-    .saved-item-meta  { font-size: 0.78rem; color: var(--muted); }
-    .saved-item-meta a { color: var(--accent); text-decoration: none; }
-    .btn-unsave {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 1.2rem;
-      cursor: pointer;
-      padding: 0;
-      flex-shrink: 0;
-      line-height: 1;
-    }
-    .saved-empty { color: var(--muted); font-size: 0.93rem; text-align: center; margin-top: 40px; line-height: 1.7; }
+    .btn-lul-save.saved    { color: var(--accent); border-color: var(--accent); }
     /* Timer modal */
     .timer-modal {
       position: fixed; inset: 0;
@@ -571,7 +533,10 @@
     .lul-question { font-weight: 600; font-size: 0.95rem; line-height: 1.45; margin-bottom: 12px; }
     .lul-actions { display: flex; gap: 10px; }
     .lul-actions .btn { flex: 1; padding: 11px 8px; font-size: 0.88rem; }
-    .lul-answer { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .lul-answer { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); width: 100%; }
+    .lul-answer-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; width: 100%; }
+    .lul-3btns { display: flex; gap: 8px; width: 100%; }
+    .lul-3btns .btn { flex: 1 1 0; min-width: 0; padding: 11px 6px; font-size: 0.85rem; text-align: center; }
     .lul-tldr { font-size: 0.88rem; font-weight: 600; color: var(--text); background: var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; line-height: 1.45; }
     .lul-tldr-label { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); display: block; margin-bottom: 4px; }
     .lul-summary { font-size: 0.9rem; line-height: 1.6; color: var(--text); white-space: pre-wrap; }
@@ -1008,7 +973,6 @@
       <button class="btn-icon" id="btn-timer-menu" title="Set timer">⏱</button>
       <button class="btn-icon" id="btn-home-overflow" title="More" aria-haspopup="true">⋯</button>
       <div class="home-overflow-menu hidden" id="home-overflow-menu" role="menu">
-        <button class="overflow-item" id="btn-saved">Saved</button>
         <button class="overflow-item" id="btn-settings">API key</button>
       </div>
     </div>
@@ -1078,10 +1042,6 @@
     <div class="activity-card" data-activity="breathe">
       <h3>Breathe</h3>
       <p>Just breathe. That's it.</p>
-    </div>
-    <div class="activity-card" data-activity="journal">
-      <h3>Journal Prompt</h3>
-      <p>One honest question. Three bullets.</p>
     </div>
     <div class="activity-card" data-activity="fun-fact">
       <h3>Fun Fact</h3>
@@ -1172,7 +1132,6 @@
     <button class="btn-back" data-back="home">←</button>
     <span class="activity-title">History Rabbit Hole</span>
   </div>
-  <p class="framing">Pick a topic and fall in. Set the timer, then read.</p>
   <div class="ai-cards" id="history-cards"></div>
   <button class="btn-refresh" id="history-refresh">Refresh topics</button>
   <div class="activity-actions">  </div>
@@ -1292,8 +1251,8 @@
     <button class="btn btn-primary listen-sort-btn" data-sort="recent" style="flex:1">Most recent</button>
     <button class="btn btn-outline listen-sort-btn" data-sort="shortest" style="flex:1">Shortest</button>
   </div>
-  <div id="listen-subscriptions"></div>
   <div id="listen-queue"></div>
+  <div id="listen-subscriptions"></div>
   <div id="listen-audiobook"></div>
 </div>
 
@@ -1304,22 +1263,6 @@
     <span class="activity-title">Look Up Later</span>
   </div>
   <div id="lul-list"></div>
-</div>
-
-<!-- JOURNAL -->
-<div id="screen-journal" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Journal Prompt</span>
-  </div>
-  <div class="journal-prompt" id="journal-prompt-box">
-    <div class="question" id="journal-question">What am I avoiding right now?</div>
-    <div class="instruction" id="journal-instruction">Write 3 bullets — what's the smallest next step for each?</div>
-  </div>
-  <button class="btn-refresh" id="journal-refresh">New prompt</button>
-  <div class="activity-actions">
-    <button class="btn btn-outline" id="journal-still-btn">Reflect on it in Still</button>
-  </div>
 </div>
 
 <!-- FUN FACT -->
@@ -1513,15 +1456,6 @@
   <div class="activity-actions">  </div>
 </div>
 
-<!-- SAVED -->
-<div id="screen-saved" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Saved</span>
-  </div>
-  <div id="saved-list"></div>
-</div>
-
 <!-- ANKI INPUT -->
 <div id="screen-anki-input" class="screen">
   <div class="activity-header">
@@ -1712,18 +1646,6 @@ let stoicData        = null;
 let selectedDuration = '5min';
 const searchTerms    = {};
 const ankiData       = {};
-const currentCardState = {}; // { [slug]: { html, identifier, url } } — for saved replay
-
-// ── Notion routing constants ───────────────────
-const AREA_COOKING   = 'https://www.notion.so/2ed706a32fa58041891bd645481cf059';
-const AREA_LEARNINGS = 'https://www.notion.so/2e2706a32fa580d397cae65539b3adf2';
-
-async function journalToNotion(type, payload) {
-  try { await navigator.clipboard.writeText(JSON.stringify(payload)); } catch(e) {}
-  showToast('Copied — opening Shortcuts');
-  const name = type === 'stoic' ? 'Stoic%20Journal' : 'Notes%20to%20Notion';
-  setTimeout(() => { window.location.href = 'shortcuts://run-shortcut?name=' + name; }, 600);
-}
 
 async function openInStill(text) {
   if (!text) return;
@@ -1740,6 +1662,26 @@ function getDismissed(slug) {
 function addDismissed(slug, id) {
   const arr = getDismissed(slug);
   if (!arr.includes(id)) { arr.push(id); localStorage.setItem('dismissed_' + slug, JSON.stringify(arr)); }
+}
+// Persistent "recently shown" list — last N items, FIFO. Used together with
+// dismissed list to avoid repeating recent results across page reloads even
+// when the user didn't explicitly dismiss them. (Patch v6 #7)
+const SHOWN_MAX = 40;
+function getShown(slug) {
+  try { return JSON.parse(localStorage.getItem('shown_' + slug) || '[]'); } catch(e) { return []; }
+}
+function addShown(slug, id) {
+  if (!id) return;
+  const a = getShown(slug);
+  const i = a.indexOf(id); if (i !== -1) a.splice(i, 1);
+  a.push(id);
+  while (a.length > SHOWN_MAX) a.shift();
+  localStorage.setItem('shown_' + slug, JSON.stringify(a));
+}
+function getSeenForExclusion(slug) {
+  // Combine dismissed + recently shown, dedup.
+  const set = new Set([...getDismissed(slug), ...getShown(slug)]);
+  return Array.from(set);
 }
 function getLiked(slug)    { try { return JSON.parse(localStorage.getItem('liked_' + slug) || '[]'); } catch(e) { return []; } }
 function getDisliked(slug) { try { return JSON.parse(localStorage.getItem('disliked_' + slug) || '[]'); } catch(e) { return []; } }
@@ -1759,17 +1701,6 @@ function clearRating(slug, id) {
     localStorage.setItem(prefix + slug, JSON.stringify(a));
   });
 }
-function getBookmarks() { try { return JSON.parse(localStorage.getItem('bookmarks') || '[]'); } catch(e) { return []; } }
-function saveBookmark(b) {
-  const arr = getBookmarks().filter(x => x.id !== b.id);
-  arr.unshift(b);
-  localStorage.setItem('bookmarks', JSON.stringify(arr));
-}
-function removeBookmark(id) {
-  localStorage.setItem('bookmarks', JSON.stringify(getBookmarks().filter(x => x.id !== id)));
-}
-function isBookmarked(id) { return getBookmarks().some(x => x.id === id); }
-
 // ── Swipe-to-dismiss ──────────────────────────
 function addSwipeListener(cardEl, slug, identifier, reloadFn) {
   let startX = 0;
@@ -1797,16 +1728,15 @@ function addSwipeListener(cardEl, slug, identifier, reloadFn) {
   });
 }
 
-// ── Card footer (thumbs + bookmark) ──────────
+// ── Card footer (thumbs + look-up-later + share) ──────────
 function cardFooter(slug, identifier, url) {
   const liked      = getLiked(slug).includes(identifier);
   const disliked   = getDisliked(slug).includes(identifier);
-  const bookmarked = isBookmarked(slug + '__' + identifier);
   return '<div class="card-actions">' +
     '<span class="swipe-hint">← swipe to dismiss</span>' +
     '<button class="btn-thumb' + (liked    ? ' active-up'   : '') + '" data-thumb="up"   data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👍</button>' +
     '<button class="btn-thumb' + (disliked ? ' active-down' : '') + '" data-thumb="down" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👎</button>' +
-    '<button class="btn-bookmark' + (bookmarked ? ' saved' : '') + '" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">🔖</button>' +
+    '<button class="btn-lul-save" title="Save to Look Up Later" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">🔖</button>' +
     '<button class="btn-share" data-share="1" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">↑</button>' +
   '</div>';
 }
@@ -1829,22 +1759,26 @@ document.addEventListener('click', async e => {
     }
     return;
   }
-  const bm = e.target.closest('.btn-bookmark');
+  // 🔖 → send to Look Up Later (Patch v6 #10)
+  const bm = e.target.closest('.btn-lul-save');
   if (bm) {
-    const bmId = bm.dataset.slug + '__' + bm.dataset.id;
-    if (isBookmarked(bmId)) {
-      removeBookmark(bmId);
-      bm.classList.remove('saved');
-    } else {
-      const card = bm.closest('.ai-card, .ai-single');
-      const titleEl = card ? (card.querySelector('h4') || card.querySelector('.word-title') || card.querySelector('.main-text')) : null;
-      const title = titleEl ? titleEl.innerText.trim() : bm.dataset.id;
-      const cs = currentCardState[bm.dataset.slug] || {};
-      saveBookmark({ id: bmId, slug: bm.dataset.slug, title, url: bm.dataset.url, savedAt: Date.now(),
-                     cardHtml: cs.html || '', identifier: bm.dataset.id });
+    if (bm.dataset.busy === '1') return;
+    bm.dataset.busy = '1';
+    const card = bm.closest('.ai-card, .ai-single');
+    const titleEl = card ? (card.querySelector('h4') || card.querySelector('.word-title') || card.querySelector('.main-text')) : null;
+    const question = (searchTerms[bm.dataset.slug] || (titleEl ? titleEl.innerText.trim() : bm.dataset.id) || '').trim();
+    if (!question) { bm.dataset.busy = ''; return; }
+    try {
+      const rows = await lulCreate(question);
+      const newId = Array.isArray(rows) ? rows[0]?.id : rows?.id;
       bm.classList.add('saved');
+      showToast('Saved to Look Up Later');
+      updateLulBadge();
+      if (newId) lulResearch(newId, question); // background research
+    } catch(err) {
+      showToast('Save failed: ' + (err.message || 'unknown'));
     }
-    updateSavedCount();
+    setTimeout(() => { bm.dataset.busy = ''; }, 1200);
   }
 
   const sh = e.target.closest('[data-share]');
@@ -1869,16 +1803,16 @@ document.addEventListener('click', async e => {
 const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
            'finance-term','stats-concept','geography-fact','logical-fallacy','on-this-day',
-           'thought-experiment','etymology','cognitive-bias','journal','mindfulness','breathe','brain-teaser','health-insight'],
-  '5min': ['history','cooking','stoic','reading','mindfulness','breathe','journal',
+           'thought-experiment','etymology','cognitive-bias','mindfulness','breathe','brain-teaser','health-insight'],
+  '5min': ['history','cooking','stoic','reading','mindfulness','breathe',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
            'thought-experiment','cognitive-bias','brain-teaser','health-insight'],
-  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','journal','introspection'],
+  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','introspection'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment','health-insight','productivity-insight'],
   'activity':     ['mental-math','brain-teaser','reading','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
-  'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal',
+  'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight',
@@ -2003,7 +1937,6 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'history')           loadHistory();
     if (a === 'cooking')           loadCooking();
     if (a === 'stoic')             loadStoic();
-    if (a === 'journal')           loadJournal();
     if (a === 'fun-fact')          loadFunFact();
     if (a === 'introspection')     loadIntrospection();
     if (a === 'mental-math')       loadMentalMath();
@@ -2110,14 +2043,13 @@ function skeletonCards(n) {
 }
 
 // ── History ───────────────────────────────────
-const seenHistoryTitles = getDismissed('history');
-
 async function loadHistory() {
   const container = document.getElementById('history-cards');
   container.innerHTML = skeletonCards(1);
   try {
-    const exclude = seenHistoryTitles.length
-      ? ' Do NOT include any of these topics: ' + seenHistoryTitles.join(', ') + '.'
+    const seen = getSeenForExclusion('history');
+    const exclude = seen.length
+      ? ' Do NOT include any of these topics: ' + seen.join(', ') + '.'
       : '';
     const liked    = getLiked('history').slice(-8);
     const disliked = getDisliked('history').slice(-8);
@@ -2126,7 +2058,7 @@ async function loadHistory() {
     const topics = await callClaude(
       'Generate 1 genuinely fascinating historical topic — the kind a curious person would fall into for hours. Give a title and one punchy sentence explaining why it\'s interesting.' + exclude + ratingCtx + ' Return JSON: [{title, hook, wikipediaSlug}]'
     );
-    topics.forEach(t => { seenHistoryTitles.push(t.title); searchTerms['history'] = t.title; ankiData['history'] = t; });
+    topics.forEach(t => { addShown('history', t.title); searchTerms['history'] = t.title; ankiData['history'] = t; });
     container.innerHTML = topics.map(t =>
       '<div class="ai-card">' +
         '<h4>' + esc(t.title) + '</h4>' +
@@ -2137,7 +2069,6 @@ async function loadHistory() {
     const hCard = container.querySelector('.ai-card');
     if (hCard) {
       const wikiUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(topics[0].wikipediaSlug);
-      currentCardState['history'] = { html: container.innerHTML, identifier: topics[0].title, url: wikiUrl };
       hCard.insertAdjacentHTML('beforeend', cardFooter('history', topics[0].title, wikiUrl));
       addSwipeListener(hCard, 'history', topics[0].title, loadHistory);
     }
@@ -2164,12 +2095,11 @@ function fallbackHistory() {
 document.getElementById('history-refresh').addEventListener('click', loadHistory);
 
 // ── Cooking ───────────────────────────────────
-const seenCookingTitles = getDismissed('cooking');
-
 async function loadCooking() {
   const container = document.getElementById('cooking-cards');
   container.innerHTML = skeletonCards(1);
   try {
+    const seenCooking = getSeenForExclusion('cooking');
     const type = ['recipe', 'technique', 'pairing'][Math.floor(Math.random() * 3)];
     let title = '', sourceUrl = '', html = '';
 
@@ -2179,7 +2109,7 @@ async function loadCooking() {
         const res = await fetch('https://www.themealdb.com/api/json/v1/1/random.php');
         meal = (await res.json()).meals[0];
         attempts++;
-      } while (seenCookingTitles.includes(meal.strMeal) && attempts < 5);
+      } while (seenCooking.includes(meal.strMeal) && attempts < 5);
 
       const ingredients = [];
       for (let i = 1; i <= 20; i++) {
@@ -2199,7 +2129,7 @@ async function loadCooking() {
       '</div>';
 
     } else {
-      const exclude = seenCookingTitles.length ? ' Do not repeat: ' + seenCookingTitles.join(', ') + '.' : '';
+      const exclude = seenCooking.length ? ' Do not repeat: ' + seenCooking.join(', ') + '.' : '';
       const liked    = getLiked('cooking').slice(-8);
       const disliked = getDisliked('cooking').slice(-8);
       const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
@@ -2232,12 +2162,11 @@ async function loadCooking() {
       }
     }
 
-    seenCookingTitles.push(title);
+    addShown('cooking', title);
     searchTerms['cooking'] = title;
     container.innerHTML = html;
     const cCard = container.querySelector('.ai-card');
     if (cCard) {
-      currentCardState['cooking'] = { html: container.innerHTML, identifier: title, url: sourceUrl };
       cCard.insertAdjacentHTML('beforeend', cardFooter('cooking', title, sourceUrl));
       addSwipeListener(cCard, 'cooking', title, loadCooking);
     }
@@ -2258,8 +2187,6 @@ function fallbackCooking() {
 document.getElementById('cooking-refresh').addEventListener('click', loadCooking);
 
 // ── Stoic ─────────────────────────────────────
-const seenStoicPassages = getDismissed('stoic');
-
 async function loadStoic() {
   const container = document.getElementById('stoic-content');
   container.innerHTML =
@@ -2267,7 +2194,8 @@ async function loadStoic() {
     '<div class="ai-card"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton" style="width:60%"></div></div>' +
     '<div style="margin-top:12px"><div class="skeleton" style="height:12px"></div><div class="skeleton" style="height:12px;width:80%"></div></div>';
   try {
-    const exclude = seenStoicPassages.length ? ' Do not repeat any of these: ' + seenStoicPassages.join('; ') + '.' : '';
+    const seen = getSeenForExclusion('stoic');
+    const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join('; ') + '.' : '';
     const liked    = getLiked('stoic').slice(-8);
     const disliked = getDisliked('stoic').slice(-8);
     const ratingCtx = (liked.length ? ' More like these authors/themes: ' + liked.join(', ') + '.' : '') +
@@ -2290,7 +2218,7 @@ async function loadStoic() {
 function renderStoic(d) {
   const container = document.getElementById('stoic-content');
   const key = d.author + ' — ' + d.passage.slice(0, 60);
-  seenStoicPassages.push(key);
+  addShown('stoic', key);
   searchTerms['stoic'] = key;
   container.innerHTML =
     '<div class="ai-card">' +
@@ -2299,7 +2227,6 @@ function renderStoic(d) {
       '<p class="stoic-explanation">' + esc(d.explanation) + '</p>' +
     '</div>';
   const card = container.querySelector('.ai-card');
-  currentCardState['stoic'] = { html: container.innerHTML, identifier: key, url: '' };
   card.insertAdjacentHTML('beforeend', cardFooter('stoic', key, ''));
   addSwipeListener(card, 'stoic', key, loadStoic);
 }
@@ -2311,49 +2238,17 @@ document.getElementById('stoic-still-btn').addEventListener('click', async () =>
   openInStill('"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation);
 });
 
-// ── Journal ───────────────────────────────────
-let journalData = null;
-const seenJournalQuestions = [];
-
-async function loadJournal() {
-  const container = document.getElementById('journal-prompt-box');
-  document.getElementById('journal-question').textContent = '...';
-  document.getElementById('journal-instruction').textContent = '';
-  try {
-    const exclude = seenJournalQuestions.length
-      ? ' Do not repeat any of these: ' + seenJournalQuestions.join('; ') + '.'
-      : '';
-    journalData = await callClaude(
-      'Give me a single introspective journal prompt — the kind that cuts through surface thinking and gets at something real. Not therapy-speak, not vague positivity.' + exclude + ' Return JSON: {question, instruction} where instruction is a short concrete writing direction (e.g. "Write 3 bullets — smallest next step for each").'
-    );
-    seenJournalQuestions.push(journalData.question);
-    document.getElementById('journal-question').textContent = journalData.question;
-    document.getElementById('journal-instruction').textContent = journalData.instruction;
-  } catch(e) {
-    journalData = { question: 'What am I avoiding right now?', instruction: 'Write 3 bullets — what\'s the smallest next step for each?' };
-    document.getElementById('journal-question').textContent = journalData.question;
-    document.getElementById('journal-instruction').textContent = journalData.instruction;
-  }
-}
-
-document.getElementById('journal-refresh').addEventListener('click', loadJournal);
-
-document.getElementById('journal-still-btn').addEventListener('click', async () => {
-  if (!journalData) return;
-  openInStill(journalData.question + '\n\n' + journalData.instruction);
-});
-
 // ── Shared loader helper ─────────────────────
 function skel() {
   return '<div class="ai-single"><div class="skeleton" style="width:60%;margin-bottom:12px"></div><div class="skeleton"></div><div class="skeleton" style="width:80%"></div></div>';
 }
 
 function makeLoader(slug, prompt, render, fallbackData) {
-  const seen = getDismissed(slug);
   async function load() {
     const container = document.getElementById(slug + '-content');
     container.innerHTML = skel();
     try {
+      const seen = getSeenForExclusion(slug);
       const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join(', ') + '.' : '';
       const liked    = getLiked(slug).slice(-8);
       const disliked = getDisliked(slug).slice(-8);
@@ -2361,13 +2256,12 @@ function makeLoader(slug, prompt, render, fallbackData) {
                         (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
       const data = await callClaude(prompt(exclude + ratingCtx));
       const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || data.problem || data.reminder || '';
-      seen.push(key);
+      addShown(slug, key);
       searchTerms[slug] = key;
       container.innerHTML = render(data);
       const card = container.querySelector('.ai-single') || container.querySelector('.ai-card');
       if (card) {
         const url = card.querySelector('a') ? card.querySelector('a').href : '';
-        currentCardState[slug] = { html: container.innerHTML, identifier: key, url };
         card.insertAdjacentHTML('beforeend', cardFooter(slug, key, url));
         addSwipeListener(card, slug, key, load);
       }
@@ -2408,7 +2302,6 @@ document.getElementById('introspection-still-btn').addEventListener('click', asy
 // ── Mental Math ───────────────────────────────
 let mathDifficulty = 'easy';
 let mathType = 'any';
-const seenMathProblems = getDismissed('mental-math');
 
 function renderMathProblem(d) {
   return '<div class="ai-single">' +
@@ -2425,7 +2318,8 @@ async function loadMentalMath() {
   container.innerHTML = skel();
   try {
     const typeClause = mathType === 'any' ? '' : ' Problem type: ' + mathType + '.';
-    const exclude = seenMathProblems.length ? ' Do not repeat: ' + seenMathProblems.join('; ') + '.' : '';
+    const seen = getSeenForExclusion('mental-math');
+    const exclude = seen.length ? ' Do not repeat: ' + seen.join('; ') + '.' : '';
     const seed = Math.random().toString(36).slice(2, 7);
     const d = await callClaude(
       'Give me a ' + mathDifficulty + ' mental math problem.' + typeClause +
@@ -2433,8 +2327,7 @@ async function loadMentalMath() {
       ' Solvable in your head — no pen needed.' + exclude +
       ' (seed: ' + seed + ') Return JSON: {problem, hint, answer}'
     );
-    seenMathProblems.push(d.problem.slice(0, 60));
-    addDismissed('mental-math', d.problem.slice(0, 60));
+    addShown('mental-math', d.problem.slice(0, 60));
     container.innerHTML = renderMathProblem(d);
   } catch(e) {
     container.innerHTML = renderMathProblem({ problem: 'A bat and ball cost $1.10 together. The bat costs $1.00 more than the ball. How much does the ball cost?', hint: 'Don\'t go with your first instinct.', answer: '5 cents. (Ball = $0.05, bat = $1.05, total = $1.10.)' });
@@ -2815,22 +2708,13 @@ INFORMATIONAL_SCREENS.forEach(id => {
     setTimeout(() => { window.location.href = 'claude://'; }, 600);
   });
 
-  const journalBtn = document.createElement('button');
-  journalBtn.className = 'btn btn-outline';
-  journalBtn.textContent = 'Journal about it';
-  journalBtn.addEventListener('click', async () => {
-    const title = searchTerms[id] || getContentText().split('\n')[0];
-    const area = id === 'cooking' ? AREA_COOKING : AREA_LEARNINGS;
-    journalToNotion('notes', { title, content: getContentText(), area });
-  });
-
   actions.insertBefore(googleBtn, actions.firstChild);
   actions.insertBefore(claudeBtn, googleBtn.nextSibling);
-  actions.insertBefore(journalBtn, claudeBtn.nextSibling);
+  // TODO: Course integration — see Patch v6 #12
 });
 
 // ── "New activity" button ─────────────────────
-const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','journal','health-insight',
+const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','health-insight',
   'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
   'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
 
@@ -2851,7 +2735,7 @@ ACTIVITY_SCREENS.forEach(id => {
 // ── Card replay (saved → original screen) ─────
 const LOADERS = {
   'history': () => loadHistory(), 'cooking': () => loadCooking(), 'stoic': () => loadStoic(),
-  'journal': () => loadJournal(), 'fun-fact': () => loadFunFact(), 'introspection': () => loadIntrospection(),
+  'fun-fact': () => loadFunFact(), 'introspection': () => loadIntrospection(),
   'mental-math': () => loadMentalMath(), 'new-word': () => loadNewWord(), 'new-term': () => loadNewTerm(),
   'finance-term': () => loadFinanceTerm(), 'stats-concept': () => loadStatsConcept(), 'geography-fact': () => loadGeographyFact(),
   'logical-fallacy': () => loadLogicalFallacy(), 'on-this-day': () => loadOnThisDay(),
@@ -2859,20 +2743,6 @@ const LOADERS = {
   'cognitive-bias': () => loadCognitiveBias(), 'brain-teaser': () => loadBrainTeaser(),
   'stoic-reminder': () => loadStoicReminder(),
 };
-
-function replayCard(b) {
-  navigateToActivity(b.slug, true);
-  const container = document.getElementById(b.slug + '-content') || document.getElementById(b.slug + '-cards');
-  if (!container || !b.cardHtml) { navigateToActivity(b.slug); return; }
-  container.innerHTML = b.cardHtml;
-  const card = container.querySelector('.ai-single, .ai-card');
-  if (card) {
-    const stale = card.querySelector('.card-actions');
-    if (stale) stale.remove();
-    card.insertAdjacentHTML('beforeend', cardFooter(b.slug, b.identifier, b.url));
-    addSwipeListener(card, b.slug, b.identifier, LOADERS[b.slug] || (() => {}));
-  }
-}
 
 // ── Box breathing ─────────────────────────────
 let boxBreathInterval = null, boxBreathPhase = 0, boxBreathRunning = false;
@@ -2918,45 +2788,6 @@ function runBoxPhase() {
       boxBreathPhase++; runBoxPhase();
     }
   }, 1000);
-}
-
-// ── Saved screen ──────────────────────────────
-function renderSaved() {
-  const items = getBookmarks();
-  const el = document.getElementById('saved-list');
-  if (!items.length) {
-    el.innerHTML = '<p class="saved-empty">Nothing saved yet.<br>Tap 🔖 on any card to save it.</p>';
-    return;
-  }
-  el.innerHTML = items.map((b, i) =>
-    '<div class="saved-item" data-idx="' + i + '">' +
-      '<div class="saved-item-body">' +
-        '<div class="saved-item-title">' + esc(b.title) + '</div>' +
-        '<div class="saved-item-meta">' + esc(b.slug) +
-          (b.url ? ' · <a href="' + esc(b.url) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">Open →</a>' : '') +
-        '</div>' +
-      '</div>' +
-      '<button class="btn-unsave" data-remove="' + esc(b.id) + '">×</button>' +
-    '</div>'
-  ).join('');
-}
-
-document.getElementById('saved-list').addEventListener('click', e => {
-  const btn = e.target.closest('[data-remove]');
-  if (btn) { removeBookmark(btn.dataset.remove); updateSavedCount(); renderSaved(); return; }
-  if (e.target.tagName === 'A') return; // let "Open →" links through
-  const item = e.target.closest('.saved-item');
-  if (item) {
-    const b = getBookmarks()[parseInt(item.dataset.idx)];
-    if (b) replayCard(b);
-  }
-});
-
-document.getElementById('btn-saved').addEventListener('click', () => { renderSaved(); showScreen('saved'); });
-
-function updateSavedCount() {
-  const n = getBookmarks().length;
-  document.getElementById('btn-saved').textContent = n ? 'Saved (' + n + ')' : 'Saved';
 }
 
 // ── App icon ──────────────────────────────────
@@ -3039,7 +2870,6 @@ function updateSavedCount() {
 
 // ── Init ──────────────────────────────────────
 showScreen(getApiKey() ? 'home' : 'apikey');
-updateSavedCount();
 
 if ('serviceWorker' in navigator) {
   const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -3512,6 +3342,18 @@ async function lulResearch(id, question) {
   } catch(e) {}
 }
 
+// Strip stray HTML Claude sometimes returns inside summary/tl_dr text.
+function lulCleanText(s) {
+  if (!s || typeof s !== 'string') return '';
+  return s
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\/p>\s*<p[^>]*>/gi, '\n\n')
+    .replace(/<\/?p[^>]*>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
 async function updateLulBadge() {
   const numEl = document.getElementById('lul-count');
   const subEl = document.getElementById('lul-sub');
@@ -3528,49 +3370,61 @@ async function updateLulBadge() {
 }
 
 function lulRenderAnswer(el, id, data, list) {
+  const cleanSummary = lulCleanText(data.summary);
+  const cleanTlDr = lulCleanText(data.tl_dr);
+  const validTlDr = cleanTlDr && !cleanTlDr.startsWith('[') && !cleanTlDr.startsWith('{');
+
   const answerEl = document.createElement('div');
   answerEl.className = 'lul-answer';
   answerEl.innerHTML =
-    (data.tl_dr && typeof data.tl_dr === 'string' && !data.tl_dr.startsWith('[') && !data.tl_dr.startsWith('{') ? '<div class="lul-tldr"><span class="lul-tldr-label">TL;DR</span>' + esc(data.tl_dr) + '</div>' : '') +
-    '<div class="lul-summary">' + esc(data.summary) + '</div>' +
+    (validTlDr ? '<div class="lul-tldr"><span class="lul-tldr-label">TL;DR</span>' + esc(cleanTlDr) + '</div>' : '') +
+    '<div class="lul-summary">' + esc(cleanSummary) + '</div>' +
     (data.links && data.links.length ? '<div class="lul-links">' + data.links.map(l => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title) + '</a>').join('') + '</div>' : '') +
-    '<div class="lul-answer-actions" style="display:flex;flex-direction:column;gap:8px;margin-top:14px">' +
-      '<div style="display:flex;gap:8px">' +
-        '<button class="btn btn-outline lul-remember-btn" style="flex:1">Remember It</button>' +
-        '<a class="btn btn-outline lul-google-btn" style="flex:1;text-align:center;text-decoration:none" target="_blank" rel="noopener">Google It</a>' +
-        '<button class="btn btn-outline lul-claude-btn" style="flex:1">Claude It</button>' +
+    '<div class="lul-answer-actions">' +
+      '<div class="lul-3btns">' +
+        '<button class="btn btn-outline lul-remember-btn">Remember It</button>' +
+        '<a class="btn btn-outline lul-google-btn" target="_blank" rel="noopener">Google It</a>' +
+        '<button class="btn btn-outline lul-claude-btn">Claude It</button>' +
       '</div>' +
       '<button class="btn btn-outline lul-done-btn" style="width:100%">Done — remove from queue</button>' +
     '</div>';
   el.querySelector('.lul-actions').replaceWith(answerEl);
 
-  // Google It
-  const googleA = answerEl.querySelector('.lul-google-btn');
-  googleA.href = 'https://www.google.com/search?q=' + encodeURIComponent(el.querySelector('.lul-question').textContent);
+  const question = el.querySelector('.lul-question').textContent;
 
-  // Claude It — copy question + summary, open Claude app
+  // Google It
+  answerEl.querySelector('.lul-google-btn').href =
+    'https://www.google.com/search?q=' + encodeURIComponent(question);
+
+  // Claude It — copy ONLY the prompt/question (per Patch v6 #3), open Claude app
   answerEl.querySelector('.lul-claude-btn').addEventListener('click', async () => {
-    const text = el.querySelector('.lul-question').textContent + '\n\n' + (data.tl_dr || '') + '\n\n' + (data.summary || '');
-    try { await navigator.clipboard.writeText(text); } catch(e) {}
+    try { await navigator.clipboard.writeText(question); } catch(e) {}
     showToast('Copied — opening Claude');
     setTimeout(() => { window.location.href = 'claude://'; }, 600);
   });
 
-  // Remember It — Claude generates condensed flashcard, open editable preview
+  // Remember It — Claude condenses to a flashcard, opens editable preview WITH
+  // Regenerate + Generate Back buttons (Patch v6 #4).
   answerEl.querySelector('.lul-remember-btn').addEventListener('click', async () => {
     const btn = answerEl.querySelector('.lul-remember-btn');
     btn.textContent = 'Generating…';
     btn.disabled = true;
-    const question = el.querySelector('.lul-question').textContent;
-    const context = (data.tl_dr ? data.tl_dr + '\n\n' : '') + (data.summary || '');
+    const context = (validTlDr ? cleanTlDr + '\n\n' : '') + (cleanSummary || '');
     try {
       const card = await callClaude(
         'Condense this into a single flashcard. Front: a clean, specific question. Back: a concise 1–2 sentence answer with the key fact. Question asked: "' + question + '". Full answer: "' + context + '". Return JSON: {"front":"...","back":"..."}'
       );
+      currentRememberSource = {
+        slug: 'lul-' + id,
+        kind: 'looked-up question',
+        rawFront: question,
+        rawBack: context,
+        srsSource: 'lul',
+      };
       document.getElementById('srs-preview-front').value = card.front || question;
-      document.getElementById('srs-preview-back').value = card.back || (data.tl_dr || '');
-      document.getElementById('srs-preview-regenerate').style.display = 'none';
-      currentRememberSource = null;
+      document.getElementById('srs-preview-back').value = card.back || (validTlDr ? cleanTlDr : '');
+      document.getElementById('srs-preview-regenerate').style.display = '';
+      document.getElementById('srs-preview-generate-back').style.display = '';
       document.getElementById('srs-preview-modal').classList.remove('hidden');
     } catch(e) {
       showToast('Generation failed: ' + (e.message || 'unknown error'));
@@ -4022,8 +3876,11 @@ function renderTypedQuestion(q) {
 function showQuizActions(question, correct, wasCorrect) {
   const actionsEl = document.getElementById('quiz-actions');
   actionsEl.classList.remove('hidden');
+  // Geography quiz only: when answer was marked wrong, offer an override (Patch v6 #13).
+  const showIWasRight = !wasCorrect && quizTopic === 'geography';
   actionsEl.innerHTML =
     '<button class="btn btn-primary" id="quiz-got-it">Got it</button>' +
+    (showIWasRight ? '<button class="btn btn-outline" id="quiz-i-was-right">I was right</button>' : '') +
     '<button class="btn btn-outline" id="quiz-remember">Remember It</button>' +
     '<div class="quiz-secondary-btns">' +
       '<button class="btn btn-outline" id="quiz-google-it">Google It</button>' +
@@ -4032,6 +3889,14 @@ function showQuizActions(question, correct, wasCorrect) {
     '<div id="quiz-claude-panel"></div>';
 
   document.getElementById('quiz-got-it').addEventListener('click', () => advanceQuiz(wasCorrect));
+
+  if (showIWasRight) {
+    document.getElementById('quiz-i-was-right').addEventListener('click', () => {
+      const reveal = document.getElementById('quiz-reveal');
+      if (reveal) reveal.textContent = '✓ Counted as correct';
+      advanceQuiz(true);
+    });
+  }
 
   document.getElementById('quiz-remember').addEventListener('click', () => {
     openRememberPreview({
@@ -4507,8 +4372,12 @@ function renderAudiobookCard(el) {
   div.className = 'lul-item';
   div.style.marginTop = '8px';
   if (book) {
-    const appUrl = book.app === 'libby' ? 'libbyapp://' : 'audible://';
-    const appLabel = book.app === 'libby' ? 'Open Libby' : 'Open Audible';
+    const appUrl   = book.app === 'audible' ? 'audible://'
+                   : book.app === 'blinkist' ? 'blinkist://'
+                   : 'libbyapp://';
+    const appLabel = book.app === 'audible' ? 'Open Audible'
+                   : book.app === 'blinkist' ? 'Open Blinkist'
+                   : 'Open Libby';
     div.innerHTML =
       '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:6px">Currently Listening</div>' +
       '<div class="lul-question">' + esc(book.title) + '</div>' +
@@ -4535,8 +4404,9 @@ function openBookForm(el) {
     '<input id="book-title-input" class="anki-textarea" style="height:auto;padding:10px 14px;margin-bottom:8px" placeholder="Title" value="' + esc(book?.title || '') + '" />' +
     '<input id="book-author-input" class="anki-textarea" style="height:auto;padding:10px 14px;margin-bottom:8px" placeholder="Author" value="' + esc(book?.author || '') + '" />' +
     '<div style="display:flex;gap:8px;margin-bottom:12px">' +
-      '<button class="btn ' + (book?.app !== 'audible' ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="libby" style="flex:1">Libby</button>' +
+      '<button class="btn ' + ((!book || (book.app !== 'audible' && book.app !== 'blinkist')) ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="libby" style="flex:1">Libby</button>' +
       '<button class="btn ' + (book?.app === 'audible' ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="audible" style="flex:1">Audible</button>' +
+      '<button class="btn ' + (book?.app === 'blinkist' ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="blinkist" style="flex:1">Blinkist</button>' +
     '</div>' +
     '<div style="display:flex;gap:8px">' +
       '<button class="btn btn-primary" id="book-save-btn" style="flex:1">Save</button>' +
