@@ -6,32 +6,63 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Break" />
-  <meta name="theme-color" content="#F5F2EE" />
+  <meta name="theme-color" content="#F4ECDD" />
   <link rel="manifest" href="./manifest.json" />
   <link rel="preconnect" href="https://api.anthropic.com" crossorigin>
   <link rel="preconnect" href="https://xsmnfcmtbpeaccnyinkr.supabase.co" crossorigin>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2722%27%20fill%3D%27%23A89880%27/%3E%3Cpath%20d%3D%27M38%2035%20C36%2029%2C40%2025%2C38%2019%27%20stroke%3D%27%23F5F2EE%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M50%2033%20C48%2027%2C52%2023%2C50%2017%27%20stroke%3D%27%23F5F2EE%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M62%2035%20C60%2029%2C64%2025%2C62%2019%27%20stroke%3D%27%23F5F2EE%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2722%27%20y%3D%2742%27%20width%3D%2744%27%20height%3D%2734%27%20rx%3D%277%27%20fill%3D%27%23F5F2EE%27/%3E%3Cpath%20d%3D%27M66%2050%20Q80%2050%2080%2059%20Q80%2068%2066%2068%27%20stroke%3D%27%23F5F2EE%27%20stroke-width%3D%276%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2716%27%20y%3D%2776%27%20width%3D%2756%27%20height%3D%277%27%20rx%3D%273.5%27%20fill%3D%27%23F5F2EE%27/%3E%3C/svg%3E" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2722%27%20fill%3D%27%23C97A60%27/%3E%3Cpath%20d%3D%27M38%2035%20C36%2029%2C40%2025%2C38%2019%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M50%2033%20C48%2027%2C52%2023%2C50%2017%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M62%2035%20C60%2029%2C64%2025%2C62%2019%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2722%27%20y%3D%2742%27%20width%3D%2744%27%20height%3D%2734%27%20rx%3D%277%27%20fill%3D%27%23F4ECDD%27/%3E%3Cpath%20d%3D%27M66%2050%20Q80%2050%2080%2059%20Q80%2068%2066%2068%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%276%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2716%27%20y%3D%2776%27%20width%3D%2756%27%20height%3D%277%27%20rx%3D%273.5%27%20fill%3D%27%23F4ECDD%27/%3E%3C/svg%3E" />
   <script src="./dev-config.js" onerror="void 0"></script>
   <title>Break</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:      #F5F2EE;
-      --text:    #1C1C1C;
-      --muted:   #6B6560;
-      --accent:  #A89880;
-      --card-bg: #EDEBE7;
-      --border:  #D8D4CE;
-      --radius:  14px;
-      --font:    -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      /* Surfaces */
+      --bg:         #F4ECDD;
+      --surface:    #EAE0CC;
+      --surface-2:  #E2D6BC;
+
+      /* Type */
+      --text:       #3A3025;
+      --text-muted: rgba(58, 48, 37, 0.6);
+      --text-faint: rgba(58, 48, 37, 0.45);
+
+      /* Accents */
+      --accent:    #C97A60;  /* terracotta — Review */
+      --accent-2:  #D9B374;  /* ochre — Queue */
+      --accent-3:  #8FA188;  /* sage — active filter */
+      --ink:       #3A3025;
+      --ink-on:    #F4ECDD;
+
+      /* Borders */
+      --border:        rgba(58, 48, 37, 0.15);
+      --border-strong: rgba(58, 48, 37, 0.3);
+
+      /* Geometry */
+      --radius-sm:   12px;
+      --radius-md:   16px;
+      --radius-lg:   20px;
+      --radius-pill: 999px;
+
+      /* Type stack */
+      --font-sans:  -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+      --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+
+      /* Back-compat aliases — existing CSS rules pick these up automatically */
+      --muted:   var(--text-muted);
+      --card-bg: var(--surface);
+      --radius:  var(--radius-md);
+      --font:    var(--font-sans);
     }
 
     html, body {
       height: 100%;
       background: var(--bg);
       color: var(--text);
-      font-family: var(--font);
+      font-family: var(--font-sans);
       -webkit-font-smoothing: antialiased;
     }
 
@@ -635,6 +666,292 @@
     #offline-banner { display:none; background:#e8d5d5; color:#7a2525; font-size:0.8rem; font-weight:500; text-align:center; padding:9px 16px; position:fixed; top:0; left:0; right:0; z-index:1000; }
     body.offline-active { padding-top: 36px; }
 
+    /* ── Citrine sub-screen retheme ─────────── */
+    .activity-header {
+      padding-bottom: 14px;
+      border-bottom: 0.5px solid var(--border);
+      margin-bottom: 18px;
+    }
+    .activity-title {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+    }
+    .btn-primary { background: var(--ink); color: var(--ink-on); }
+    .btn-outline { border-color: var(--border-strong); }
+    .btn-selector.selected { color: var(--ink-on); }
+
+    /* Activity content typography — serif for hero, sans for context */
+    .ai-single .main-text,
+    .ai-single .word-title,
+    .ai-card h4 {
+      font-family: var(--font-serif);
+      font-weight: 500;
+    }
+    .ai-single .main-text { font-size: 18px; line-height: 1.5; }
+    .ai-single .sub-text { font-family: var(--font-sans); }
+    .ai-single .tag {
+      font-family: var(--font-sans);
+      letter-spacing: 0.14em;
+    }
+
+    /* SRS card face — serif for the prompt */
+    .srs-card-text {
+      font-family: var(--font-serif);
+      font-size: 22px;
+      font-weight: 500;
+      line-height: 1.45;
+    }
+    .srs-card-back .srs-card-text {
+      font-weight: 400;
+      font-size: 19px;
+    }
+
+    /* Timer modal — match picker spec */
+    .timer-modal-msg {
+      font-family: var(--font-serif);
+      font-weight: 500;
+      font-size: 22px;
+    }
+    .timer-modal-sub {
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      font-size: 11px;
+      opacity: 0.6;
+    }
+
+    /* Toast — pill, ink bg */
+    .toast {
+      background: var(--ink);
+      color: var(--ink-on);
+      border-radius: var(--radius-pill);
+      font-size: 13px;
+      padding: 10px 18px;
+    }
+
+    /* API key screen — serif title */
+    #screen-apikey h1 {
+      font-family: var(--font-serif);
+      font-weight: 500;
+    }
+
+    /* ── Citrine home redesign ─────────── */
+    #screen-home { gap: 18px; }
+    .brand-block { line-height: 1; }
+    .brand {
+      font-family: var(--font-serif);
+      font-size: 30px;
+      font-weight: 500;
+      letter-spacing: -0.015em;
+      color: var(--text);
+      line-height: 1;
+    }
+    .brand-date {
+      font-family: var(--font-sans);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text);
+      opacity: 0.5;
+      margin-top: 6px;
+    }
+    .home-header { align-items: flex-start; padding-top: 8px; }
+    .home-header-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      position: relative;
+    }
+    .home-header-actions .btn-icon {
+      width: 40px; height: 40px;
+      background: transparent;
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      border-radius: 50%;
+      font-size: 18px;
+    }
+    .home-overflow-menu {
+      position: absolute;
+      top: 48px;
+      right: 0;
+      min-width: 160px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 6px;
+      box-shadow: 0 8px 24px rgba(58,48,37,0.12);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .overflow-item {
+      background: none;
+      border: none;
+      text-align: left;
+      padding: 10px 12px;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+    }
+    .overflow-item:active { background: var(--surface); }
+
+    .btn-capture {
+      width: 100%;
+      background: var(--ink);
+      color: var(--ink-on);
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: var(--font-sans);
+      font-size: 15px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .btn-capture:active { transform: scale(0.98); }
+    .btn-capture-icon { font-size: 24px; font-weight: 300; line-height: 1; }
+
+    .pillars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .pillar {
+      border-radius: var(--radius-md);
+      padding: 18px;
+      min-height: 130px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      border: none;
+      cursor: pointer;
+      text-align: left;
+      font-family: var(--font-sans);
+      transition: transform 0.1s;
+    }
+    .pillar:active { transform: scale(0.97); }
+    .pillar-label {
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      opacity: 0.7;
+      font-weight: 600;
+    }
+    .pillar-num {
+      font-family: var(--font-serif);
+      font-size: 48px;
+      font-weight: 500;
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+    .pillar-sub {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 14px;
+      margin-top: 4px;
+      opacity: 0.85;
+    }
+    .pillar-review { background: var(--accent); color: var(--ink-on); }
+    .pillar-queue  { background: var(--accent-2); color: var(--text); }
+
+    .listen-home-tile {
+      width: 100%;
+      background: var(--surface);
+      color: var(--text);
+      border: none;
+      border-radius: var(--radius-md);
+      padding: 18px;
+      text-align: left;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-family: var(--font-sans);
+      transition: transform 0.1s;
+    }
+    .listen-home-tile:active { transform: scale(0.98); }
+    .listen-home-title {
+      font-family: var(--font-serif);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+    }
+    .listen-home-sub {
+      font-size: 12px;
+      opacity: 0.6;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+    }
+    .filter-pill {
+      flex: 1;
+      padding: 8px 14px;
+      border-radius: var(--radius-pill);
+      background: transparent;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      opacity: 0.55;
+      cursor: pointer;
+      transition: opacity 0.15s, background 0.15s, color 0.15s;
+    }
+    .filter-pill.selected {
+      background: var(--accent-3);
+      color: var(--ink-on);
+      opacity: 1;
+    }
+
+    .section-label {
+      font-family: var(--font-sans);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text);
+      opacity: 0.5;
+      margin: 0 2px;
+    }
+
+    .activity-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .activity-grid .activity-card {
+      background: var(--surface);
+      color: var(--text);
+      padding: 14px;
+      border-radius: var(--radius-sm);
+      border: none;
+    }
+    .activity-grid .activity-card h3 {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: -0.005em;
+      margin-bottom: 2px;
+    }
+    .activity-grid .activity-card p {
+      font-size: 11px;
+      opacity: 0.6;
+      line-height: 1.4;
+    }
+    .activity-grid .activity-card:active {
+      background: var(--surface-2);
+      border-color: transparent;
+    }
+
     /* ── Listen pull-to-refresh ─────────────── */
     #screen-listen { position: relative; }
     #listen-pull-indicator {
@@ -677,38 +994,57 @@
 <!-- HOME -->
 <div id="screen-home" class="screen">
   <div class="home-header">
-    <div>
-      <h1>Break</h1>
+    <div class="brand-block">
+      <div class="brand">Break</div>
+      <div class="brand-date" id="home-date"></div>
     </div>
-    <div style="display:flex;gap:10px;align-items:center">
+    <div class="home-header-actions">
       <button class="btn-icon" id="btn-timer-menu" title="Set timer">⏱</button>
-      <button class="btn-settings" id="btn-saved">Saved</button>
-      <button class="btn-settings" id="btn-settings">API key</button>
+      <button class="btn-icon" id="btn-home-overflow" title="More" aria-haspopup="true">⋯</button>
+      <div class="home-overflow-menu hidden" id="home-overflow-menu" role="menu">
+        <button class="overflow-item" id="btn-saved">Saved</button>
+        <button class="overflow-item" id="btn-settings">API key</button>
+      </div>
     </div>
   </div>
 
-  <button class="btn btn-primary" id="btn-add-menu" style="width:100%;font-size:1.1rem;padding:14px">+</button>
+  <button class="btn-capture" id="btn-add-menu">
+    <span class="btn-capture-icon">+</span>
+    <span>Capture</span>
+  </button>
 
-  <div class="duration-row">
-    <button class="btn-duration" data-bucket="reflection">Reflection</button>
-    <button class="btn-duration" data-bucket="informational">Informational</button>
-    <button class="btn-duration" data-bucket="activity">Activity</button>
-    <button class="btn-duration" data-bucket="random">Random</button>
+  <div class="pillars">
+    <button class="pillar pillar-review" id="srs-due-card" data-activity="srs-review">
+      <span class="pillar-label">Review</span>
+      <div>
+        <div class="pillar-num" id="srs-due-count">0</div>
+        <div class="pillar-sub" id="srs-due-sub">cards due</div>
+      </div>
+    </button>
+    <button class="pillar pillar-queue" id="lul-home-card">
+      <span class="pillar-label">Queue</span>
+      <div>
+        <div class="pillar-num" id="lul-count">0</div>
+        <div class="pillar-sub" id="lul-sub">to look up</div>
+      </div>
+    </button>
   </div>
 
-  <div class="cards-grid">
-    <div class="activity-card" style="grid-column:1/-1" id="srs-due-card" data-activity="srs-review">
-      <h3>Review Due</h3>
-      <p>Loading…</p>
-    </div>
-    <div class="activity-card" style="grid-column:1/-1" id="lul-home-card">
-      <h3>Look Up Later</h3>
-      <p id="lul-home-subtitle">Queue questions for Claude to research.</p>
-    </div>
-    <div class="activity-card" style="grid-column:1/-1" id="listen-home-card">
-      <h3>Listen</h3>
-      <p id="listen-home-subtitle">Your podcast queue and audiobooks.</p>
-    </div>
+  <button class="listen-home-tile" id="listen-home-card">
+    <div class="listen-home-title">Listen</div>
+    <div class="listen-home-sub" id="listen-home-subtitle">Your podcast queue and audiobooks.</div>
+  </button>
+
+  <div class="filter-pills">
+    <button class="filter-pill btn-duration" data-bucket="reflection">Reflect</button>
+    <button class="filter-pill btn-duration" data-bucket="informational">Info</button>
+    <button class="filter-pill btn-duration" data-bucket="activity">Activity</button>
+    <button class="filter-pill btn-duration" data-bucket="random">Random</button>
+  </div>
+
+  <div class="section-label">Wander</div>
+
+  <div class="activity-grid">
     <div class="activity-card" data-activity="history">
       <h3>History Rabbit Hole</h3>
       <p>Dive into something genuinely fascinating</p>
@@ -1707,6 +2043,43 @@ document.querySelectorAll('.btn-duration').forEach(btn => {
   });
 });
 
+// Home pillars — explicit handlers since they're no longer .activity-card
+document.getElementById('srs-due-card')?.addEventListener('click', () => {
+  selectedDuration = '5min';
+  navigateToActivity('srs-review');
+});
+
+// (lul-home-card click is wired elsewhere — it navigates to look-up-later)
+
+// Home date in header
+(function renderHomeDate() {
+  const el = document.getElementById('home-date');
+  if (!el) return;
+  const d = new Date();
+  const day = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+  const md  = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }).toUpperCase();
+  el.textContent = day + ' · ' + md;
+})();
+
+// Overflow menu toggle (Saved + API key)
+(function setupOverflow() {
+  const btn  = document.getElementById('btn-home-overflow');
+  const menu = document.getElementById('home-overflow-menu');
+  if (!btn || !menu) return;
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    menu.classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e) => {
+    if (menu.classList.contains('hidden')) return;
+    if (menu.contains(e.target) || btn.contains(e.target)) return;
+    menu.classList.add('hidden');
+  });
+  menu.querySelectorAll('.overflow-item').forEach(item => {
+    item.addEventListener('click', () => menu.classList.add('hidden'));
+  });
+})();
+
 // ── Back buttons ──────────────────────────────
 document.querySelectorAll('.btn-back[data-back]').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2595,10 +2968,10 @@ function updateSavedCount() {
   ctx.lineTo(S, S - r); ctx.quadraticCurveTo(S, S, S - r, S);
   ctx.lineTo(r, S); ctx.quadraticCurveTo(0, S, 0, S - r);
   ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
-  ctx.fillStyle = '#A89880';
+  ctx.fillStyle = '#C97A60';
   ctx.fill();
 
-  ctx.strokeStyle = '#F5F2EE';
+  ctx.strokeStyle = '#F4ECDD';
   ctx.lineCap = 'round';
 
   // Steam wisps
@@ -2610,7 +2983,7 @@ function updateSavedCount() {
   });
 
   // Mug body
-  ctx.fillStyle = '#F5F2EE';
+  ctx.fillStyle = '#F4ECDD';
   const bx=22*s,by=42*s,bw=44*s,bh=34*s,br=7*s;
   ctx.beginPath();
   ctx.moveTo(bx+br,by); ctx.lineTo(bx+bw-br,by);
@@ -2628,7 +3001,7 @@ function updateSavedCount() {
   ctx.stroke();
 
   // Saucer
-  ctx.fillStyle = '#F5F2EE';
+  ctx.fillStyle = '#F4ECDD';
   const sx=16*s,sy=76*s,sw=56*s,sh=7*s,sr=3.5*s;
   ctx.beginPath();
   ctx.moveTo(sx+sr,sy); ctx.lineTo(sx+sw-sr,sy);
@@ -2789,13 +3162,16 @@ let srsMode = localStorage.getItem('srsMode') || 'flip';
 let srsFlipped = false;
 
 async function updateDueBadge() {
-  const card = document.getElementById('srs-due-card');
-  if (!card) return;
+  const numEl = document.getElementById('srs-due-count');
+  const subEl = document.getElementById('srs-due-sub');
+  if (!numEl || !subEl) return;
   try {
     const n = await srsGetDueCount();
-    card.querySelector('p').textContent = n === 0 ? 'All caught up!' : n + ' card' + (n===1?'':'s') + ' due';
+    numEl.textContent = String(n);
+    subEl.textContent = n === 0 ? 'all caught up' : (n === 1 ? 'card due' : 'cards due');
   } catch(e) {
-    card.querySelector('p').textContent = 'Tap to review';
+    numEl.textContent = '–';
+    subEl.textContent = 'tap to review';
   }
 }
 
@@ -3131,13 +3507,18 @@ async function lulResearch(id, question) {
 }
 
 async function updateLulBadge() {
+  const numEl = document.getElementById('lul-count');
+  const subEl = document.getElementById('lul-sub');
+  if (!numEl || !subEl) return;
   try {
     const items = await lulFetch();
     const n = Array.isArray(items) ? items.length : 0;
-    document.getElementById('lul-home-subtitle').textContent =
-      n === 0 ? 'Queue questions for Claude to research.' :
-      n === 1 ? '1 question waiting' : n + ' questions waiting';
-  } catch(e) {}
+    numEl.textContent = String(n);
+    subEl.textContent = n === 1 ? 'to look up' : 'to look up';
+  } catch(e) {
+    numEl.textContent = '–';
+    subEl.textContent = 'to look up';
+  }
 }
 
 function lulRenderAnswer(el, id, data, list) {
