@@ -322,7 +322,7 @@
       color: var(--muted);
       margin-right: auto;
     }
-    .btn-thumb, .btn-lul-save, .btn-share {
+    .btn-thumb, .btn-share {
       background: none;
       border: 1.5px solid var(--border);
       border-radius: 8px;
@@ -335,7 +335,6 @@
     .btn-share { font-size: 0.78rem; padding: 5px 8px; }
     .btn-thumb.active-up   { background: #d4edda; border-color: #5cb85c; }
     .btn-thumb.active-down { background: #f8d7da; border-color: #d9534f; }
-    .btn-lul-save.saved    { color: var(--accent); border-color: var(--accent); }
     /* Timer modal */
     .timer-modal {
       position: fixed; inset: 0;
@@ -1728,7 +1727,7 @@ function addSwipeListener(cardEl, slug, identifier, reloadFn) {
   });
 }
 
-// ── Card footer (thumbs + look-up-later + share) ──────────
+// ── Card footer (thumbs + share) ──────────
 function cardFooter(slug, identifier, url) {
   const liked      = getLiked(slug).includes(identifier);
   const disliked   = getDisliked(slug).includes(identifier);
@@ -1736,7 +1735,6 @@ function cardFooter(slug, identifier, url) {
     '<span class="swipe-hint">← swipe to dismiss</span>' +
     '<button class="btn-thumb' + (liked    ? ' active-up'   : '') + '" data-thumb="up"   data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👍</button>' +
     '<button class="btn-thumb' + (disliked ? ' active-down' : '') + '" data-thumb="down" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '">👎</button>' +
-    '<button class="btn-lul-save" title="Save to Look Up Later" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">🔖</button>' +
     '<button class="btn-share" data-share="1" data-slug="' + esc(slug) + '" data-id="' + esc(identifier) + '" data-url="' + esc(url || '') + '">↑</button>' +
   '</div>';
 }
@@ -1758,27 +1756,6 @@ document.addEventListener('click', async e => {
       thumb.classList.add(dir === 'up' ? 'active-up' : 'active-down');
     }
     return;
-  }
-  // 🔖 → send to Look Up Later (Patch v6 #10)
-  const bm = e.target.closest('.btn-lul-save');
-  if (bm) {
-    if (bm.dataset.busy === '1') return;
-    bm.dataset.busy = '1';
-    const card = bm.closest('.ai-card, .ai-single');
-    const titleEl = card ? (card.querySelector('h4') || card.querySelector('.word-title') || card.querySelector('.main-text')) : null;
-    const question = (searchTerms[bm.dataset.slug] || (titleEl ? titleEl.innerText.trim() : bm.dataset.id) || '').trim();
-    if (!question) { bm.dataset.busy = ''; return; }
-    try {
-      const rows = await lulCreate(question);
-      const newId = Array.isArray(rows) ? rows[0]?.id : rows?.id;
-      bm.classList.add('saved');
-      showToast('Saved to Look Up Later');
-      updateLulBadge();
-      if (newId) lulResearch(newId, question); // background research
-    } catch(err) {
-      showToast('Save failed: ' + (err.message || 'unknown'));
-    }
-    setTimeout(() => { bm.dataset.busy = ''; }, 1200);
   }
 
   const sh = e.target.closest('[data-share]');
@@ -2708,8 +2685,35 @@ INFORMATIONAL_SCREENS.forEach(id => {
     setTimeout(() => { window.location.href = 'claude://'; }, 600);
   });
 
+  // Look Up Later — send the current card's subject to the LUL queue
+  const lulBtn = document.createElement('button');
+  lulBtn.className = 'btn btn-outline';
+  lulBtn.textContent = 'Look Up Later';
+  lulBtn.addEventListener('click', async () => {
+    if (lulBtn.dataset.busy === '1') return;
+    const question = (searchTerms[id] || getContentText().split('\n')[0] || '').trim();
+    if (!question) { showToast('Load a card first'); return; }
+    lulBtn.dataset.busy = '1';
+    const orig = lulBtn.textContent;
+    lulBtn.textContent = 'Saving…';
+    lulBtn.disabled = true;
+    try {
+      const rows = await lulCreate(question);
+      const newId = Array.isArray(rows) ? rows[0]?.id : rows?.id;
+      showToast('Saved to Look Up Later');
+      updateLulBadge();
+      if (newId) lulResearch(newId, question); // background research
+    } catch(err) {
+      showToast('Save failed: ' + (err.message || 'unknown'));
+    }
+    lulBtn.textContent = orig;
+    lulBtn.disabled = false;
+    setTimeout(() => { lulBtn.dataset.busy = ''; }, 1200);
+  });
+
   actions.insertBefore(googleBtn, actions.firstChild);
   actions.insertBefore(claudeBtn, googleBtn.nextSibling);
+  actions.insertBefore(lulBtn, claudeBtn.nextSibling);
   // TODO: Course integration — see Patch v6 #12
 });
 
@@ -2867,6 +2871,34 @@ function runBoxPhase() {
   shortcut.href = dataUrl;
   document.head.appendChild(shortcut);
 })();
+
+// ── Cmd/Ctrl+Enter to submit text inputs ──────
+[
+  ['lul-question-input',     'lul-add-save'],
+  ['srs-add-front',          'srs-add-save'],
+  ['srs-add-back',           'srs-add-save'],
+  ['srs-preview-front',      'srs-preview-save'],
+  ['srs-preview-back',       'srs-preview-save'],
+  ['anki-front',             'anki-input-submit'],
+  ['anki-back',              'anki-input-submit'],
+  ['listen-add-title',       'listen-add-save'],
+  ['listen-add-custom-title','listen-add-save'],
+  ['listen-add-duration',    'listen-add-save'],
+  ['listen-add-recby',       'listen-add-save'],
+  ['listen-sub-input',       'listen-sub-add'],
+  ['listen-sub-name',        'listen-sub-add'],
+  ['apikey-input',           'apikey-save'],
+].forEach(([inputId, btnId]) => {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      const btn = document.getElementById(btnId);
+      if (btn && !btn.disabled) btn.click();
+    }
+  });
+});
 
 // ── Init ──────────────────────────────────────
 showScreen(getApiKey() ? 'home' : 'apikey');
