@@ -547,10 +547,13 @@
     .srs-progress { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 16px; min-height: 1.2em; }
     .srs-card-area { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; }
     /* Flip card */
-    .srs-card-wrap { perspective: 1000px; width: 100%; min-height: 200px; cursor: pointer; }
-    .srs-card { width: 100%; min-height: 200px; position: relative; transform-style: preserve-3d; transition: transform 0.45s ease; border-radius: var(--radius); }
+    .srs-card-wrap { perspective: 1000px; width: 100%; min-height: 260px; cursor: pointer; }
+    .srs-card { width: 100%; min-height: 260px; position: relative; transform-style: preserve-3d; transition: transform 0.45s ease; border-radius: var(--radius); }
     .srs-card.flipped { transform: rotateY(180deg); }
-    .srs-card-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--card-bg); border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 24px; text-align: center; }
+    /* #16 — long backs scroll inside the face instead of spilling over.
+       flex-start + margin:auto on .srs-card-text (set below) keeps short text
+       centered while letting tall text scroll without the flex top-clip. */
+    .srs-card-face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; background: var(--card-bg); border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding: 28px 24px; text-align: center; overflow-y: auto; -webkit-overflow-scrolling: touch; }
     .srs-card-back { transform: rotateY(180deg); }
     /* MC card */
     .srs-card-mc { background: var(--card-bg); border-radius: var(--radius); padding: 28px 24px; text-align: center; min-height: 100px; display: flex; align-items: center; justify-content: center; }
@@ -666,6 +669,9 @@
       font-size: 22px;
       font-weight: 500;
       line-height: 1.45;
+      /* #16 — auto block margins center short text but yield to scroll when
+         the back is long (no flex justify-content:center top-clip). */
+      margin: auto 0;
     }
     .srs-card-back .srs-card-text {
       font-weight: 400;
@@ -2714,7 +2720,7 @@ INFORMATIONAL_SCREENS.forEach(id => {
   actions.insertBefore(googleBtn, actions.firstChild);
   actions.insertBefore(claudeBtn, googleBtn.nextSibling);
   actions.insertBefore(lulBtn, claudeBtn.nextSibling);
-  // TODO: Course integration — see Patch v6 #12
+  // TODO: Course integration — see Patch v7 #12 (design spec'd, not built)
 });
 
 // ── "New activity" button ─────────────────────
@@ -3089,17 +3095,38 @@ function renderSrsFlip(card) {
     '<button class="btn srs-btn-hard" data-rate="1">Hard</button>' +
     '<button class="btn srs-btn-easy" data-rate="2">Easy</button>' +
   '</div>';
-  document.getElementById('srs-flip-wrap').addEventListener('click', () => {
-    if (!srsFlipped) {
-      srsFlipped = true;
-      document.getElementById('srs-flip-card').classList.add('flipped');
-      document.getElementById('srs-rate-btns').style.display = 'flex';
-    }
-  });
+  document.getElementById('srs-flip-wrap').addEventListener('click', revealSrsCard);
   ctrl.querySelectorAll('[data-rate]').forEach(btn => {
     btn.addEventListener('click', () => rateSrsCard(parseInt(btn.dataset.rate)));
   });
 }
+
+// Shared reveal — used by tap (srs-flip-wrap click) and the keyboard path (#14).
+function revealSrsCard() {
+  if (srsFlipped) return;
+  const cardEl = document.getElementById('srs-flip-card');
+  const rateEl = document.getElementById('srs-rate-btns');
+  if (!cardEl || !rateEl) return;
+  srsFlipped = true;
+  cardEl.classList.add('flipped');
+  rateEl.style.display = 'flex';
+}
+
+// #14 — Space / Enter reveals the flashcard back, parity with a tap. Guarded so
+// it only fires on the SRS review screen in flip mode, with no modal/overlay
+// open and focus outside text inputs. preventDefault stops Space page-scroll.
+document.addEventListener('keydown', e => {
+  if (e.key !== ' ' && e.key !== 'Enter') return;
+  if (srsFlipped || srsMode !== 'flip') return;
+  const screen = document.getElementById('screen-srs-review');
+  if (!screen || !screen.classList.contains('active')) return;
+  if (!document.getElementById('srs-flip-card')) return;
+  if (document.querySelector('.srs-modal:not(.hidden), .timer-modal:not(.hidden), .quiz-overlay:not(.hidden)')) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+  e.preventDefault();
+  revealSrsCard();
+});
 
 async function renderSrsMC(card) {
   const area = document.getElementById('srs-card-area');
@@ -3370,7 +3397,10 @@ async function lulResearch(id, question) {
     const data = await callClaude(
       'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}'
     );
-    await lulUpdate(id, data.summary, data.links || []);
+    // lulUpdate signature is (id, answer, tl_dr, links). Guard tl_dr against
+    // JSON leakage, mirroring loadLulScreen's safeTlDr check.
+    const safeTlDr = typeof data.tl_dr === 'string' && !data.tl_dr.startsWith('[') && !data.tl_dr.startsWith('{') ? data.tl_dr : '';
+    await lulUpdate(id, data.summary, safeTlDr, data.links || []);
   } catch(e) {}
 }
 
