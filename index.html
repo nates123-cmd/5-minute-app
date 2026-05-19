@@ -1356,6 +1356,7 @@
       <button class="srs-mode-btn active" data-srs-mode="flip">Flip</button>
       <button class="srs-mode-btn" data-srs-mode="mc">MC</button>
     </div>
+    <button class="btn-settings" id="srs-edit-btn" title="Edit this card" style="margin-left:4px;font-size:1.05rem;display:none">✎</button>
   </div>
   <div class="srs-progress" id="srs-progress"></div>
   <div class="srs-card-area" id="srs-card-area">
@@ -1849,6 +1850,24 @@
     <textarea id="srs-add-back" class="anki-textarea" rows="5" placeholder="e.g. The process by which plants convert light into energy…"></textarea>
     <div style="margin-top:18px">
       <button class="btn btn-primary" id="srs-add-save" style="width:100%">Save Card</button>
+    </div>
+  </div>
+</div>
+
+<div id="srs-edit-modal" class="srs-modal hidden">
+  <div class="srs-modal-box">
+    <div class="srs-modal-header">
+      <span class="srs-modal-title">Edit card</span>
+      <button class="srs-modal-close" id="srs-edit-close">×</button>
+    </div>
+    <label class="srs-label">Front (question / term)</label>
+    <textarea id="srs-edit-front" class="anki-textarea" rows="3"></textarea>
+    <label class="srs-label">Back (answer / definition)</label>
+    <textarea id="srs-edit-back" class="anki-textarea" rows="5"></textarea>
+    <button class="btn btn-outline" id="srs-edit-swap" style="margin-top:10px;width:100%">⇄ Swap front &amp; back</button>
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn btn-outline" id="srs-edit-cancel" style="flex:1">Cancel</button>
+      <button class="btn btn-primary" id="srs-edit-save" style="flex:2">Save</button>
     </div>
   </div>
 </div>
@@ -3728,6 +3747,7 @@ async function loadSrsReview() {
   const prog = document.getElementById('srs-progress');
   area.innerHTML = '<p style="text-align:center;color:var(--muted);padding:32px 0">Loading…</p>';
   prog.textContent = '';
+  document.getElementById('srs-edit-btn').style.display = 'none';
   document.getElementById('srs-controls').innerHTML = '';
   try {
     srsQueue = await srsGetDue();
@@ -3742,6 +3762,7 @@ async function loadSrsReview() {
 function renderSrsCard() {
   if (srsCurrent >= srsQueue.length) { renderSrsDone(); return; }
   const card = srsQueue[srsCurrent];
+  document.getElementById('srs-edit-btn').style.display = '';
   const prog = document.getElementById('srs-progress');
   prog.textContent = (srsCurrent + 1) + ' / ' + srsQueue.length;
   srsFlipped = false;
@@ -3866,6 +3887,7 @@ async function rateSrsCard(rating) {
 function renderSrsDone() {
   const area = document.getElementById('srs-card-area');
   const prog = document.getElementById('srs-progress');
+  document.getElementById('srs-edit-btn').style.display = 'none';
   prog.textContent = '';
   document.getElementById('srs-controls').innerHTML = '';
   const total = srsStats.easy + srsStats.hard + srsStats.miss;
@@ -3912,6 +3934,53 @@ document.getElementById('srs-add-save').addEventListener('click', async () => {
     if (!r2?.offline) updateDueBadge();
   } catch(e) { showToast('Error: ' + e.message); }
   document.getElementById('srs-add-save').textContent = 'Save Card';
+});
+
+// ── Edit the live flashcard mid-review (+ swap front/back) ──
+function srsEditableCard() {
+  if (!srsQueue.length || srsCurrent >= srsQueue.length) return null;
+  return srsQueue[srsCurrent];
+}
+function openSrsEdit() {
+  const card = srsEditableCard();
+  if (!card) { showToast('No card to edit'); return; }
+  document.getElementById('srs-edit-front').value = card.front || '';
+  document.getElementById('srs-edit-back').value  = card.back  || '';
+  document.getElementById('srs-edit-modal').classList.remove('hidden');
+}
+function closeSrsEdit() { document.getElementById('srs-edit-modal').classList.add('hidden'); }
+
+document.getElementById('srs-edit-btn').addEventListener('click', openSrsEdit);
+document.getElementById('srs-edit-close').addEventListener('click', closeSrsEdit);
+document.getElementById('srs-edit-cancel').addEventListener('click', closeSrsEdit);
+
+// Swap just exchanges the two fields in the form; nothing persists until Save.
+document.getElementById('srs-edit-swap').addEventListener('click', () => {
+  const f = document.getElementById('srs-edit-front');
+  const b = document.getElementById('srs-edit-back');
+  const tmp = f.value; f.value = b.value; b.value = tmp;
+});
+
+document.getElementById('srs-edit-save').addEventListener('click', async () => {
+  const card = srsEditableCard();
+  if (!card) { closeSrsEdit(); return; }
+  const front = document.getElementById('srs-edit-front').value.trim();
+  const back  = document.getElementById('srs-edit-back').value.trim();
+  if (!front || !back) { showToast('Fill in both sides'); return; }
+  const saveBtn = document.getElementById('srs-edit-save');
+  saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
+  // Optimistic: update the in-session card so the review reflects the edit
+  // immediately even if the network write fails.
+  card.front = front; card.back = back;
+  try {
+    await srsUpdate(card.id, { front, back });
+    showToast('Card updated ✓');
+  } catch(e) {
+    showToast('Updated for this session — sync failed (' + (e.message || 'offline') + ')');
+  }
+  saveBtn.textContent = 'Save'; saveBtn.disabled = false;
+  closeSrsEdit();
+  renderSrsCard(); // re-render with new text (resets flip / regenerates MC)
 });
 
 // "Remember It" — condense long activity content into a flashcard via Claude,
