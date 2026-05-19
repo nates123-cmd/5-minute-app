@@ -1,6 +1,9 @@
 dev-config.js
 .DS_Store
 
+# Supabase CLI scratch
+supabase/.temp/
+
 # Local design references / mockups — don't ship to GitHub Pages
 break redesign/
 break-citrine-v5.html

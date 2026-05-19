@@ -5227,13 +5227,66 @@ async function captureRec(query, mediaHint) {
 
 // Background two-pass lookup (knowledge → web search). On a confident match,
 // patch the row in place. Ambiguous / no-match / error → leave the raw row.
+function recsRefreshIfVisible() {
+  updateRecsBadge();
+  const recsScreen = document.getElementById('screen-recs');
+  if (recsScreen && recsScreen.classList.contains('active')) {
+    const t = getRecsActiveTab();
+    if (t !== 'Listen') renderRecsMediaTab(t);
+  }
+}
+
+// JustWatch proxy (Supabase Edge Function). Source of truth for movie/TV.
+const JW_FN_URL = SB_URL + '/functions/v1/justwatch';
+async function jwLookup(title, year) {
+  try {
+    const u = new URL(JW_FN_URL);
+    u.searchParams.set('title', title);
+    if (year) u.searchParams.set('year', String(year));
+    const res = await fetch(u.toString(), { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
+    if (!res.ok) return null;
+    const d = await res.json();
+    const list = d && d.results;
+    if (!Array.isArray(list) || !list.length) return null;
+    let best = list[0];                 // function already popularity + year sorts
+    if (year) {
+      const y = Number(year);
+      const near = list.find(x => Math.abs((x.year || 0) - y) <= 1);
+      if (near) best = near;
+    }
+    return best;
+  } catch(e) { return null; }
+}
+
+async function applyJwUpdate(id, jw, fallbackSummary) {
+  await recsUpdate(id, {
+    title: jw.title || undefined,
+    year: typeof jw.year === 'number' ? jw.year : null,
+    media_type: jw.type === 'SHOW' ? 'tv' : 'movie',
+    summary: jw.summary || fallbackSummary || null,
+    where_to_find: Array.isArray(jw.where_to_find) ? jw.where_to_find : [],
+  });
+  recsRefreshIfVisible();
+}
+
 async function recEnrich(id, query, mediaHint) {
   try {
+    // Movie/TV → JustWatch is source of truth (title/year/where_to_find).
+    if (mediaHint === 'movie' || mediaHint === 'tv') {
+      const jw = await jwLookup(query, null);
+      if (jw) { await applyJwUpdate(id, jw); return; }
+      // no JW match → fall through to Claude identification
+    }
     let r = await recApiLookup(query, mediaHint, false);
     if (r && r.confident === false && r.needs_search === true) {
       r = await recApiLookup(query, mediaHint, true);
     }
     if (!r || r.confident !== true) return;
+    // Claude identified a film/show → let JustWatch own its streaming data.
+    if (r.media_type === 'movie' || r.media_type === 'tv') {
+      const jw = await jwLookup(r.title || query, r.year);
+      if (jw) { await applyJwUpdate(id, jw, r.summary); return; }
+    }
     await recsUpdate(id, {
       title: r.title || query,
       creator: r.creator || null,
@@ -5242,12 +5295,7 @@ async function recEnrich(id, query, mediaHint) {
       summary: r.summary || null,
       where_to_find: Array.isArray(r.where_to_find) ? r.where_to_find : [],
     });
-    updateRecsBadge();
-    const recsScreen = document.getElementById('screen-recs');
-    if (recsScreen && recsScreen.classList.contains('active')) {
-      const t = getRecsActiveTab();
-      if (t !== 'Listen') renderRecsMediaTab(t);
-    }
+    recsRefreshIfVisible();
   } catch(e) { /* leave the raw row as-is */ }
 }
 

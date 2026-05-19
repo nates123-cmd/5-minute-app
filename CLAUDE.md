@@ -41,6 +41,7 @@ SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // anon key, safe to commit
 | `listening_subscriptions` | id, name, feed_url, created_at |
 | `listening_queue` | id, title, show_name, summary, source, subscription_id, duration_secs, spotify_url, listened, pub_date, recommended_by, created_at |
 | `recommendations` | id, title, creator, year, media_type, summary, where_to_find (jsonb), raw_input, source_query, status (saved\|consumed\|skipped), created_at, consumed_at |
+| `justwatch_cache` | cache_key (PK), payload (jsonb), fetched_at — RLS on, **no policies**: only the edge function's service role touches it (anon cannot read) |
 | ~~`mantras`~~ | removed from app in Citrine redesign (table left untouched in Supabase, no longer queried) |
 
 Recs helpers: `recsCreate/recsFetch/recsUpdate/recsDelete` (mirror `srs*`), offline via `localStorage['offline_recs_queue']`. `sbCount(query)` = count-only fetch (mirrors `srsGetDueCount`).
@@ -103,6 +104,8 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 `anki-input` — Add Flashcard (3 modes: both sides / I have front / I have back, Claude generates missing side)
 `recs` — Recs screen: horizontal tab strip (Listen, Books, Articles, Movies, TV, Music, Other; active tab in `localStorage['recs_active_tab']`). Listen tab = the existing Listen feature, logic unchanged (`#screen-listen` now nested as the Listen pane, no longer a routed `.screen`). Other tabs render from `recommendations` filtered by media_type. Long-press / right-click a row → action sheet (Mark consumed / Skip / Delete). Podcasts captured as recs land in the Other tab.
 `rec-add` — Recommendation capture (reached from Add menu `data-add="rec"` and Recs `+ Add`). **Fire-and-forget** (like Listen Later): "Look it up" saves the raw entry immediately (`captureRec`), returns home with a toast, then `recEnrich` runs a two-pass Claude lookup in the background (pass 1 knowledge-only; pass 2 adds `web_search_20250305` only when pass 1 returns `needs_search`) and patches the row on a confident match. Ambiguous/no-match/error leaves the raw row — fix via the Recs action-sheet **Edit** modal (`openRecEditModal`). Dedicated fetch (NOT `callClaude`), model `claude-sonnet-4-5`. Media-type chip is an **authoritative** filter (movie↔tv the only allowed fuzziness; titles read literally, not expanded to famous superstrings). Region assumed **US** for streaming/links. Action sheet: Mark consumed / Edit / Skip / Delete.
+
+**JustWatch (movie/TV source of truth):** `supabase/functions/justwatch/` is a Deno Edge Function proxying JustWatch's unofficial GraphQL (no CORS otherwise), trimming to a small US `where_to_find` (FLATRATE-first, rent/buy collapsed to one JustWatch link), cached 7d in `justwatch_cache` via service role. In `recEnrich`, movie/tv recs → `jwLookup()` supplies title/year/type/`where_to_find` (Claude summary as fallback); non-film/TV stays the Claude path. Function deployed with `--no-verify-jwt` (browser-CORS) but gates on the anon key in-code. Client calls `SB_URL + '/functions/v1/justwatch'` with the anon key. Redeploy: `supabase functions deploy justwatch --project-ref xsmnfcmtbpeaccnyinkr --no-verify-jwt`.
 ~~`mantra` / `mantra-manage`~~ — removed in Citrine redesign
 
 ---
