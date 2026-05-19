@@ -422,6 +422,65 @@
       color: var(--text);
       line-height: 1.5;
     }
+    /* ── Activity settings (toggle list) ── */
+    #settings-activity-list { display: flex; flex-direction: column; margin-top: 4px; }
+    .setting-row {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 14px; padding: 13px 4px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer; user-select: none;
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .setting-name { font-size: 0.95rem; color: var(--text); }
+    .setting-row.is-off .setting-name { color: var(--muted); }
+    .setting-switch {
+      appearance: none; -webkit-appearance: none;
+      position: relative; flex: none; margin: 0;
+      width: 42px; height: 25px; border-radius: 999px;
+      background: var(--surface-2, var(--border));
+      transition: background 0.18s ease; cursor: pointer;
+    }
+    .setting-switch::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 19px; height: 19px; border-radius: 50%;
+      background: var(--bg); border: 1px solid rgba(0,0,0,0.10);
+      transition: transform 0.18s ease;
+    }
+    .setting-switch:checked { background: var(--accent-3, var(--accent)); }
+    .setting-switch:checked::after { transform: translateX(17px); }
+    .settings-bulk { display: flex; gap: 10px; margin: 16px 0 6px; }
+    .settings-bulk button {
+      flex: 1; background: none; border: 1.5px solid var(--border);
+      color: var(--muted); font-size: 0.85rem; padding: 9px;
+      border-radius: 10px; cursor: pointer;
+    }
+    .settings-bulk button:active { background: var(--surface); }
+    /* ── Ported "for Amanda" cards ── */
+    .am-img-wrap:empty { display: none; }
+    .am-img-wrap { margin: -4px 0 14px; }
+    .am-img { width: 100%; max-height: 240px; object-fit: cover; border-radius: var(--radius-md, 12px); display: block; }
+    .am-tag { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+    .am-field { margin-top: 12px; font-size: 0.92rem; line-height: 1.55; color: var(--text); }
+    .am-label { display: block; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+    .am-swatch { height: 96px; border-radius: var(--radius-md, 12px); margin-bottom: 12px; border: 1px solid var(--border); }
+    .am-pairs { display: flex; gap: 10px; margin-top: 6px; }
+    .am-pair { flex: 1; text-align: center; }
+    .am-pair-sw { height: 44px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 4px; }
+    .am-pair-nm { font-size: 0.78rem; color: var(--text); }
+    .am-pair-hx { font-size: 0.68rem; color: var(--muted); }
+    .am-sec { font-size: 0.74rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin: 14px 0 4px; }
+    .am-list { margin: 0; padding-left: 20px; font-size: 0.92rem; line-height: 1.6; color: var(--text); }
+    .am-pair-row { display: flex; align-items: center; gap: 10px; margin: 6px 0 4px; }
+    .am-pair-item { flex: 1; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md, 12px); padding: 14px 8px; font-weight: 600; color: var(--text); }
+    .am-pair-x { color: var(--muted); font-size: 1.1rem; }
+    .am-wx { display: flex; gap: 8px; margin: 10px 0 4px; }
+    .am-wx-chip { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill, 999px); padding: 5px 12px; font-size: 0.85rem; color: var(--text); }
+    .am-wx-forecast { display: flex; gap: 6px; overflow-x: auto; margin: 12px 0 4px; padding-bottom: 4px; }
+    .am-wx-day { flex: none; min-width: 62px; text-align: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md, 12px); padding: 8px 4px; }
+    .am-wx-dn { font-size: 0.72rem; color: var(--muted); }
+    .am-wx-ic { font-size: 1.3rem; margin: 2px 0; }
+    .am-wx-tp { font-size: 0.76rem; color: var(--text); }
+    .am-wx-pc { font-size: 0.68rem; color: var(--muted); margin-top: 2px; }
     .selector-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
     .btn-selector {
       padding: 7px 14px;
@@ -1119,6 +1178,20 @@
   <p style="font-size:0.78rem;color:var(--muted)">Stored in localStorage — only sent to api.anthropic.com</p>
 </div>
 
+<!-- ACTIVITY SETTINGS -->
+<div id="screen-settings" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Activities</span>
+  </div>
+  <p class="framing">Turn activities on or off. Hidden ones disappear from the grid and won't come up in Random.</p>
+  <div class="settings-bulk">
+    <button id="settings-enable-all" type="button">Enable all</button>
+    <button id="settings-disable-all" type="button">Disable all</button>
+  </div>
+  <div id="settings-activity-list"></div>
+</div>
+
 <!-- HOME -->
 <div id="screen-home" class="screen">
   <div class="home-header">
@@ -1130,6 +1203,7 @@
       <button class="btn-icon" id="btn-timer-menu" title="Set timer">⏱</button>
       <button class="btn-icon" id="btn-home-overflow" title="More" aria-haspopup="true">⋯</button>
       <div class="home-overflow-menu hidden" id="home-overflow-menu" role="menu">
+        <button class="overflow-item" id="btn-activity-settings">Activities</button>
         <button class="overflow-item" id="btn-settings">API key</button>
       </div>
     </div>
@@ -1173,116 +1247,7 @@
 
   <div class="section-label">Wander</div>
 
-  <div class="activity-grid">
-    <div class="activity-card" data-activity="history">
-      <h3>History Rabbit Hole</h3>
-      <p>Dive into something genuinely fascinating</p>
-    </div>
-    <div class="activity-card" data-activity="cooking">
-      <h3>Cooking</h3>
-      <p>Learn a technique that changes how you cook</p>
-    </div>
-    <div class="activity-card" data-activity="stoic">
-      <h3>Stoic Passage</h3>
-      <p>A thought that might stick with you</p>
-    </div>
-    <div class="activity-card" data-activity="stoic-reminder">
-      <h3>Stoic Reminder</h3>
-      <p>A gut-check from the fundamentals.</p>
-    </div>
-    <div class="activity-card" data-activity="reading">
-      <h3>One-Page Read</h3>
-      <p>Open your book. Just one page.</p>
-    </div>
-    <div class="activity-card" data-activity="mindfulness">
-      <h3>Mindfulness</h3>
-      <p>5 minutes. Just breathe and notice.</p>
-    </div>
-    <div class="activity-card" data-activity="breathe">
-      <h3>Breathe</h3>
-      <p>Just breathe. That's it.</p>
-    </div>
-    <div class="activity-card" data-activity="fun-fact">
-      <h3>Fun Fact</h3>
-      <p>Something that makes you say "wait, really?"</p>
-    </div>
-    <div class="activity-card" data-activity="introspection">
-      <h3>Introspection</h3>
-      <p>One question that cuts through the noise.</p>
-    </div>
-    <div class="activity-card" data-activity="mental-math">
-      <h3>Mental Math</h3>
-      <p>A problem worth the focus.</p>
-    </div>
-    <div class="activity-card" data-activity="new-word">
-      <h3>New Word</h3>
-      <p>An obscure word that earns its place.</p>
-    </div>
-    <div class="activity-card" data-activity="new-term">
-      <h3>New Term</h3>
-      <p>A concept from any field worth knowing.</p>
-    </div>
-    <div class="activity-card" data-activity="finance-term">
-      <h3>Finance Term</h3>
-      <p>Understand money and markets better.</p>
-    </div>
-    <div class="activity-card" data-activity="stats-concept">
-      <h3>Stats Concept</h3>
-      <p>A statistical idea that changes how you read the world.</p>
-    </div>
-    <div class="activity-card" data-activity="geography-fact">
-      <h3>Geography Fact</h3>
-      <p>A place that makes you rethink the map.</p>
-    </div>
-    <div class="activity-card" data-activity="logical-fallacy">
-      <h3>Logical Fallacy</h3>
-      <p>Spot bad arguments before they land.</p>
-    </div>
-    <div class="activity-card" data-activity="on-this-day">
-      <h3>On This Day</h3>
-      <p>Something that happened today in history.</p>
-    </div>
-    <div class="activity-card" data-activity="thought-experiment">
-      <h3>Thought Experiment</h3>
-      <p>A question with no easy answer.</p>
-    </div>
-    <div class="activity-card" data-activity="etymology">
-      <h3>Etymology</h3>
-      <p>Where a word actually came from.</p>
-    </div>
-    <div class="activity-card" data-activity="cognitive-bias">
-      <h3>Cognitive Bias</h3>
-      <p>How your brain tricks you — and how to catch it.</p>
-    </div>
-    <div class="activity-card" data-activity="health-insight">
-      <h3>Health Insight</h3>
-      <p>One evidence-based tip on sleep, nutrition, or movement.</p>
-    </div>
-    <div class="activity-card" data-activity="productivity-insight">
-      <h3>Productivity Insight</h3>
-      <p>An evidence-based idea to work smarter.</p>
-    </div>
-    <div class="activity-card" data-activity="brain-teaser">
-      <h3>Brain Teaser</h3>
-      <p>Fermi estimates, logic puzzles, lateral thinking.</p>
-    </div>
-    <div class="activity-card" data-quiz="history">
-      <h3>History Quiz</h3>
-      <p>Gets harder as you improve. Stop when you want.</p>
-    </div>
-    <div class="activity-card" data-quiz="geography">
-      <h3>Geography Quiz</h3>
-      <p>Capitals, borders, and places you've never heard of.</p>
-    </div>
-    <div class="activity-card" data-quiz="trivia">
-      <h3>Trivia Quiz</h3>
-      <p>Mix of science, culture, and random knowledge.</p>
-    </div>
-    <div class="activity-card" data-quiz="cooking">
-      <h3>Cooking Quiz</h3>
-      <p>Techniques, ingredients, and culinary facts.</p>
-    </div>
-  </div>
+  <div class="activity-grid" id="activity-grid"><!-- rendered from ACTIVITY_REGISTRY by renderActivityGrid() --></div>
 </div>
 
 <!-- HISTORY -->
@@ -1645,6 +1610,86 @@
   <div class="activity-actions">  </div>
 </div>
 
+<!-- ── Ported from "for Amanda" app ── -->
+<div id="screen-flower" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Flower of the Day</span></div>
+  <div id="flower-content"></div>
+  <button class="btn-refresh" id="flower-refresh">New flower</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-color" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Color of the Day</span></div>
+  <div id="color-content"></div>
+  <button class="btn-refresh" id="color-refresh">New color</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-design" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Architecture &amp; Design</span></div>
+  <div id="design-content"></div>
+  <button class="btn-refresh" id="design-refresh">New insight</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-science" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Science Bite</span></div>
+  <div id="science-content"></div>
+  <button class="btn-refresh" id="science-refresh">New bite</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-psychology" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Psychology</span></div>
+  <div id="psychology-content"></div>
+  <button class="btn-refresh" id="psychology-refresh">New insight</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-weekend" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">This Weekend</span></div>
+  <div id="weekend-content"></div>
+  <button class="btn-refresh" id="weekend-refresh">Another idea</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-recipe" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Recipe Spark</span></div>
+  <div id="recipe-content"></div>
+  <button class="btn-refresh" id="recipe-refresh">New recipe</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-flavor" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Flavor Pairing</span></div>
+  <div id="flavor-content"></div>
+  <button class="btn-refresh" id="flavor-refresh">New pairing</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-room" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Room Refresh</span></div>
+  <div id="room-content"></div>
+  <button class="btn-refresh" id="room-refresh">New idea</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-good-news" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Good News</span></div>
+  <div id="good-news-content"></div>
+  <button class="btn-refresh" id="good-news-refresh">More good news</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-pairing" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Unexpected Pairing</span></div>
+  <div id="pairing-content"></div>
+  <button class="btn-refresh" id="pairing-refresh">New pairing</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-weather" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Weather</span></div>
+  <div id="weather-content"></div>
+  <button class="btn-refresh" id="weather-refresh">Refresh</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-interior" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Interior Spotlight</span></div>
+  <div id="interior-content"></div>
+  <button class="btn-refresh" id="interior-refresh">New style</button>
+  <div class="activity-actions">  </div>
+</div>
+
 <!-- ANKI INPUT -->
 <div id="screen-anki-input" class="screen">
   <div class="activity-header">
@@ -1968,22 +2013,111 @@ document.addEventListener('click', async e => {
   }
 });
 
+// ── Activity registry ─────────────────────────
+// Single source of truth for the home grid. Array order = on-screen order.
+// quiz:true entries route via startQuiz() and use data-quiz (not data-activity).
+const ACTIVITY_REGISTRY = [
+  { slug:'history',              name:'History Rabbit Hole',  desc:'Dive into something genuinely fascinating' },
+  { slug:'cooking',              name:'Cooking',              desc:'Learn a technique that changes how you cook' },
+  { slug:'stoic',                name:'Stoic Passage',        desc:'A thought that might stick with you' },
+  { slug:'stoic-reminder',       name:'Stoic Reminder',       desc:'A gut-check from the fundamentals.' },
+  { slug:'reading',              name:'One-Page Read',        desc:'Open your book. Just one page.' },
+  { slug:'mindfulness',          name:'Mindfulness',          desc:'5 minutes. Just breathe and notice.' },
+  { slug:'breathe',              name:'Breathe',              desc:"Just breathe. That's it." },
+  { slug:'fun-fact',             name:'Fun Fact',             desc:'Something that makes you say "wait, really?"' },
+  { slug:'introspection',        name:'Introspection',        desc:'One question that cuts through the noise.' },
+  { slug:'mental-math',          name:'Mental Math',          desc:'A problem worth the focus.' },
+  { slug:'new-word',             name:'New Word',             desc:'An obscure word that earns its place.' },
+  { slug:'new-term',             name:'New Term',             desc:'A concept from any field worth knowing.' },
+  { slug:'finance-term',         name:'Finance Term',         desc:'Understand money and markets better.' },
+  { slug:'stats-concept',        name:'Stats Concept',        desc:'A statistical idea that changes how you read the world.' },
+  { slug:'geography-fact',       name:'Geography Fact',       desc:'A place that makes you rethink the map.' },
+  { slug:'logical-fallacy',      name:'Logical Fallacy',      desc:'Spot bad arguments before they land.' },
+  { slug:'on-this-day',          name:'On This Day',          desc:'Something that happened today in history.' },
+  { slug:'thought-experiment',   name:'Thought Experiment',   desc:'A question with no easy answer.' },
+  { slug:'etymology',            name:'Etymology',            desc:'Where a word actually came from.' },
+  { slug:'cognitive-bias',       name:'Cognitive Bias',       desc:'How your brain tricks you — and how to catch it.' },
+  { slug:'health-insight',       name:'Health Insight',       desc:'One evidence-based tip on sleep, nutrition, or movement.' },
+  { slug:'productivity-insight', name:'Productivity Insight', desc:'An evidence-based idea to work smarter.' },
+  { slug:'brain-teaser',         name:'Brain Teaser',         desc:'Fermi estimates, logic puzzles, lateral thinking.' },
+  { slug:'flower',               name:'Flower of the Day',    desc:'A flower, its meaning, and how to keep it alive.' },
+  { slug:'color',                name:'Color of the Day',     desc:'A shade, its psychology, and a palette to pair it with.' },
+  { slug:'design',               name:'Architecture & Design',desc:'The built world, made to feel alive.' },
+  { slug:'science',              name:'Science Bite',         desc:'One surprising, beautiful scientific finding.' },
+  { slug:'psychology',           name:'Psychology',           desc:'A relationship or mind insight worth trying.' },
+  { slug:'weekend',              name:'This Weekend',         desc:'One good way to spend a weekend.' },
+  { slug:'recipe',               name:'Recipe Spark',         desc:'A simple recipe — 2 servings, under 30 min.' },
+  { slug:'flavor',               name:'Flavor Pairing',       desc:'An unexpected pairing and the science of why.' },
+  { slug:'room',                 name:'Room Refresh',         desc:'One specific way to refresh a space.' },
+  { slug:'good-news',            name:'Good News',            desc:'A genuinely uplifting real-world development.' },
+  { slug:'pairing',              name:'Unexpected Pairing',   desc:"Two things that shouldn't work together but do." },
+  { slug:'weather',              name:'Weather',              desc:'Your forecast, with a little atmospheric science.' },
+  { slug:'interior',             name:'Interior Spotlight',   desc:'A named design movement, with a real example.' },
+  { slug:'history',   quiz:true, name:'History Quiz',         desc:'Gets harder as you improve. Stop when you want.' },
+  { slug:'geography', quiz:true, name:'Geography Quiz',       desc:"Capitals, borders, and places you've never heard of." },
+  { slug:'trivia',    quiz:true, name:'Trivia Quiz',          desc:'Mix of science, culture, and random knowledge.' },
+  { slug:'cooking',   quiz:true, name:'Cooking Quiz',         desc:'Techniques, ingredients, and culinary facts.' },
+];
+
+// Stable key for hide/show + bucket lookups. Quiz slugs collide with activity
+// slugs (history/cooking), so quiz entries are namespaced 'quiz-<slug>'.
+function regKey(a) { return a.quiz ? 'quiz-' + a.slug : a.slug; }
+
+// Hidden-activity set. Settings screen (Phase 2) writes here; empty until then.
+function getHiddenActivities() {
+  try { return new Set(JSON.parse(localStorage.getItem('hidden_activities') || '[]')); }
+  catch (e) { return new Set(); }
+}
+function setHiddenActivities(set) {
+  localStorage.setItem('hidden_activities', JSON.stringify([...set]));
+}
+
+function renderActivityGrid() {
+  const grid = document.getElementById('activity-grid');
+  if (!grid) return;
+  const hidden = getHiddenActivities();
+  grid.innerHTML = ACTIVITY_REGISTRY
+    .filter(a => !hidden.has(regKey(a)))
+    .map(a => {
+      const attr = a.quiz ? 'data-quiz="' + a.slug + '"' : 'data-activity="' + a.slug + '"';
+      return '<div class="activity-card" ' + attr + '><h3>' + esc(a.name) + '</h3><p>' + esc(a.desc) + '</p></div>';
+    }).join('');
+  wireActivityCards();
+}
+
+// Per-card click wiring. Idempotent (re-run safely after every re-render).
+function wireActivityCards() {
+  document.querySelectorAll('#activity-grid .activity-card').forEach(card => {
+    if (card._wired) return;
+    card._wired = true;
+    card.addEventListener('click', () => {
+      if (card.dataset.quiz) { startQuiz(card.dataset.quiz); return; }
+      if (!card.dataset.activity) return;
+      selectedDuration = '5min';
+      navigateToActivity(card.dataset.activity);
+    });
+  });
+}
+
 const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
            'finance-term','stats-concept','geography-fact','logical-fallacy','on-this-day',
            'thought-experiment','etymology','cognitive-bias','mindfulness','breathe','brain-teaser','health-insight'],
   '5min': ['history','cooking','stoic','reading','mindfulness','breathe',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
-           'thought-experiment','cognitive-bias','brain-teaser','health-insight'],
-  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','introspection'],
+           'thought-experiment','cognitive-bias','brain-teaser','health-insight',
+           'flower','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'],
+  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','introspection','psychology'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
-                   'on-this-day','thought-experiment','health-insight','productivity-insight'],
-  'activity':     ['mental-math','brain-teaser','reading','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
+                   'on-this-day','thought-experiment','health-insight','productivity-insight',
+                   'flower','color','design','science','good-news','pairing','weather','interior'],
+  'activity':     ['mental-math','brain-teaser','reading','weekend','recipe','flavor','room','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
   'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight',
+                   'flower','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior',
                    'quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
 };
 
@@ -2121,6 +2255,19 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'brain-teaser')      loadBrainTeaser();
     if (a === 'health-insight')        loadHealthInsight();
     if (a === 'productivity-insight')  loadProductivityInsight();
+    if (a === 'flower')            loadFlower();
+    if (a === 'color')             loadColor();
+    if (a === 'design')            loadDesign();
+    if (a === 'science')           loadScience();
+    if (a === 'psychology')        loadPsychology();
+    if (a === 'weekend')           loadWeekend();
+    if (a === 'recipe')            loadRecipe();
+    if (a === 'flavor')            loadFlavor();
+    if (a === 'room')              loadRoom();
+    if (a === 'good-news')         loadGoodNews();
+    if (a === 'pairing')           loadPairing();
+    if (a === 'interior')          loadInterior();
+    if (a === 'weather')           loadWeather();
     if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'anki-input')        resetAnkiInput();
@@ -2130,13 +2277,9 @@ function navigateToActivity(a, skipLoad = false) {
   }
 }
 
-document.querySelectorAll('.activity-card').forEach(card => {
-  card.addEventListener('click', () => {
-    if (!card.dataset.activity) return; // quiz cards use data-quiz, not data-activity
-    selectedDuration = '5min';
-    navigateToActivity(card.dataset.activity);
-  });
-});
+// Render the home grid from ACTIVITY_REGISTRY (also wires card clicks,
+// incl. data-quiz cards). Replaces the old hardcoded grid + per-card binding.
+renderActivityGrid();
 
 document.querySelectorAll('.btn-duration').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -2146,7 +2289,9 @@ document.querySelectorAll('.btn-duration').forEach(btn => {
     selectedDuration = bucket;
     document.querySelectorAll('.btn-duration').forEach(b => b.classList.remove('selected'));
     btn.classList.add('selected');
-    const list = DURATION_ACTIVITIES[selectedDuration];
+    const hidden = getHiddenActivities();
+    const list = (DURATION_ACTIVITIES[selectedDuration] || []).filter(s => !hidden.has(s));
+    if (!list.length) { showToast('Everything in this filter is turned off — enable some in Activities.'); return; }
     navigateToActivity(list[Math.floor(Math.random() * list.length)]);
   });
 });
@@ -2185,6 +2330,46 @@ document.getElementById('srs-due-card')?.addEventListener('click', () => {
   });
   menu.querySelectorAll('.overflow-item').forEach(item => {
     item.addEventListener('click', () => menu.classList.add('hidden'));
+  });
+})();
+
+// ── Activity settings (per-activity on/off toggles) ──
+function renderSettings() {
+  const list = document.getElementById('settings-activity-list');
+  if (!list) return;
+  const hidden = getHiddenActivities();
+  list.innerHTML = ACTIVITY_REGISTRY.map(a => {
+    const k = regKey(a);
+    const on = !hidden.has(k);
+    return '<label class="setting-row' + (on ? '' : ' is-off') + '">' +
+             '<span class="setting-name">' + esc(a.name) + '</span>' +
+             '<input type="checkbox" class="setting-switch" data-key="' + k + '"' + (on ? ' checked' : '') + '>' +
+           '</label>';
+  }).join('');
+}
+
+(function setupActivitySettings() {
+  const open = document.getElementById('btn-activity-settings');
+  if (open) open.addEventListener('click', () => { renderSettings(); showScreen('settings'); });
+
+  const list = document.getElementById('settings-activity-list');
+  if (list) list.addEventListener('change', (e) => {
+    const sw = e.target.closest('.setting-switch');
+    if (!sw) return;
+    const hidden = getHiddenActivities();
+    if (sw.checked) hidden.delete(sw.dataset.key); else hidden.add(sw.dataset.key);
+    setHiddenActivities(hidden);
+    sw.closest('.setting-row')?.classList.toggle('is-off', !sw.checked);
+    renderActivityGrid(); // live — home reflects the change immediately
+  });
+
+  document.getElementById('settings-enable-all')?.addEventListener('click', () => {
+    setHiddenActivities(new Set());
+    renderSettings(); renderActivityGrid();
+  });
+  document.getElementById('settings-disable-all')?.addEventListener('click', () => {
+    setHiddenActivities(new Set(ACTIVITY_REGISTRY.map(regKey)));
+    renderSettings(); renderActivityGrid();
   });
 })();
 
@@ -2412,7 +2597,7 @@ function skel() {
   return '<div class="ai-single"><div class="skeleton" style="width:60%;margin-bottom:12px"></div><div class="skeleton"></div><div class="skeleton" style="width:80%"></div></div>';
 }
 
-function makeLoader(slug, prompt, render, fallbackData) {
+function makeLoader(slug, prompt, render, fallbackData, onAfterRender) {
   async function load() {
     const container = document.getElementById(slug + '-content');
     container.innerHTML = skel();
@@ -2424,7 +2609,9 @@ function makeLoader(slug, prompt, render, fallbackData) {
       const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
                         (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
       const data = await callClaude(prompt(exclude + ratingCtx));
-      const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || data.problem || data.reminder || '';
+      const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || data.problem || data.reminder ||
+        data.headline || data.concept || data.suggestion || data.idea || data.pairing || data.style_name ||
+        (data.item_a && data.item_b ? data.item_a + ' × ' + data.item_b : '') || '';
       addShown(slug, key);
       searchTerms[slug] = key;
       container.innerHTML = render(data);
@@ -2434,6 +2621,7 @@ function makeLoader(slug, prompt, render, fallbackData) {
         card.insertAdjacentHTML('beforeend', cardFooter(slug, key, url));
         addSwipeListener(card, slug, key, load);
       }
+      if (onAfterRender) { try { onAfterRender(data, container); } catch(e) {} }
     } catch(e) {
       showToast('⚠️ ' + (e.message || 'Generation failed'), 4000);
       container.innerHTML = render(fallbackData);
@@ -2833,9 +3021,304 @@ document.getElementById('anki-regenerate').addEventListener('click', async () =>
 });
 
 // ── "Ask Claude" + "Journal about it" on informational screens ───────────────
+// ═══════════════════════════════════════════════
+// Ported from the "for Amanda" app (Amanda-Break)
+// Adapted to Break's makeLoader / cardFooter / esc conventions.
+// ═══════════════════════════════════════════════
+
+// Non-strict Wikipedia/Commons image finder (flower).
+async function fetchWikiImage(query, wrapEl) {
+  if (!wrapEl || !query) return;
+  const pickSrc = (d) => d.originalimage?.source || d.thumbnail?.source;
+  const setImg = (src) => { if (wrapEl.isConnected) wrapEl.innerHTML = '<img class="am-img" src="' + esc(src) + '" alt="' + esc(query) + '">'; };
+  const fileToUrl = (t) => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(t.replace(/^File:/, '')) + '?width=1200';
+  const usable = (t) => /\.(jpe?g|png|webp)$/i.test(t) && !/(logo|icon|commons-|edit-|wiki-|nuvola|symbol|flag of|coat of arms|map of)/i.test(t);
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(query));
+    if (res.ok) { const src = pickSrc(await res.json()); if (src) { setImg(src); return; } }
+  } catch (e) {}
+  let articleTitle = null;
+  try {
+    const sr = await fetch('https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + encodeURIComponent(query) + '&srlimit=1&format=json&origin=*');
+    if (sr.ok) articleTitle = (await sr.json()).query?.search?.[0]?.title || null;
+  } catch (e) {}
+  if (!articleTitle) return;
+  try {
+    const r2 = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(articleTitle));
+    if (r2.ok) { const s2 = pickSrc(await r2.json()); if (s2) { setImg(s2); return; } }
+  } catch (e) {}
+  try {
+    const ir = await fetch('https://en.wikipedia.org/w/api.php?action=query&prop=images&titles=' + encodeURIComponent(articleTitle) + '&imlimit=40&format=json&origin=*');
+    if (ir.ok) {
+      const pages = (await ir.json()).query?.pages || {};
+      const imgs = (Object.values(pages)[0]?.images || []).map(i => i.title).filter(usable);
+      if (imgs[0]) { setImg(fileToUrl(imgs[0])); return; }
+    }
+  } catch (e) {}
+}
+
+// Focused Commons interior-photo search (interior).
+async function fetchInteriorImage(searchQuery, wrapEl) {
+  if (!wrapEl || !searchQuery) return;
+  const fileToUrl = (t) => 'https://commons.wikimedia.org/wiki/Special:FilePath/' + encodeURIComponent(t.replace(/^File:/, '')) + '?width=1200';
+  const okFormat = (t) => /\.(jpe?g|png|webp)$/i.test(t);
+  const negative = /(logo|icon|commons-|edit-|wiki-|nuvola|symbol|flag of|coat of arms|map of|location map|press briefing|press conference|speech|signing|ceremony|ribbon cutting|wedding|gala|funeral|address by|visit to|meeting with|portrait of|posing|exterior|facade|aerial|from outside|from the street|view from|skyline|nighttime view)/i;
+  const positive = /(interior|lobby|living room|dining room|bedroom|kitchen|main hall|reading room|atrium|salon|parlor|inside|indoor|nave|chapel\b)/i;
+  try {
+    const cRes = await fetch('https://commons.wikimedia.org/w/api.php?action=query&list=search&srnamespace=6&srsearch=' + encodeURIComponent(searchQuery) + '&srlimit=30&format=json&origin=*');
+    if (!cRes.ok) return;
+    const hits = (await cRes.json()).query?.search || [];
+    const titles = hits.map(h => h.title).filter(t => okFormat(t) && !negative.test(t));
+    const best = titles.find(t => positive.test(t)) || null;
+    if (best && wrapEl.isConnected) wrapEl.innerHTML = '<img class="am-img" src="' + esc(fileToUrl(best)) + '" alt="' + esc(searchQuery) + '">';
+  } catch (e) {}
+}
+
+// WMO weather-code maps (weather).
+const WMO = {0:'Clear sky',1:'Mainly clear',2:'Partly cloudy',3:'Overcast',45:'Fog',48:'Icy fog',51:'Light drizzle',53:'Drizzle',55:'Heavy drizzle',61:'Light rain',63:'Rain',65:'Heavy rain',71:'Light snow',73:'Snow',75:'Heavy snow',80:'Rain showers',81:'Rain showers',95:'Thunderstorm'};
+const WMO_EMOJI = {0:'☀️',1:'🌤',2:'⛅️',3:'☁️',45:'🌫',48:'🌫',51:'🌦',53:'🌦',55:'🌧',61:'🌧',63:'🌧',65:'🌧',71:'🌨',73:'🌨',75:'🌨',80:'🌦',81:'🌧',95:'⛈'};
+function wmoLabel(c){ return WMO[c] || 'Mixed'; }
+function wmoEmoji(c){ return WMO_EMOJI[c] || '🌡'; }
+
+// ── Flower of the Day ──
+const loadFlower = makeLoader('flower',
+  (ex) => 'You are a botanical enthusiast. Generate a unique flower profile. Shape: {"name":"...","origin":"...","meaning":"...","care_tip":"...","fun_fact":"...","wiki_image":"..."} wiki_image: the exact title of a Wikipedia article with a strong photo of this flower — prefer the scientific genus or species name (e.g. Bird of Paradise → "Strelitzia reginae", Cherry Blossom → "Prunus serrulata", Lotus → "Nelumbo nucifera"). Avoid disambiguation pages.' + ex,
+  (d) => { ankiData['flower'] = d; return '<div class="ai-single">' +
+    '<div class="am-img-wrap" data-img></div>' +
+    '<div class="am-tag">Flower of the Day</div>' +
+    '<div class="word-title">' + esc(d.name||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Origin</span>' + esc(d.origin||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Meaning</span>' + esc(d.meaning||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Care tip</span>' + esc(d.care_tip||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Fun fact</span>' + esc(d.fun_fact||'') + '</div>' +
+  '</div>'; },
+  { name: 'Lavender', origin: 'Mediterranean basin', meaning: 'Calm, devotion, and serenity', care_tip: 'Needs full sun and very well-drained soil — overwatering is its biggest enemy', fun_fact: 'Romans added lavender to their bath water; the name comes from the Latin lavare, "to wash"', wiki_image: 'Lavandula angustifolia' },
+  (d, container) => fetchWikiImage(d.wiki_image || d.name, container.querySelector('[data-img]'))
+);
+document.getElementById('flower-refresh').addEventListener('click', loadFlower);
+
+// ── Color of the Day ──
+const loadColor = makeLoader('color',
+  (ex) => 'You are an interior designer and color psychologist. Generate a color profile with a complementary palette. Shape: {"name":"...","hex":"#...","psychology":"...","where_to_use":"...","pairs_with":[{"name":"...","hex":"#..."},{"name":"...","hex":"#..."},{"name":"...","hex":"#..."}]} name: a specific shade with a poetic name (e.g. "Dusty Sage"). hex: an accurate hex code. psychology: what it evokes emotionally, 1-2 sentences. where_to_use: one specific interior/styling application. pairs_with: exactly 3 complementary colors, each with a poetic name and an accurate harmonizing hex.' + ex,
+  (d) => { ankiData['color'] = d;
+    const pairs = Array.isArray(d.pairs_with) ? d.pairs_with : [];
+    const pairsHtml = pairs.length
+      ? '<div class="am-pairs">' + pairs.map(p => '<div class="am-pair"><div class="am-pair-sw" style="background:' + esc(p.hex||'') + '"></div><div class="am-pair-nm">' + esc(p.name||'') + '</div><div class="am-pair-hx">' + esc(p.hex||'') + '</div></div>').join('') + '</div>'
+      : (typeof d.pairs_with === 'string' ? esc(d.pairs_with) : '');
+    return '<div class="ai-single">' +
+      '<div class="am-swatch" style="background:' + esc(d.hex||'#ccc') + '"></div>' +
+      '<div class="am-tag">Color of the Day</div>' +
+      '<div class="word-title">' + esc(d.name||'') + ' <span style="font-size:0.7rem;font-weight:400;color:var(--muted)">' + esc(d.hex||'') + '</span></div>' +
+      '<div class="am-field"><span class="am-label">Psychology</span>' + esc(d.psychology||'') + '</div>' +
+      '<div class="am-field"><span class="am-label">Where to use it</span>' + esc(d.where_to_use||'') + '</div>' +
+      '<div class="am-field"><span class="am-label">Pairs with</span>' + pairsHtml + '</div>' +
+    '</div>'; },
+  { name: 'Dusty Rose', hex: '#C9A0A0', psychology: 'A gentle, grounding hue that evokes warmth and quiet femininity — calming without being cold.', where_to_use: 'Bedroom walls or linen textiles for a soft, restful atmosphere.', pairs_with: [{ name: 'Sage Green', hex: '#A3B18A' }, { name: 'Warm Ivory', hex: '#F2E8DC' }, { name: 'Stone Grey', hex: '#8E867B' }] }
+);
+document.getElementById('color-refresh').addEventListener('click', loadColor);
+
+// ── Architecture & Design ──
+const loadDesign = makeLoader('design',
+  (ex) => 'You are an architecture and design educator who makes the built world feel alive. Share one insight. Rotate naturally between architecture fun facts, design philosophy, and specific design choices or movements. Shape: {"type":"fun_fact|philosophy|design_choice","title":"...","content":"...","example":"..."} title: a compelling, specific headline. content: 2-3 engaging sentences. example: a real building, designer, object, or movement.' + ex,
+  (d) => { ankiData['design'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">Architecture &amp; Design · ' + esc((d.type||'').replace(/_/g, ' ')) + '</div>' +
+    '<div class="word-title">' + esc(d.title||'') + '</div>' +
+    '<div class="main-text">' + esc(d.content||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Example</span>' + esc(d.example||'') + '</div>' +
+  '</div>'; },
+  { type: 'fun_fact', title: 'The Eiffel Tower grows taller in summer', content: 'Thermal expansion causes the iron structure to grow by up to 15cm in hot weather. Gustave Eiffel\'s team accounted for this in the original design — one of many reasons it has survived since 1889.', example: 'Gustave Eiffel, Paris — built for the 1889 World\'s Fair' }
+);
+document.getElementById('design-refresh').addEventListener('click', loadDesign);
+
+// ── Science Bite ──
+const loadScience = makeLoader('science',
+  (ex) => 'You are a science communicator who makes the universe feel magical. Share one surprising, beautiful, or counterintuitive scientific finding. Shape: {"headline":"...","explanation":"...","why_it_matters":"..."} explanation: 2–3 accessible, wonder-filled sentences.' + ex,
+  (d) => { ankiData['science'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">Science Bite</div>' +
+    '<div class="word-title">' + esc(d.headline||'') + '</div>' +
+    '<div class="main-text">' + esc(d.explanation||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Why it matters</span>' + esc(d.why_it_matters||'') + '</div>' +
+  '</div>'; },
+  { headline: 'Trees share nutrients through underground fungal networks', explanation: 'Forests are threaded together by vast mycorrhizal networks — sometimes called the Wood Wide Web. Trees send sugars and chemical signals to their neighbors through these fungal threads, sometimes even feeding struggling seedlings.', why_it_matters: 'A forest isn\'t a collection of competing individuals. It\'s more like a community that looks out for itself.' }
+);
+document.getElementById('science-refresh').addEventListener('click', loadScience);
+
+// ── Psychology ──
+const loadPsychology = makeLoader('psychology',
+  (ex) => 'You are a warm, knowledgeable psychology educator. Share one psychology insight. Rotate between Gottman relationship research, therapeutic or attachment concepts, pop psychology, and gentle reflective prompts. Shape: {"type":"gottman|therapeutic|pop_psych|reflection","concept":"...","explanation":"...","try_this":"..."} Keep it accessible, specific, and genuinely useful — not clinical or generic.' + ex,
+  (d) => { ankiData['psychology'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">Psychology · ' + esc((d.type||'').replace(/_/g, ' ')) + '</div>' +
+    '<div class="word-title">' + esc(d.concept||'') + '</div>' +
+    '<div class="main-text">' + esc(d.explanation||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Try this</span>' + esc(d.try_this||'') + '</div>' +
+  '</div>'; },
+  { type: 'gottman', concept: 'The Four Horsemen', explanation: 'Gottman\'s research identified four communication patterns that reliably predict relationship breakdown: criticism, contempt, defensiveness, and stonewalling. Contempt — treating a partner as beneath you — is the single strongest predictor of divorce.', try_this: 'Notice if any of the four show up in a conversation this week. Just naming the pattern creates distance from it.' }
+);
+document.getElementById('psychology-refresh').addEventListener('click', loadPsychology);
+
+// ── This Weekend ──
+const loadWeekend = makeLoader('weekend',
+  (ex) => { const city = localStorage.getItem('city') || '';
+    return 'You are a local life curator who knows how to make time feel well-spent. Suggest one thing for a weekend. Rotate between a specific activity to try, a hobby to explore, or a local/cultural event idea. Shape: {"type":"activity|hobby|event","suggestion":"...","why_try_it":"...","details":"..."} ' +
+      (city ? 'The user is based in ' + city + ' — make the suggestion specific to or easily findable in that area.' : 'Make it general but specific and actionable, not vague.') +
+      ' Be enthusiastic and specific — not generic self-help advice.' + ex; },
+  (d) => { ankiData['weekend'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">This Weekend · ' + esc(d.type||'') + '</div>' +
+    '<div class="word-title">' + esc(d.suggestion||'') + '</div>' +
+    '<div class="main-text">' + esc(d.why_try_it||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Details</span>' + esc(d.details||'') + '</div>' +
+  '</div>'; },
+  { type: 'activity', suggestion: 'Visit a botanical garden', why_try_it: 'Walking among plants has a measurable effect on cortisol. An hour outside with no agenda is a surprisingly good reset.', details: 'Bring a coffee, walk slowly, leave your phone in your pocket.' }
+);
+document.getElementById('weekend-refresh').addEventListener('click', loadWeekend);
+
+// ── Recipe Spark ──
+const loadRecipe = makeLoader('recipe',
+  (ex) => 'You are a creative home cook who loves simple, delicious food. Suggest a simple recipe for 2 servings, under 30 minutes, beginner-friendly. Shape: {"name":"...","ingredients":["..."],"steps":["..."],"tip":"..."}' + ex,
+  (d) => { ankiData['recipe'] = d;
+    const ing = (d.ingredients||[]).map(i => '<li>' + esc(i) + '</li>').join('');
+    const stp = (d.steps||[]).map(s => '<li>' + esc(s) + '</li>').join('');
+    return '<div class="ai-single">' +
+      '<div class="am-tag">Recipe Spark</div>' +
+      '<div class="word-title">' + esc(d.name||'') + '</div>' +
+      '<div class="am-sec">Ingredients</div><ul class="am-list">' + ing + '</ul>' +
+      '<div class="am-sec">Steps</div><ol class="am-list">' + stp + '</ol>' +
+      '<div class="am-field"><span class="am-label">Tip</span>' + esc(d.tip||'') + '</div>' +
+    '</div>'; },
+  { name: 'Lemon Butter Pasta', ingredients: ['200g spaghetti','2 tbsp butter','1 lemon (zest + juice)','2 garlic cloves, minced','parmesan, to serve','salt & pepper'], steps: ['Cook pasta in well-salted boiling water, reserve ½ cup pasta water before draining.','Melt butter in a wide pan, add garlic, cook 1 min over medium heat.','Add drained pasta, lemon zest, and lemon juice. Toss well.','Splash in pasta water a little at a time until the sauce coats the noodles.','Season, plate, and shower with parmesan.'], tip: 'The starchy pasta water is what makes it silky — don\'t skip it.' }
+);
+document.getElementById('recipe-refresh').addEventListener('click', loadRecipe);
+
+// ── Flavor Pairing ──
+const loadFlavor = makeLoader('flavor',
+  (ex) => 'You are a food scientist who loves surprising flavor combinations. Suggest one unexpected or delightful ingredient pairing with the science behind why it works. Shape: {"pairing":"...","science_explanation":"...","how_to_use":"..."}' + ex,
+  (d) => { ankiData['flavor'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">Flavor Pairing</div>' +
+    '<div class="word-title">' + esc(d.pairing||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">The science</span>' + esc(d.science_explanation||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Try it</span>' + esc(d.how_to_use||'') + '</div>' +
+  '</div>'; },
+  { pairing: 'Strawberry + Black Pepper', science_explanation: 'Both share the volatile compound linalool. Fresh pepper\'s piperine sharpens the berry\'s esters and makes its sweetness pop by contrast.', how_to_use: 'Slice fresh strawberries, grind black pepper over them with a pinch of sugar. Let sit 10 minutes before eating.' }
+);
+document.getElementById('flavor-refresh').addEventListener('click', loadFlavor);
+
+// ── Room Refresh ──
+const loadRoom = makeLoader('room',
+  (ex) => 'You are an interior designer with a warm, nature-inspired aesthetic. Suggest one specific, actionable interior design idea. Shape: {"idea":"...","style_notes":"...","why_it_works":"..."} Be evocative and specific — reference real colors, real textures, real items.' + ex,
+  (d) => { ankiData['room'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">Room Refresh</div>' +
+    '<div class="word-title">' + esc(d.idea||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Style notes</span>' + esc(d.style_notes||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Why it works</span>' + esc(d.why_it_works||'') + '</div>' +
+  '</div>'; },
+  { idea: 'Layer a terracotta pot with a trailing pothos on a floating shelf', style_notes: 'Pair with linen fabric nearby and a woven basket for an organic vignette', why_it_works: 'The trailing plant softens the hard shelf edge and the warm clay tone connects the living and static elements.' }
+);
+document.getElementById('room-refresh').addEventListener('click', loadRoom);
+
+// ── Good News ──
+const loadGoodNews = makeLoader('good-news',
+  (ex) => 'You are an optimistic journalist. Share one genuinely uplifting real-world development — something from science, environment, medicine, community, or human achievement. Shape: {"headline":"...","summary":"...","why_it_matters":"...","source_hint":"..."} headline: compelling, specific, 1 sentence. summary: 2-3 sentences, concrete and warm. why_it_matters: 1 sentence on the broader significance. source_hint: the organization, country, or field this comes from (no URLs).' + ex,
+  (d) => { ankiData['good-news'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">Good News</div>' +
+    '<div class="word-title">' + esc(d.headline||'') + '</div>' +
+    '<div class="main-text">' + esc(d.summary||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Why it matters</span>' + esc(d.why_it_matters||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Source</span>' + esc(d.source_hint||'') + '</div>' +
+  '</div>'; },
+  { headline: 'Scientists successfully restore hearing in adults with genetic deafness', summary: 'A gene therapy trial delivered a working copy of the OTOF gene directly into the inner ear, restoring functional hearing in participants who had been deaf since birth. Results held at the 12-month follow-up.', why_it_matters: 'It marks the first time gene therapy has been proven to restore a lost sense in adult humans.', source_hint: 'Harvard Medical School & Mass Eye and Ear' }
+);
+document.getElementById('good-news-refresh').addEventListener('click', loadGoodNews);
+
+// ── Unexpected Pairing ──
+const loadPairing = makeLoader('pairing',
+  (ex) => 'You are a creative thinker who finds unexpected harmony. Suggest two things that seem like they shouldn\'t go together but actually do — colors, textures, scents, design styles, music genres, time periods, materials, anything. Shape: {"item_a":"...","item_b":"...","why_unexpected":"...","why_it_works":"...","try_it":"..."} Be specific and evocative. Avoid food pairings (those have their own card).' + ex,
+  (d) => { ankiData['pairing'] = d; return '<div class="ai-single">' +
+    '<div class="am-tag">Unexpected Pairing</div>' +
+    '<div class="am-pair-row"><div class="am-pair-item">' + esc(d.item_a||'') + '</div><div class="am-pair-x">×</div><div class="am-pair-item">' + esc(d.item_b||'') + '</div></div>' +
+    '<div class="am-field"><span class="am-label">Why it\'s surprising</span>' + esc(d.why_unexpected||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Why it works</span>' + esc(d.why_it_works||'') + '</div>' +
+    '<div class="am-field"><span class="am-label">Try it</span>' + esc(d.try_it||'') + '</div>' +
+  '</div>'; },
+  { item_a: 'Brutalist concrete', item_b: 'Soft blush linen', why_unexpected: 'Raw industrial material meets the most delicate of fabrics — one is associated with severity, the other with tenderness.', why_it_works: 'The contrast makes both elements feel more intentional. The concrete grounds the room; the linen softens it just enough to feel livable.', try_it: 'Drape a blush linen throw over a concrete or stone surface — a coffee table, windowsill, or raw shelf.' }
+);
+document.getElementById('pairing-refresh').addEventListener('click', loadPairing);
+
+// ── Interior Spotlight (makeLoader + async Commons image) ──
+const loadInterior = makeLoader('interior',
+  (ex) => 'You are an interior design historian and stylist. Spotlight one named interior design style or movement. Shape: {"style_name":"...","era":"...","origin":"...","description":"...","key_elements":"...","famous_example":"...","interior_image_query":"..."} style_name: the specific named style (e.g. Japandi, Art Deco, Bauhaus). era: decade or period it emerged. origin: country or cultural context. description: 2-3 sentences on what defines it and how a space designed this way feels. key_elements: 3-4 specific design elements, materials, or colors. famous_example: a real, specific named building or room (NOT a designer, NOT a movement) — e.g. "Chrysler Building lobby", "Eames House", "Villa Savoye". interior_image_query: a tight 2-4 word Wikimedia Commons phrase that returns a PHOTO OF THE INTERIOR of famous_example (never exterior/person/event); always include "interior", "lobby", or a room word.' + ex,
+  (d) => { ankiData['interior'] = d;
+    const wikiUrl = d.famous_example ? 'https://en.wikipedia.org/wiki/' + encodeURIComponent(String(d.famous_example).replace(/ /g, '_')) : '';
+    return '<div class="ai-single">' +
+      '<div class="am-img-wrap" data-img></div>' +
+      '<div class="am-tag">Interior Spotlight · ' + esc(d.era||'') + '</div>' +
+      '<div class="word-title">' + esc(d.style_name||'') + '</div>' +
+      '<div class="am-field"><span class="am-label">Origin</span>' + esc(d.origin||'') + '</div>' +
+      '<div class="main-text">' + esc(d.description||'') + '</div>' +
+      '<div class="am-field"><span class="am-label">Key elements</span>' + esc(d.key_elements||'') + '</div>' +
+      '<div class="am-field"><span class="am-label">Famous example</span>' + esc(d.famous_example||'') + '</div>' +
+      (wikiUrl ? '<div class="am-field"><a href="' + esc(wikiUrl) + '" target="_blank" rel="noopener">Read on Wikipedia →</a></div>' : '') +
+    '</div>'; },
+  { style_name: 'Japandi', era: '2010s–present', origin: 'Japan & Scandinavia', description: 'A hybrid of Japanese wabi-sabi and Scandinavian hygge, Japandi spaces feel stripped back but deeply warm — every object is deliberate, every surface textural. It prizes function, imperfection, and calm above all else.', key_elements: 'Natural woods, muted earth tones, handmade ceramics, low furniture, organic shapes', famous_example: 'Norm Architects Copenhagen residence', interior_image_query: 'Japanese tea house interior' },
+  (d, container) => fetchInteriorImage(d.interior_image_query || ((d.famous_example||'') + ' interior'), container.querySelector('[data-img]'))
+);
+document.getElementById('interior-refresh').addEventListener('click', loadInterior);
+
+// ── Weather (custom loader: Open-Meteo geocode + forecast, optional Claude fact) ──
+async function loadWeather() {
+  const el = document.getElementById('weather-content');
+  el.innerHTML = skel();
+  const city = localStorage.getItem('city') || 'New York';
+  const cityQuery = city.split(',')[0].trim();
+  try {
+    const geoRes = await fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(cityQuery) + '&count=1&language=en&format=json');
+    const geoData = await geoRes.json();
+    const loc = geoData.results?.[0];
+    if (!loc) throw new Error('City not found');
+    const wxRes = await fetch('https://api.open-meteo.com/v1/forecast?latitude=' + loc.latitude + '&longitude=' + loc.longitude + '&current=temperature_2m,weather_code,wind_speed_10m,relative_humidity_2m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=5&timezone=auto');
+    const wx = await wxRes.json();
+    const cur = wx.current;
+    const conditionStr = wmoLabel(cur.weather_code) + ', ' + Math.round(cur.temperature_2m) + '°F, humidity ' + cur.relative_humidity_2m + '%, wind ' + Math.round(cur.wind_speed_10m) + ' mph';
+    let claudeFact = { fact: '', connection: '' };
+    if (getApiKey()) {
+      try {
+        claudeFact = await callClaude('You are a curious science communicator. Current weather in ' + loc.name + ': ' + conditionStr + '. Share one surprising science fact that connects to these conditions. Shape: {"fact":"...","connection":"..."} fact: an interesting weather or atmospheric science fact (2-3 sentences). connection: one sentence tying it to today\'s specific conditions.');
+      } catch (e) { claudeFact = { fact: '', connection: '' }; }
+    }
+    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const forecastHtml = wx.daily.time.map((t, i) => {
+      const dd = new Date(t + 'T12:00:00');
+      return '<div class="am-wx-day"><div class="am-wx-dn">' + days[dd.getDay()] + '</div>' +
+        '<div class="am-wx-ic">' + wmoEmoji(wx.daily.weather_code[i]) + '</div>' +
+        '<div class="am-wx-tp">' + Math.round(wx.daily.temperature_2m_max[i]) + '° / ' + Math.round(wx.daily.temperature_2m_min[i]) + '°</div>' +
+        '<div class="am-wx-pc">' + wx.daily.precipitation_probability_max[i] + '% 💧</div></div>';
+    }).join('');
+    const key = loc.name + ' weather';
+    searchTerms['weather'] = key;
+    el.innerHTML = '<div class="ai-single">' +
+      '<div class="am-tag">Weather · ' + esc(loc.name) + '</div>' +
+      '<div class="word-title">' + wmoEmoji(cur.weather_code) + ' ' + esc(wmoLabel(cur.weather_code)) + '</div>' +
+      '<div class="am-wx"><span class="am-wx-chip">🌡 ' + Math.round(cur.temperature_2m) + '°F</span>' +
+        '<span class="am-wx-chip">💧 ' + cur.relative_humidity_2m + '%</span>' +
+        '<span class="am-wx-chip">💨 ' + Math.round(cur.wind_speed_10m) + ' mph</span></div>' +
+      '<div class="am-wx-forecast">' + forecastHtml + '</div>' +
+      (claudeFact.fact ? '<div class="am-field"><span class="am-label">Did you know</span>' + esc(claudeFact.fact) + '</div>' +
+        '<div class="am-field"><span class="am-label">Today\'s connection</span>' + esc(claudeFact.connection||'') + '</div>' : '') +
+    '</div>';
+    const card = el.querySelector('.ai-single');
+    if (card) {
+      card.insertAdjacentHTML('beforeend', cardFooter('weather', key, ''));
+      addSwipeListener(card, 'weather', key, loadWeather);
+    }
+  } catch (e) {
+    el.innerHTML = '<div class="ai-single"><div class="main-text">Could not load weather.</div><div class="sub-text">City: ' + esc(city) + ' · ' + esc(e.message || String(e)) + '</div></div>';
+  }
+}
+document.getElementById('weather-refresh').addEventListener('click', loadWeather);
+
 const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
   'finance-term','stats-concept','geography-fact','logical-fallacy','cognitive-bias','etymology',
-  'on-this-day','thought-experiment','health-insight','productivity-insight'];
+  'on-this-day','thought-experiment','health-insight','productivity-insight',
+  'flower','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'];
 
 const INFORMATIONAL_CONTENT_IDS = {
   'history': 'history-cards', 'cooking': 'cooking-cards',
@@ -2847,6 +3330,11 @@ const INFORMATIONAL_CONTENT_IDS = {
   'on-this-day': 'on-this-day-content', 'thought-experiment': 'thought-experiment-content',
   'health-insight': 'health-insight-content',
   'productivity-insight': 'productivity-insight-content',
+  'flower': 'flower-content', 'color': 'color-content', 'design': 'design-content',
+  'science': 'science-content', 'psychology': 'psychology-content',
+  'weekend': 'weekend-content', 'recipe': 'recipe-content', 'flavor': 'flavor-content',
+  'room': 'room-content', 'good-news': 'good-news-content', 'pairing': 'pairing-content',
+  'weather': 'weather-content', 'interior': 'interior-content',
 };
 
 INFORMATIONAL_SCREENS.forEach(id => {
@@ -3569,6 +4057,14 @@ wireRememberIt('geography-fact', d => d.location, d => d.fact + (d.context ? '\n
 wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '', 'historical topic');
 wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''), 'thought experiment');
 wireRememberIt('health-insight',    d => d.topic, d => (d.insight || '') + (d.tryThis ? '\n\nTry: ' + d.tryThis : ''), 'health insight');
+wireRememberIt('flower',     d => d.name, d => 'Meaning: ' + (d.meaning||'') + (d.fun_fact ? '\n\nFun fact: ' + d.fun_fact : ''), 'flower');
+wireRememberIt('science',    d => d.headline, d => (d.explanation||'') + (d.why_it_matters ? '\n\nWhy it matters: ' + d.why_it_matters : ''), 'science fact');
+wireRememberIt('design',     d => d.title, d => (d.content||'') + (d.example ? '\n\nExample: ' + d.example : ''), 'design fact');
+wireRememberIt('psychology', d => d.concept, d => (d.explanation||'') + (d.try_this ? '\n\nTry this: ' + d.try_this : ''), 'psychology concept');
+wireRememberIt('good-news',  d => d.headline, d => (d.summary||'') + (d.why_it_matters ? '\n\nWhy it matters: ' + d.why_it_matters : ''), 'good news');
+wireRememberIt('pairing',    d => (d.item_a||'') + ' × ' + (d.item_b||''), d => (d.why_it_works||'') + (d.try_it ? '\n\nTry: ' + d.try_it : ''), 'unexpected pairing');
+wireRememberIt('flavor',     d => d.pairing, d => (d.science_explanation||'') + (d.how_to_use ? '\n\nTry: ' + d.how_to_use : ''), 'flavor pairing');
+wireRememberIt('interior',   d => d.style_name, d => (d.description||'') + (d.key_elements ? '\n\nKey elements: ' + d.key_elements : '') + (d.famous_example ? '\n\nExample: ' + d.famous_example : ''), 'design movement');
 
 // ── Look Up Later ────────────────────────────────────────
 async function lulFetch() { return sbFetch('look_up_later?status=eq.pending&order=created_at.asc'); }
@@ -4210,10 +4706,8 @@ async function advanceQuiz(correct) {
 }
 
 
-// Home card click handlers for quiz
-document.querySelectorAll('[data-quiz]').forEach(card => {
-  card.addEventListener('click', () => startQuiz(card.dataset.quiz));
-});
+// Quiz home cards are now wired in wireActivityCards() (data-quiz branch),
+// so the grid can re-render without losing handlers. (Old block removed.)
 
 // Quiz back button
 document.getElementById('quiz-back').addEventListener('click', closeQuiz);
