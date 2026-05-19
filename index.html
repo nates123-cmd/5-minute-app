@@ -42,6 +42,7 @@
       --accent:    #C97A60;  /* terracotta — Review */
       --accent-2:  #D9B374;  /* ochre — Queue */
       --accent-3:  #8FA188;  /* sage — active filter */
+      --accent-4:  #9F7A7A;  /* dusty plum — Recs */
       --ink:       #3A3025;
       --ink-on:    #F4ECDD;
 
@@ -791,13 +792,13 @@
 
     .pillars {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
     }
     .pillar {
       border-radius: var(--radius-md);
       padding: 18px;
-      min-height: 130px;
+      min-height: 120px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -817,7 +818,7 @@
     }
     .pillar-num {
       font-family: var(--font-serif);
-      font-size: 48px;
+      font-size: 36px;
       font-weight: 500;
       line-height: 1;
       letter-spacing: -0.02em;
@@ -831,33 +832,184 @@
     }
     .pillar-review { background: var(--accent); color: var(--ink-on); }
     .pillar-queue  { background: var(--accent-2); color: var(--text); }
+    .pillar-recs   { background: var(--accent-4); color: var(--ink-on); }
 
-    .listen-home-tile {
+    /* ── Recs screen ─────────────────────────── */
+    #recs-tabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      margin-bottom: 16px;
+      padding-bottom: 2px;
+    }
+    #recs-tabs::-webkit-scrollbar { display: none; }
+    .recs-tab {
+      flex: 0 0 auto;
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
+      background: transparent;
+      border: 1px solid var(--border);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text);
+      opacity: 0.55;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s, opacity 0.15s, border-color 0.15s;
+    }
+    .recs-tab.active {
+      background: var(--accent-4);
+      color: var(--ink-on);
+      border-color: var(--accent-4);
+      opacity: 1;
+    }
+    .recs-pane { display: none; }
+    .recs-pane.active { display: block; }
+
+    .rec-item {
+      padding: 14px 2px;
+      border-bottom: 0.5px solid var(--border);
+    }
+    .rec-item:last-child { border-bottom: none; }
+    .rec-item.consumed { opacity: 0.5; }
+    .rec-title {
+      font-family: var(--font-serif);
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--text);
+      line-height: 1.35;
+    }
+    .rec-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .rec-summary {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--text);
+      opacity: 0.8;
+      margin-top: 6px;
+    }
+    .rec-find {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+      align-items: center;
+    }
+    .rec-find-chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      background: var(--surface-2);
+      border-radius: var(--radius-pill);
+      color: var(--text);
+      text-decoration: none;
+    }
+    a.rec-find-chip { color: var(--accent); }
+    .rec-empty {
+      text-align: center;
+      padding: 48px 16px;
+    }
+    .rec-empty-title {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 16px;
+      color: var(--text);
+    }
+    .rec-empty-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-top: 6px;
+    }
+
+    /* ── Recommendation add flow ─────────────── */
+    .rec-add-title { font-family: var(--font-serif); font-size: 22px; font-weight: 500; }
+    .rec-add-subtitle { font-size: 13px; color: var(--text-muted); margin: 6px 0 20px; }
+    #rec-add-input {
       width: 100%;
       background: var(--surface);
-      color: var(--text);
       border: none;
       border-radius: var(--radius-md);
-      padding: 18px;
-      text-align: left;
-      cursor: pointer;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      padding: 16px;
       font-family: var(--font-sans);
-      transition: transform 0.1s;
+      font-size: 16px;
+      color: var(--text);
+      resize: none;
+      outline: none;
+      box-sizing: border-box;
     }
-    .listen-home-tile:active { transform: scale(0.98); }
-    .listen-home-title {
-      font-family: var(--font-serif);
-      font-size: 18px;
-      font-weight: 500;
-      letter-spacing: -0.005em;
-    }
-    .listen-home-sub {
+    #rec-add-input:focus { outline: 2px solid var(--accent); }
+    .rec-chip-help { font-size: 11px; color: var(--text-faint); margin: 16px 0 8px; }
+    .rec-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .rec-chip {
+      padding: 7px 14px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: transparent;
+      font-family: var(--font-sans);
       font-size: 12px;
+      color: var(--text);
       opacity: 0.6;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s, opacity 0.15s, border-color 0.15s;
     }
+    .rec-chip.active {
+      background: var(--accent-4);
+      color: var(--ink-on);
+      border-color: var(--accent-4);
+      opacity: 1;
+    }
+    .rec-add-loading { text-align: center; padding: 60px 16px; }
+    .rec-add-loading-main { font-family: var(--font-serif); font-style: italic; font-size: 16px; color: var(--text); }
+    .rec-add-loading-sub { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+    .rec-result-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 20px;
+    }
+    .rec-result-title { font-family: var(--font-serif); font-size: 20px; font-weight: 500; color: var(--text); }
+    .rec-result-creator { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .rec-type-pill {
+      display: inline-block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 4px 10px;
+      background: var(--accent-4);
+      color: var(--ink-on);
+      border-radius: var(--radius-pill);
+      margin-top: 10px;
+    }
+    .rec-result-summary {
+      font-family: var(--font-serif);
+      font-style: italic;
+      font-size: 15px;
+      line-height: 1.5;
+      color: var(--text);
+      opacity: 0.85;
+      margin-top: 12px;
+    }
+    .rec-cand {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      cursor: pointer;
+    }
+    .rec-cand-title { font-family: var(--font-serif); font-size: 16px; font-weight: 500; color: var(--text); }
+    .rec-cand-creator { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .rec-cand-id { font-size: 11px; font-style: italic; color: var(--text-muted); margin-top: 4px; }
+    .rec-btn-row { display: flex; gap: 8px; margin-top: 20px; }
+    .rec-btn-row .btn { flex: 1; }
+    .rec-action-sheet { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; justify-content: center; z-index: 420; }
+    .rec-action-sheet.hidden { display: none; }
+    .rec-action-box { background: var(--bg); border-radius: 20px 20px 0 0; padding: 20px 20px calc(28px + env(safe-area-inset-bottom)); width: 100%; max-width: 600px; display: flex; flex-direction: column; gap: 10px; }
 
     .filter-pills {
       display: flex;
@@ -1003,12 +1155,14 @@
         <div class="pillar-sub" id="lul-sub">to look up</div>
       </div>
     </button>
+    <button class="pillar pillar-recs" id="recs-home-card">
+      <span class="pillar-label">Recs</span>
+      <div>
+        <div class="pillar-num" id="recs-count">0</div>
+        <div class="pillar-sub" id="recs-sub">nothing saved</div>
+      </div>
+    </button>
   </div>
-
-  <button class="listen-home-tile" id="listen-home-card">
-    <div class="listen-home-title">Listen</div>
-    <div class="listen-home-sub" id="listen-home-subtitle">Your podcast queue and audiobooks.</div>
-  </button>
 
   <div class="filter-pills">
     <button class="filter-pill btn-duration" data-bucket="reflection">Reflect</button>
@@ -1245,20 +1399,50 @@
   <div class="srs-controls" id="srs-controls"></div>
 </div>
 
-<!-- SOMETHING TO LISTEN TO -->
-<div id="screen-listen" class="screen">
+<!-- RECS -->
+<div id="screen-recs" class="screen">
   <div class="activity-header">
     <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Listen</span>
-    <button class="btn-settings" id="listen-manage-btn" style="margin-left:auto">Manage</button>
+    <span class="activity-title">Recs</span>
+    <button class="btn-settings" id="recs-add-btn" style="margin-left:auto">+ Add</button>
   </div>
-  <div id="listen-sort-bar" style="display:flex;gap:6px;margin-bottom:14px">
-    <button class="btn btn-primary listen-sort-btn" data-sort="recent" style="flex:1">Most recent</button>
-    <button class="btn btn-outline listen-sort-btn" data-sort="shortest" style="flex:1">Shortest</button>
+  <div id="recs-tabs">
+    <button class="recs-tab active" data-tab="Listen">Listen</button>
+    <button class="recs-tab" data-tab="Books">Books</button>
+    <button class="recs-tab" data-tab="Articles">Articles</button>
+    <button class="recs-tab" data-tab="Movies">Movies</button>
+    <button class="recs-tab" data-tab="TV">TV</button>
+    <button class="recs-tab" data-tab="Music">Music</button>
+    <button class="recs-tab" data-tab="Other">Other</button>
   </div>
-  <div id="listen-queue"></div>
-  <div id="listen-subscriptions"></div>
-  <div id="listen-audiobook"></div>
+
+  <!-- Listen pane — existing Listen feature, logic unchanged -->
+  <div class="recs-pane active" id="recs-pane-Listen">
+    <div id="screen-listen">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="btn-settings" id="listen-manage-btn">Manage</button>
+      </div>
+      <div id="listen-sort-bar" style="display:flex;gap:6px;margin-bottom:14px">
+        <button class="btn btn-primary listen-sort-btn" data-sort="recent" style="flex:1">Most recent</button>
+        <button class="btn btn-outline listen-sort-btn" data-sort="shortest" style="flex:1">Shortest</button>
+      </div>
+      <div id="listen-queue"></div>
+      <div id="listen-subscriptions"></div>
+      <div id="listen-audiobook"></div>
+    </div>
+  </div>
+
+  <!-- Recommendation media-type tabs render here -->
+  <div class="recs-pane" id="recs-pane-recs"></div>
+</div>
+
+<!-- RECOMMENDATION ADD FLOW -->
+<div id="screen-rec-add" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Capture</span>
+  </div>
+  <div id="rec-add-body"></div>
 </div>
 
 <!-- LOOK UP LATER -->
@@ -1524,6 +1708,7 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-outline add-menu-opt" data-add="card">Add Card</button>
+      <button class="btn btn-outline add-menu-opt" data-add="rec">Recommendation</button>
       <button class="btn btn-outline add-menu-opt" data-add="lul">Look Up Later</button>
       <button class="btn btn-outline add-menu-opt" data-add="listen">Listen Later</button>
     </div>
@@ -1940,7 +2125,8 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'anki-input')        resetAnkiInput();
     if (a === 'look-up-later')     loadLulScreen();
-    if (a === 'listen')            loadListenScreen();
+    if (a === 'recs')              loadRecsScreen();
+    if (a === 'rec-add')           resetRecAdd();
   }
 }
 
@@ -4044,6 +4230,7 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('add-menu-modal').classList.add('hidden');
     if (btn.dataset.add === 'card')   navigateToActivity('anki-input');
+    if (btn.dataset.add === 'rec')    navigateToActivity('rec-add');
     if (btn.dataset.add === 'lul') {
       document.getElementById('lul-question-input').value = '';
       document.getElementById('lul-add-modal').classList.remove('hidden');
@@ -4247,14 +4434,9 @@ async function listenEnrich(id, title) {
   } catch(e) {}
 }
 
-async function updateListenBadge() {
-  try {
-    const items = await listenQueueFetch();
-    const n = Array.isArray(items) ? items.length : 0;
-    const el = document.getElementById('listen-home-subtitle');
-    if (el) el.textContent = n === 0 ? 'Your podcast queue and audiobooks.' : n === 1 ? '1 episode waiting' : n + ' episodes waiting';
-  } catch(e) {}
-}
+// Kept as a callable helper (called from dismiss / unsubscribe / add paths).
+// No longer targets a home element — Listen now feeds the combined Recs badge.
+async function updateListenBadge() { return updateRecsBadge(); }
 
 function fmtListenDate(d) {
   if (!d) return '';
@@ -4425,6 +4607,10 @@ async function loadListenScreen() {
 
   // C. Currently listening (audiobook)
   renderAudiobookCard(bookEl);
+
+  // Badge-lag fix: newly-materialized subscription episodes are now in the
+  // queue, so refresh the home Recs count without needing a page reload.
+  updateRecsBadge();
 }
 
 function renderAudiobookCard(el) {
@@ -4435,7 +4621,7 @@ function renderAudiobookCard(el) {
   div.style.marginTop = '8px';
   if (book) {
     const appUrl   = book.app === 'audible' ? 'audible://'
-                   : book.app === 'blinkist' ? 'blinkist://'
+                   : book.app === 'blinkist' ? 'https://www.blinkist.com/'
                    : 'libbyapp://';
     const appLabel = book.app === 'audible' ? 'Open Audible'
                    : book.app === 'blinkist' ? 'Open Blinkist'
@@ -4445,7 +4631,7 @@ function renderAudiobookCard(el) {
       '<div class="lul-question">' + esc(book.title) + '</div>' +
       (book.author ? '<div style="font-size:0.82rem;color:var(--muted);margin-top:2px">' + esc(book.author) + '</div>' : '') +
       '<div class="lul-actions" style="margin-top:12px">' +
-        '<a class="btn btn-primary" href="' + appUrl + '" style="flex:1;text-align:center;text-decoration:none">' + appLabel + '</a>' +
+        '<a class="btn btn-primary" href="' + appUrl + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">' + appLabel + '</a>' +
         '<button class="btn btn-outline listen-book-change" style="flex:1">Change</button>' +
       '</div>';
     div.querySelector('.listen-book-change').addEventListener('click', () => openBookForm(el));
@@ -4660,9 +4846,447 @@ document.getElementById('listen-add-save').addEventListener('click', async () =>
   btn.textContent = 'Save'; btn.disabled = false;
 });
 
-document.getElementById('listen-home-card').addEventListener('click', () => navigateToActivity('listen'));
+// ════════════════════════════════════════════════════════
+// ── RECS ────────────────────────────────────────────────
+// Recs screen (Listen tab = existing Listen feature, unchanged;
+// other tabs = the new `recommendations` table) + Recommendation
+// capture flow with a two-pass (knowledge → web-search) Claude lookup.
+// ════════════════════════════════════════════════════════
 
-updateListenBadge();
+// Tab label → media_type filter. Listen is special-cased (Spotify queue).
+const RECS_TAB_TYPES = {
+  Books:    ['book'],
+  Articles: ['article'],
+  Movies:   ['movie'],
+  TV:       ['tv'],
+  Music:    ['music'],
+  Other:    ['other', 'podcast'],   // podcasts captured as recs land here (no Podcast tab)
+};
+function recsTabToPrefill(tab) {
+  const m = RECS_TAB_TYPES[tab];
+  return m && m[0] !== 'other' ? m[0] : (tab === 'Other' ? 'other' : null);
+}
+
+// ── Supabase helpers (mirror srs* patterns) ──────────────
+async function recsFetch(opts = {}) {
+  const parts = [];
+  if (opts.mediaTypes && opts.mediaTypes.length) parts.push('media_type=in.(' + opts.mediaTypes.join(',') + ')');
+  if (opts.status)     parts.push('status=eq.' + opts.status);
+  if (opts.notSkipped) parts.push('status=neq.skipped');
+  parts.push('order=' + (opts.order || 'status.desc,created_at.desc'));
+  return (await sbFetch('recommendations?' + parts.join('&'))) || [];
+}
+function getRecsOfflineQueue() { try { return JSON.parse(localStorage.getItem('offline_recs_queue') || '[]'); } catch(e) { return []; } }
+function setRecsOfflineQueue(q) { localStorage.setItem('offline_recs_queue', JSON.stringify(q)); }
+async function recsCreate(rec) {
+  if (!navigator.onLine) { const q = getRecsOfflineQueue(); q.push(rec); setRecsOfflineQueue(q); return [rec]; }
+  try {
+    return await sbFetch('recommendations', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(rec) });
+  } catch(e) {
+    const q = getRecsOfflineQueue(); q.push(rec); setRecsOfflineQueue(q); return [rec];
+  }
+}
+async function recsUpdate(id, patch) {
+  return sbFetch('recommendations?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(patch) });
+}
+async function recsDelete(id) {
+  return sbFetch('recommendations?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
+}
+async function syncRecsOfflineQueue() {
+  const q = getRecsOfflineQueue();
+  if (!q.length) return;
+  const failed = []; let n = 0;
+  for (const r of q) {
+    try { await sbFetch('recommendations', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(r) }); n++; }
+    catch(e) { failed.push(r); }
+  }
+  setRecsOfflineQueue(failed);
+  if (n) { showToast(n + ' rec' + (n === 1 ? '' : 's') + ' synced ✓'); updateRecsBadge(); }
+}
+window.addEventListener('online', syncRecsOfflineQueue);
+
+// Count without pulling rows (mirrors srsGetDueCount).
+async function sbCount(query) {
+  const res = await fetch(SB_URL + '/rest/v1/' + query, {
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
+  });
+  const cr = res.headers.get('content-range');
+  if (cr) { const m = cr.match(/\/(\d+)/); return m ? parseInt(m[1]) : 0; }
+  return 0;
+}
+
+// ── Combined home pillar badge (Listen queue + saved recs) ──
+async function updateRecsBadge() {
+  try {
+    const [listenN, recN] = await Promise.all([
+      sbCount('listening_queue?listened=eq.false&select=id').catch(() => 0),
+      sbCount('recommendations?status=eq.saved&select=id').catch(() => 0),
+    ]);
+    const n = (listenN || 0) + (recN || 0);
+    const numEl = document.getElementById('recs-count');
+    const subEl = document.getElementById('recs-sub');
+    if (numEl) numEl.textContent = String(n);
+    if (subEl) subEl.textContent = n === 0 ? 'nothing saved' : n === 1 ? '1 to enjoy' : n + ' to enjoy';
+  } catch(e) {}
+}
+
+// ── Recs screen + tabs ───────────────────────────────────
+function getRecsActiveTab() { return localStorage.getItem('recs_active_tab') || 'Listen'; }
+function setRecsActiveTab(t) { localStorage.setItem('recs_active_tab', t); }
+
+function recFindHtml(arr) {
+  if (!Array.isArray(arr) || !arr.length) return '';
+  return '<div class="rec-find">' + arr.map(w => {
+    if (!w || !w.label) return '';
+    const label = esc(w.label);
+    return w.url
+      ? '<a class="rec-find-chip" href="' + esc(w.url) + '" target="_blank" rel="noopener">' + label + '</a>'
+      : '<span class="rec-find-chip">' + label + '</span>';
+  }).join('') + '</div>';
+}
+
+async function renderRecsMediaTab(tab) {
+  const pane = document.getElementById('recs-pane-recs');
+  pane.innerHTML = '<p class="lul-empty">Loading…</p>';
+  let rows;
+  try { rows = await recsFetch({ mediaTypes: RECS_TAB_TYPES[tab], notSkipped: true }); }
+  catch(e) { pane.innerHTML = '<p class="lul-empty">Couldn\'t load — check your connection.</p>'; return; }
+  if (!rows || !rows.length) {
+    const singular = tab === 'TV' ? 'show' : tab.replace(/s$/, '').toLowerCase();
+    pane.innerHTML =
+      '<div class="rec-empty">' +
+        '<div class="rec-empty-title">Nothing here yet.</div>' +
+        '<div class="rec-empty-sub">Tap + Add to save your first ' + esc(singular) + '.</div>' +
+      '</div>';
+    return;
+  }
+  pane.innerHTML = '';
+  rows.forEach(item => {
+    const div = document.createElement('div');
+    div.className = 'rec-item' + (item.status === 'consumed' ? ' consumed' : '');
+    const meta = [item.creator, item.year].filter(Boolean).join(' · ');
+    div.innerHTML =
+      '<div class="rec-title">' + esc(item.title || '') + '</div>' +
+      (meta ? '<div class="rec-meta">' + esc(meta) + '</div>' : '') +
+      (item.summary ? '<div class="rec-summary">' + esc(item.summary) + '</div>' : '') +
+      recFindHtml(item.where_to_find);
+    let lpTimer = null;
+    const openSheet = (e) => { if (e) e.preventDefault(); openRecActionSheet(item, tab); };
+    div.addEventListener('touchstart', () => { lpTimer = setTimeout(openSheet, 500); }, { passive: true });
+    div.addEventListener('touchmove',  () => { clearTimeout(lpTimer); }, { passive: true });
+    div.addEventListener('touchend',   () => { clearTimeout(lpTimer); }, { passive: true });
+    div.addEventListener('contextmenu', openSheet);
+    pane.appendChild(div);
+  });
+}
+
+let _recActionSheetEl = null;
+function openRecActionSheet(item, tab) {
+  if (!_recActionSheetEl) {
+    _recActionSheetEl = document.createElement('div');
+    _recActionSheetEl.className = 'rec-action-sheet hidden';
+    _recActionSheetEl.innerHTML = '<div class="rec-action-box"></div>';
+    _recActionSheetEl.addEventListener('click', (e) => { if (e.target === _recActionSheetEl) _recActionSheetEl.classList.add('hidden'); });
+    document.body.appendChild(_recActionSheetEl);
+  }
+  const box = _recActionSheetEl.querySelector('.rec-action-box');
+  box.innerHTML =
+    '<div class="srs-modal-title" style="margin-bottom:6px">' + esc(item.title || 'Recommendation') + '</div>' +
+    (item.status === 'consumed' ? '' : '<button class="btn btn-outline" data-act="consumed">Mark consumed</button>') +
+    '<button class="btn btn-outline" data-act="skipped">Skip</button>' +
+    '<button class="btn btn-outline" data-act="delete" style="color:#c44">Delete</button>' +
+    '<button class="btn btn-outline" data-act="cancel">Cancel</button>';
+  box.querySelectorAll('[data-act]').forEach(b => {
+    b.addEventListener('click', async () => {
+      const act = b.dataset.act;
+      _recActionSheetEl.classList.add('hidden');
+      try {
+        if (act === 'consumed') await recsUpdate(item.id, { status: 'consumed', consumed_at: new Date().toISOString() });
+        else if (act === 'skipped') await recsUpdate(item.id, { status: 'skipped' });
+        else if (act === 'delete')  await recsDelete(item.id);
+        else return;
+        await renderRecsMediaTab(tab);
+        updateRecsBadge();
+      } catch(e) { showToast('Action failed: ' + (e.message || 'unknown')); }
+    });
+  });
+  _recActionSheetEl.classList.remove('hidden');
+}
+
+function switchRecsTab(tab) {
+  setRecsActiveTab(tab);
+  document.querySelectorAll('.recs-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+  const listenPane = document.getElementById('recs-pane-Listen');
+  const recsPane   = document.getElementById('recs-pane-recs');
+  if (tab === 'Listen') {
+    listenPane.classList.add('active');
+    recsPane.classList.remove('active');
+    loadListenScreen();
+  } else {
+    listenPane.classList.remove('active');
+    recsPane.classList.add('active');
+    renderRecsMediaTab(tab);
+  }
+}
+
+function loadRecsScreen() {
+  switchRecsTab(getRecsActiveTab());
+}
+
+document.querySelectorAll('.recs-tab').forEach(tab => {
+  tab.addEventListener('click', () => switchRecsTab(tab.dataset.tab));
+});
+
+// ── Recommendation capture flow ──────────────────────────
+const REC_MEDIA_CHIPS = [
+  { label: 'Book', val: 'book' }, { label: 'Article', val: 'article' },
+  { label: 'Movie', val: 'movie' }, { label: 'TV', val: 'tv' },
+  { label: 'Music', val: 'music' }, { label: 'Podcast', val: 'podcast' },
+  { label: 'Other', val: 'other' },
+];
+
+const REC_SYS_PASS1 =
+"You are a recommendation lookup assistant. The user has been told to read, watch, or listen to something and they're typing its name (or a fragment of a name) to save it for later.\n\n" +
+"Your job:\n1. Identify what they're referring to\n2. Return structured JSON describing it\n3. If you can't be confident, ask for a web search\n\n" +
+"Return JSON only, no preamble or explanation.\n\n" +
+"Confidence rules:\n" +
+"- \"confident: true\" only if there's clearly one canonical answer in the global cultural record. \"Atomic Habits\" -> confident (one famous book). \"Inception\" -> confident. \"The Office\" -> NOT confident (US vs UK; ask for candidates).\n" +
+"- \"needs_search: true\" if the answer depends on current information you can't know reliably — streaming availability, recent releases (last 2 years), where a current article lives online, recent podcast episodes.\n" +
+"- Otherwise return ambiguous candidates (2-4 max).\n\n" +
+"Schemas:\n\n" +
+"Confident:\n{ \"confident\": true, \"needs_search\": false, \"title\": string, \"creator\": string|null, \"year\": number|null, \"media_type\": \"book\"|\"article\"|\"movie\"|\"tv\"|\"music\"|\"podcast\"|\"other\", \"summary\": string (one sentence, under 25 words), \"where_to_find\": [{\"label\": string, \"url\": string|null}] | [] }\n\n" +
+"Ambiguous:\n{ \"confident\": false, \"needs_search\": false, \"candidates\": [ {\"title\": string, \"creator\": string, \"year\": number, \"media_type\": string, \"identifier\": string (5-10 word distinguishing description)} ] }\n\n" +
+"Needs search:\n{ \"confident\": false, \"needs_search\": true, \"reason\": string (brief, for logging) }\n\n" +
+"Media-type hint: if the user has selected a media-type chip, prefer that interpretation. Don't return candidates of a different type unless none of that type fit.";
+
+const REC_SYS_SEARCH_PREFIX =
+"You have access to a web search tool. Use it to find current information about the recommendation — especially streaming availability, recent releases, and where articles live online. Search once, synthesize the result, then return the structured JSON. Never return needs_search: true on this pass — you must give a confident result or candidates.";
+
+function parseRecJson(text) {
+  if (!text) return null;
+  let t = String(text).trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
+  const s = t.indexOf('{'), e = t.lastIndexOf('}');
+  if (s === -1 || e === -1 || e < s) return null;
+  try { return JSON.parse(t.slice(s, e + 1)); } catch(_) { return null; }
+}
+
+async function recApiLookup(query, mediaHint, useWebSearch) {
+  const key = getApiKey();
+  if (!key) throw new Error('no-api-key');
+  const sys = useWebSearch ? (REC_SYS_SEARCH_PREFIX + '\n\n' + REC_SYS_PASS1) : REC_SYS_PASS1;
+  let userMsg = 'User typed: "' + query + '"';
+  if (mediaHint) userMsg += '\nMedia-type hint: ' + mediaHint;
+  const body = { model: 'claude-sonnet-4-5', max_tokens: 1024, system: sys, messages: [{ role: 'user', content: userMsg }] };
+  if (useWebSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const data = await res.json();
+  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
+  return parseRecJson(text);
+}
+
+let _recAddPrefill = null;   // media_type to pre-select (set by Recs "+ Add")
+let _recAddRaw = '';         // last typed input, preserved across "Not this one"
+
+function setRecLoadingSub(msg) {
+  const el = document.getElementById('rec-loading-sub');
+  if (el) el.textContent = msg;
+}
+
+function renderRecInput(rawValue, selectedType) {
+  _recAddRaw = rawValue || '';
+  const body = document.getElementById('rec-add-body');
+  body.innerHTML =
+    '<div class="rec-add-title">Add a recommendation</div>' +
+    '<div class="rec-add-subtitle">What did someone tell you to check out?</div>' +
+    '<textarea id="rec-add-input" rows="2" placeholder="e.g. Atomic Habits, The Bear, a Patrick Radden Keefe article…"></textarea>' +
+    '<div class="rec-chip-help">Optional — narrows it down</div>' +
+    '<div class="rec-chips" id="rec-add-chips">' +
+      REC_MEDIA_CHIPS.map(c => '<button class="rec-chip" data-val="' + c.val + '">' + c.label + '</button>').join('') +
+    '</div>' +
+    '<button class="btn btn-primary" id="rec-add-go" style="width:100%;margin-top:24px;opacity:0.4" disabled>Look it up</button>';
+  const input = document.getElementById('rec-add-input');
+  const goBtn = document.getElementById('rec-add-go');
+  input.value = _recAddRaw;
+  let chosenType = selectedType || null;
+  function syncGo() {
+    const has = input.value.trim().length > 0;
+    goBtn.disabled = !has;
+    goBtn.style.opacity = has ? '1' : '0.4';
+  }
+  input.addEventListener('input', () => { _recAddRaw = input.value; syncGo(); });
+  document.querySelectorAll('#rec-add-chips .rec-chip').forEach(chip => {
+    if (chip.dataset.val === chosenType) chip.classList.add('active');
+    chip.addEventListener('click', () => {
+      const willActivate = !chip.classList.contains('active');
+      document.querySelectorAll('#rec-add-chips .rec-chip').forEach(c => c.classList.remove('active'));
+      if (willActivate) { chip.classList.add('active'); chosenType = chip.dataset.val; }
+      else chosenType = null;
+    });
+  });
+  goBtn.addEventListener('click', () => {
+    const q = input.value.trim();
+    if (!q) return;
+    doRecLookup(q, chosenType);
+  });
+  syncGo();
+  setTimeout(() => input.focus(), 60);
+}
+
+function renderRecLoading(query) {
+  document.getElementById('rec-add-body').innerHTML =
+    '<div class="rec-add-loading">' +
+      '<div class="rec-add-loading-main">Looking up ' + esc(query) + '…</div>' +
+      '<div class="rec-add-loading-sub" id="rec-loading-sub">Checking what I know</div>' +
+    '</div>';
+}
+
+async function doRecLookup(query, mediaHint) {
+  renderRecLoading(query);
+  let r;
+  try { r = await recApiLookup(query, mediaHint, false); }
+  catch(e) {
+    return renderRecNoMatch(query, mediaHint,
+      String(e.message).indexOf('no-api-key') !== -1 ? 'Add your Claude API key in settings first.' : null);
+  }
+  if (r && r.confident === true) return renderRecConfident(r, query, mediaHint);
+  if (r && r.confident === false && r.needs_search === true) {
+    setRecLoadingSub('Searching the web');
+    try { r = await recApiLookup(query, mediaHint, true); }
+    catch(e) { return renderRecNoMatch(query, mediaHint); }
+    setRecLoadingSub('Almost there');
+  }
+  if (r && r.confident === true) return renderRecConfident(r, query, mediaHint);
+  if (r && Array.isArray(r.candidates) && r.candidates.length) return renderRecAmbiguous(r.candidates, query, mediaHint);
+  return renderRecNoMatch(query, mediaHint);
+}
+
+function renderRecConfident(rec, rawInput, mediaHint) {
+  const body = document.getElementById('rec-add-body');
+  const meta = [rec.creator, rec.year].filter(Boolean).join(' · ');
+  body.innerHTML =
+    '<div class="rec-result-card">' +
+      '<div class="rec-result-title">' + esc(rec.title || rawInput) + '</div>' +
+      (meta ? '<div class="rec-result-creator">' + esc(meta) + '</div>' : '') +
+      (rec.media_type ? '<div><span class="rec-type-pill">' + esc(rec.media_type) + '</span></div>' : '') +
+      (rec.summary ? '<div class="rec-result-summary">' + esc(rec.summary) + '</div>' : '') +
+      recFindHtml(rec.where_to_find) +
+    '</div>' +
+    '<div class="rec-btn-row">' +
+      '<button class="btn btn-primary" id="rec-save">Save</button>' +
+      '<button class="btn btn-outline" id="rec-notthis">Not this one</button>' +
+    '</div>';
+  document.getElementById('rec-save').addEventListener('click', () => {
+    saveRec({
+      title: rec.title || rawInput,
+      creator: rec.creator || null,
+      year: typeof rec.year === 'number' ? rec.year : null,
+      media_type: rec.media_type || mediaHint || 'other',
+      summary: rec.summary || null,
+      where_to_find: Array.isArray(rec.where_to_find) ? rec.where_to_find : [],
+      raw_input: rawInput,
+      source_query: rawInput,
+      status: 'saved',
+    });
+  });
+  document.getElementById('rec-notthis').addEventListener('click', () => renderRecInput(rawInput, mediaHint));
+}
+
+function renderRecAmbiguous(candidates, rawInput, mediaHint) {
+  const body = document.getElementById('rec-add-body');
+  body.innerHTML =
+    '<div class="rec-add-title" style="font-size:18px;margin-bottom:16px">A few matches — which one?</div>' +
+    candidates.slice(0, 4).map((c, i) => {
+      const meta = [c.creator, c.year].filter(Boolean).join(' · ');
+      return '<div class="rec-cand" data-i="' + i + '">' +
+        '<div class="rec-cand-title">' + esc(c.title || '') + '</div>' +
+        (meta ? '<div class="rec-cand-creator">' + esc(meta) + '</div>' : '') +
+        (c.identifier ? '<div class="rec-cand-id">' + esc(c.identifier) + '</div>' : '') +
+      '</div>';
+    }).join('') +
+    '<button class="btn btn-outline" id="rec-none" style="width:100%;margin-top:6px">None of these</button>';
+  body.querySelectorAll('.rec-cand').forEach(el => {
+    el.addEventListener('click', () => {
+      const c = candidates[parseInt(el.dataset.i)];
+      const specific = [c.title, c.creator, c.year ? '(' + c.year + ')' : ''].filter(Boolean).join(' ');
+      doRecLookup(specific, c.media_type || mediaHint);
+    });
+  });
+  document.getElementById('rec-none').addEventListener('click', () => renderRecInput(rawInput, mediaHint));
+}
+
+function renderRecNoMatch(rawInput, mediaHint, msg) {
+  const body = document.getElementById('rec-add-body');
+  body.innerHTML =
+    (msg ? '<div class="rec-add-subtitle" style="color:var(--accent)">' + esc(msg) + '</div>' : '') +
+    '<div class="rec-add-title" style="font-size:16px">Couldn\'t find it. Want to save what you typed anyway?</div>' +
+    '<div class="rec-btn-row">' +
+      '<button class="btn btn-primary" id="rec-saveasis">Save as-is</button>' +
+      '<button class="btn btn-outline" id="rec-tryagain">Try again</button>' +
+    '</div>';
+  document.getElementById('rec-saveasis').addEventListener('click', () => {
+    saveRec({
+      title: rawInput,
+      creator: null, year: null,
+      media_type: mediaHint || 'other',
+      summary: null, where_to_find: [],
+      raw_input: rawInput, source_query: rawInput,
+      status: 'saved',
+    });
+  });
+  document.getElementById('rec-tryagain').addEventListener('click', () => renderRecInput(rawInput, mediaHint));
+}
+
+let _recSavedToastEl = null;
+function recSavedToast() {
+  if (!_recSavedToastEl) {
+    _recSavedToastEl = document.createElement('div');
+    _recSavedToastEl.style.cssText =
+      'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--ink-on);' +
+      'border-radius:var(--radius-pill);padding:10px 18px;font-size:13px;z-index:500;display:flex;gap:14px;align-items:center;';
+    document.body.appendChild(_recSavedToastEl);
+  }
+  _recSavedToastEl.innerHTML = '<span>Saved to Recs</span>';
+  const view = document.createElement('button');
+  view.textContent = 'View';
+  view.style.cssText = 'background:none;border:none;color:var(--ink-on);font-weight:600;text-decoration:underline;cursor:pointer;font-size:13px;';
+  view.addEventListener('click', () => { _recSavedToastEl.style.display = 'none'; navigateToActivity('recs'); });
+  _recSavedToastEl.appendChild(view);
+  _recSavedToastEl.style.display = 'flex';
+  clearTimeout(_recSavedToastEl._t);
+  _recSavedToastEl._t = setTimeout(() => { _recSavedToastEl.style.display = 'none'; }, 3000);
+}
+
+async function saveRec(row) {
+  try {
+    await recsCreate(row);
+    updateRecsBadge();
+    navigateToActivity('home', true);
+    recSavedToast();
+  } catch(e) {
+    showToast('Save failed: ' + (e.message || 'unknown'));
+  }
+}
+
+function resetRecAdd() {
+  const prefill = _recAddPrefill;
+  _recAddPrefill = null;
+  renderRecInput('', prefill);
+}
+
+// ── Home pillar + Recs header wiring ─────────────────────
+document.getElementById('recs-home-card')?.addEventListener('click', () => navigateToActivity('recs'));
+document.getElementById('recs-add-btn')?.addEventListener('click', () => {
+  _recAddPrefill = recsTabToPrefill(getRecsActiveTab());
+  navigateToActivity('rec-add');
+});
+
+updateRecsBadge();
+syncRecsOfflineQueue();
 
 // ── Timer Menu ───────────────────────────────────────────
 document.getElementById('btn-timer-menu').addEventListener('click', () =>

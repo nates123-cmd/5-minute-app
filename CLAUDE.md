@@ -38,7 +38,12 @@ SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // anon key, safe to commit
 |---|---|
 | `flashcards` | id, front, back, source, interval, ease_factor, next_review, status, created_at |
 | `quiz_performance` | id, topic, difficulty (1–5), hit_rate, asked_questions (jsonb), updated_at |
-| `mantras` | id, text, created_at |
+| `listening_subscriptions` | id, name, feed_url, created_at |
+| `listening_queue` | id, title, show_name, summary, source, subscription_id, duration_secs, spotify_url, listened, pub_date, recommended_by, created_at |
+| `recommendations` | id, title, creator, year, media_type, summary, where_to_find (jsonb), raw_input, source_query, status (saved\|consumed\|skipped), created_at, consumed_at |
+| ~~`mantras`~~ | removed from app in Citrine redesign (table left untouched in Supabase, no longer queried) |
+
+Recs helpers: `recsCreate/recsFetch/recsUpdate/recsDelete` (mirror `srs*`), offline via `localStorage['offline_recs_queue']`. `sbCount(query)` = count-only fetch (mirrors `srsGetDueCount`).
 
 Helper: `sbFetch(path, options)` — wraps fetch to Supabase REST with auth headers.
 
@@ -96,15 +101,18 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 ### Special screens
 `srs-review` — Spaced repetition flashcard review (flip or multiple-choice mode)
 `anki-input` — Add Flashcard (3 modes: both sides / I have front / I have back, Claude generates missing side)
-`mantra` — Mantra session (fetch from Supabase, shuffle, cycle)
-`mantra-manage` — CRUD for mantras
+`recs` — Recs screen: horizontal tab strip (Listen, Books, Articles, Movies, TV, Music, Other; active tab in `localStorage['recs_active_tab']`). Listen tab = the existing Listen feature, logic unchanged (`#screen-listen` now nested as the Listen pane, no longer a routed `.screen`). Other tabs render from `recommendations` filtered by media_type. Long-press / right-click a row → action sheet (Mark consumed / Skip / Delete). Podcasts captured as recs land in the Other tab.
+`rec-add` — Recommendation capture flow (reached from Add menu `data-add="rec"` and Recs `+ Add`). Input + media chip → two-pass Claude lookup: pass 1 knowledge-only, pass 2 adds `web_search_20250305` only when pass 1 returns `needs_search`. States: confident / ambiguous candidates / no-match. Uses a dedicated fetch (NOT `callClaude`), model `claude-sonnet-4-5`.
+~~`mantra` / `mantra-manage`~~ — removed in Citrine redesign
 
 ---
 
-## Home screen layout
-- **SRS row** (full width): left 2/3 = Review Due card, right 1/3 = + Add Flashcard button
-- **Mantras row** (full width): directly below SRS row
-- **Activity grid**: 2-column card grid, all other activities
+## Home screen layout (post-Citrine redesign)
+- **Header**: "Break" wordmark + date; timer icon
+- **Capture button** (full-width, `--ink`) → opens the **Add menu** modal: Add Card / Recommendation / Look Up Later / Listen Later
+- **Pillars row**: 3 equal columns — Review (`--accent`), Queue (`--accent-2`), Recs (`--accent-4`). Recs number = `listening_queue` unlistened + `recommendations` saved, via `updateRecsBadge()` (`updateListenBadge()` now just delegates to it; no home element of its own). Tapping Recs → `recs` screen.
+- **Filter pills** (Reflect / Informational / Activity / Random)
+- **Activity grid**: 2-column card grid
 - Quiz cards use `data-quiz` attribute (not `data-activity`) — guard: `if (!card.dataset.activity) return`
 
 ---
@@ -117,17 +125,22 @@ Array of slugs that get "Google it", "Ask Claude", "Remember It" buttons injecte
 
 ---
 
-## CSS design tokens
+## CSS design tokens (Citrine — see `break-redesign-spec.md`)
 ```css
---bg:      #F5F2EE   /* warm off-white */
---text:    #1C1C1C
---muted:   #6B6560
---accent:  #A89880   /* warm stone */
---card-bg: #EDEBE7
---border:  #D8D4CE
---radius:  14px
+--bg:        #F4ECDD   /* wheat */
+--surface:   #EAE0CC   /* tinted card */
+--surface-2: #E2D6BC
+--text:      #3A3025   /* warm brown */
+--text-muted/--text-faint  /* rgba browns */
+--accent:    #C97A60   /* terracotta — Review */
+--accent-2:  #D9B374   /* ochre — Queue */
+--accent-3:  #8FA188   /* sage — active filter */
+--accent-4:  #9F7A7A   /* dusty plum — Recs */
+--ink: #3A3025  --ink-on: #F4ECDD
+--radius-sm/md/lg/pill
+--font-serif: Fraunces  --font-sans: system
 ```
-No gamification. Clean, minimal, readable.
+Back-compat aliases (`--muted`, `--card-bg`, `--radius`, `--font`) map to the new tokens. Serif (Fraunces) for headings/hero/numbers; sans for chrome. No gamification, no shadows. Mantras removed.
 
 ---
 
