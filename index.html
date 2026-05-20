@@ -6,8 +6,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Break" />
-  <meta name="theme-color" content="#F4ECDD" />
+  <meta name="theme-color" content="#b8473a" />
   <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png" />
+  <link rel="icon" type="image/png" sizes="16x16" href="./icons/icon-16.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/icon-180.png" />
   <link rel="preconnect" href="https://api.anthropic.com" crossorigin>
   <link rel="preconnect" href="https://xsmnfcmtbpeaccnyinkr.supabase.co" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -5527,7 +5530,14 @@ async function renderRecsMediaTab(tab) {
   rows.forEach(item => {
     const div = document.createElement('div');
     div.className = 'rec-item' + (item.status === 'consumed' ? ' consumed' : '');
-    const meta = [item.creator, item.year].filter(Boolean).join(' · ');
+    const metaParts = [item.creator, item.year].filter(Boolean);
+    if (typeof item.rt_score === 'number') {
+      metaParts.push('RT ' + item.rt_score + '%' + (item.rt_certified ? ' (Certified Fresh)' : ''));
+    }
+    if (typeof item.imdb_score === 'number') {
+      metaParts.push('IMDb ' + item.imdb_score.toFixed(1));
+    }
+    const meta = metaParts.join(' · ');
     div.innerHTML =
       '<div class="rec-title">' + esc(item.title || '') + '</div>' +
       (meta ? '<div class="rec-meta">' + esc(meta) + '</div>' : '') +
@@ -5822,12 +5832,16 @@ async function jwLookup(title, year) {
 }
 
 async function applyJwUpdate(id, jw, fallbackSummary) {
+  const s = jw.scoring || {};
   await recsUpdate(id, {
     title: jw.title || undefined,
     year: typeof jw.year === 'number' ? jw.year : null,
     media_type: jw.type === 'SHOW' ? 'tv' : 'movie',
     summary: jw.summary || fallbackSummary || null,
     where_to_find: Array.isArray(jw.where_to_find) ? jw.where_to_find : [],
+    rt_score: typeof s.rt === 'number' ? s.rt : null,
+    rt_certified: typeof s.rt_certified === 'boolean' ? s.rt_certified : null,
+    imdb_score: typeof s.imdb === 'number' ? s.imdb : null,
   });
   recsRefreshIfVisible();
 }
