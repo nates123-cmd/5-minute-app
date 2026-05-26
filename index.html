@@ -462,6 +462,10 @@
     .am-img-wrap:empty { display: none; }
     .am-img-wrap { margin: -4px 0 14px; }
     .am-img { width: 100%; max-height: 240px; object-fit: cover; border-radius: var(--radius-md, 12px); display: block; }
+    .bp-img-wrap { margin: 0 0 14px; }
+    .bp-img { width: 100%; max-height: 280px; object-fit: cover; border-radius: var(--radius-md, 12px); display: block; }
+    .listen-spotify-banner { font-size: 0.82rem; color: var(--text); background: var(--surface, var(--card-bg)); border-radius: var(--radius-md, 12px); padding: 10px 14px; margin: 4px 0 12px; display: flex; align-items: center; gap: 6px; }
+    .listen-spotify-reconnect { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font: inherit; }
     .am-tag { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
     .am-field { margin-top: 12px; font-size: 0.92rem; line-height: 1.55; color: var(--text); }
     .am-label { display: block; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
@@ -928,8 +932,48 @@
       border-color: var(--accent-4);
       opacity: 1;
     }
+    /* v8 #19 — sub-filter row below the top tab strip */
+    #recs-subtabs {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      margin: -8px 0 14px;
+      padding-bottom: 2px;
+    }
+    #recs-subtabs::-webkit-scrollbar { display: none; }
+    .recs-subtab {
+      flex: 0 0 auto;
+      padding: 5px 12px;
+      border-radius: var(--radius-pill);
+      background: transparent;
+      border: 1px solid var(--border);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text);
+      opacity: 0.45;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s, color 0.15s, opacity 0.15s, border-color 0.15s;
+    }
+    .recs-subtab.active {
+      background: var(--text);
+      color: var(--ink-on);
+      border-color: var(--text);
+      opacity: 1;
+    }
     .recs-pane { display: none; }
     .recs-pane.active { display: block; }
+    /* v8 #19 — Listen sub-filter visibility toggles */
+    #recs-pane-Listen.sub-podcasts .listen-music-section,
+    #recs-pane-Listen.sub-music #listen-queue,
+    #recs-pane-Listen.sub-music #listen-subscriptions,
+    #recs-pane-Listen.sub-music #listen-audiobook,
+    #recs-pane-Listen.sub-music #listen-sort-bar { display: none; }
+    .listen-music-section { margin-top: 22px; }
+    .listen-music-heading { font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
 
     .rec-item {
       padding: 14px 2px;
@@ -1377,15 +1421,12 @@
   </div>
   <div id="recs-tabs">
     <button class="recs-tab active" data-tab="Listen">Listen</button>
-    <button class="recs-tab" data-tab="Books">Books</button>
-    <button class="recs-tab" data-tab="Articles">Articles</button>
-    <button class="recs-tab" data-tab="Movies">Movies</button>
-    <button class="recs-tab" data-tab="TV">TV</button>
-    <button class="recs-tab" data-tab="Music">Music</button>
-    <button class="recs-tab" data-tab="Other">Other</button>
+    <button class="recs-tab" data-tab="Watch">Watch</button>
+    <button class="recs-tab" data-tab="Read">Read</button>
   </div>
+  <div id="recs-subtabs"></div>
 
-  <!-- Listen pane — existing Listen feature, logic unchanged -->
+  <!-- Listen pane — existing Listen feature + v8 #19 music section -->
   <div class="recs-pane active" id="recs-pane-Listen">
     <div id="screen-listen">
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
@@ -1398,6 +1439,7 @@
       <div id="listen-queue"></div>
       <div id="listen-subscriptions"></div>
       <div id="listen-audiobook"></div>
+      <div class="listen-music-section" id="listen-music-section"></div>
     </div>
   </div>
 
@@ -1619,6 +1661,12 @@
   <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Flower of the Day</span></div>
   <div id="flower-content"></div>
   <button class="btn-refresh" id="flower-refresh">New flower</button>
+  <div class="activity-actions">  </div>
+</div>
+<div id="screen-beautiful-place" class="screen">
+  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Beautiful Place</span></div>
+  <div id="beautiful-place-content"></div>
+  <button class="btn-refresh" id="beautiful-place-refresh">Show me another</button>
   <div class="activity-actions">  </div>
 </div>
 <div id="screen-color" class="screen">
@@ -1868,6 +1916,7 @@
     <label class="srs-label">Back (answer / definition)</label>
     <textarea id="srs-edit-back" class="anki-textarea" rows="5"></textarea>
     <button class="btn btn-outline" id="srs-edit-swap" style="margin-top:10px;width:100%">⇄ Swap front &amp; back</button>
+    <button class="btn btn-outline" id="srs-edit-reword" style="margin-top:8px;width:100%">Reword</button>
     <div style="display:flex;gap:8px;margin-top:18px">
       <button class="btn btn-outline" id="srs-edit-cancel" style="flex:1">Cancel</button>
       <button class="btn btn-primary" id="srs-edit-save" style="flex:2">Save</button>
@@ -1886,6 +1935,7 @@
     <label class="srs-label">Back</label>
     <textarea id="srs-preview-back" class="anki-textarea" rows="4"></textarea>
     <button class="btn btn-outline" id="srs-preview-generate-back" style="margin-top:8px;width:100%;display:none">Generate Back with Claude</button>
+    <button class="btn btn-outline" id="srs-preview-reword" style="margin-top:8px;width:100%">Reword</button>
     <div style="display:flex;gap:8px;margin-top:18px">
       <button class="btn btn-outline" id="srs-preview-regenerate" style="flex:1;display:none">Regenerate</button>
       <button class="btn btn-primary" id="srs-preview-save" style="flex:1">Save</button>
@@ -2063,6 +2113,7 @@ const ACTIVITY_REGISTRY = [
   { slug:'productivity-insight', name:'Productivity Insight', desc:'An evidence-based idea to work smarter.' },
   { slug:'brain-teaser',         name:'Brain Teaser',         desc:'Fermi estimates, logic puzzles, lateral thinking.' },
   { slug:'flower',               name:'Flower of the Day',    desc:'A flower, its meaning, and how to keep it alive.' },
+  { slug:'beautiful-place',      name:'Beautiful Place',      desc:'Somewhere worth knowing about.' },
   { slug:'color',                name:'Color of the Day',     desc:'A shade, its psychology, and a palette to pair it with.' },
   { slug:'design',               name:'Architecture & Design',desc:'The built world, made to feel alive.' },
   { slug:'science',              name:'Science Bite',         desc:'One surprising, beautiful scientific finding.' },
@@ -2128,18 +2179,18 @@ const DURATION_ACTIVITIES = {
   '5min': ['history','cooking','stoic','reading','mindfulness','breathe',
            'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
            'thought-experiment','cognitive-bias','brain-teaser','health-insight',
-           'flower','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'],
+           'flower','beautiful-place','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'],
   'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','introspection','psychology'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment','health-insight','productivity-insight',
-                   'flower','color','design','science','good-news','pairing','weather','interior'],
+                   'flower','beautiful-place','color','design','science','good-news','pairing','weather','interior'],
   'activity':     ['mental-math','brain-teaser','reading','weekend','recipe','flavor','room','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
   'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe',
                    'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight',
-                   'flower','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior',
+                   'flower','beautiful-place','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior',
                    'quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
 };
 
@@ -2278,6 +2329,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'health-insight')        loadHealthInsight();
     if (a === 'productivity-insight')  loadProductivityInsight();
     if (a === 'flower')            loadFlower();
+    if (a === 'beautiful-place')   loadBeautifulPlace();
     if (a === 'color')             loadColor();
     if (a === 'design')            loadDesign();
     if (a === 'science')           loadScience();
@@ -3119,6 +3171,77 @@ const loadFlower = makeLoader('flower',
 );
 document.getElementById('flower-refresh').addEventListener('click', loadFlower);
 
+// ── Beautiful Place (Wikipedia-backed; no Claude) ──
+const BEAUTIFUL_PLACES = [
+  'Plitvice Lakes National Park','Lofoten','Banff National Park','Patagonia',
+  'Iguazu Falls','Ha Long Bay','Cinque Terre','Faroe Islands','Lake Bled',
+  'Mount Fuji','Salar de Uyuni','Sossusvlei','Cappadocia','Pamukkale',
+  'Antelope Canyon','Grand Canyon','Yosemite National Park','Yellowstone National Park',
+  'Glacier Bay National Park and Preserve','Hallerbos','Jiuzhaigou Valley',
+  'Lake Como','Santorini','Geirangerfjord','Trolltunga','Preikestolen',
+  'Zhangjiajie National Forest Park','Wulingyuan','Torres del Paine National Park',
+  'Lake Louise','Moraine Lake','Crater Lake','Reynisfjara','Jökulsárlón',
+  'Aogashima','Gokyo Lakes','Lake Baikal','Wadi Rum','Socotra',
+  'Petra','Machu Picchu','Angkor Wat','Taj Mahal','Alhambra','Sagrada Família',
+  'Hagia Sophia','Mont-Saint-Michel','Sintra','Chefchaouen','Burano','Hallstatt',
+  'Bagan','Kyoto','Marrakesh','Bruges','Annecy','Riomaggiore','Manarola',
+  'Positano','Ronda, Spain','Cesky Krumlov','Rothenburg ob der Tauber',
+  'Edinburgh Old Town','Old Town (Tallinn)','Salzburg','Lucerne','Dubrovnik',
+  'Reine','Nyhavn','Colmar','Giethoorn','Shirakawa-gō','Nikkō','Kanazawa',
+  'Cartagena, Colombia','Valparaíso','Guanajuato City','Cusco',
+];
+let _beautifulPlaceData = null;
+const BEAUTIFUL_PLACE_FALLBACK = {
+  title: 'Petra',
+  description: 'Ancient rock-cut city in southern Jordan',
+  extract: 'A 2,000-year-old city carved into rose-red sandstone cliffs in southern Jordan, hidden from the western world until a Swiss explorer rediscovered it in 1812.',
+  thumb: null,
+  url: 'https://en.wikipedia.org/wiki/Petra',
+};
+function renderBeautifulPlace(d) {
+  _beautifulPlaceData = d;
+  ankiData['beautiful-place'] = d;
+  searchTerms['beautiful-place'] = d.title;
+  const el = document.getElementById('beautiful-place-content');
+  const imgHtml = d.thumb
+    ? '<div class="bp-img-wrap"><img class="bp-img" src="' + esc(d.thumb) + '" alt="' + esc(d.title) + '"></div>'
+    : '';
+  el.innerHTML =
+    imgHtml +
+    '<div class="ai-single">' +
+      (d.description ? '<div class="tag">' + esc(d.description) + '</div>' : '') +
+      '<div class="word-title" style="margin-bottom:8px">' + esc(d.title) + '</div>' +
+      '<div class="sub-text">' + esc(d.extract) + '</div>' +
+      (d.url ? '<div class="example" style="margin-top:14px"><a href="' + esc(d.url) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px">Read on Wikipedia →</a></div>' : '') +
+    '</div>';
+}
+async function loadBeautifulPlace() {
+  renderBeautifulPlace({ title: '…', description: '', extract: 'Finding somewhere worth knowing about.', thumb: null, url: null });
+  let shown = getShown('beautiful-place');
+  let pool = BEAUTIFUL_PLACES.filter(p => !shown.includes(p));
+  if (!pool.length) { localStorage.removeItem('shown_beautiful-place'); pool = BEAUTIFUL_PLACES.slice(); }
+  const title = pool[Math.floor(Math.random() * pool.length)];
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    if (!res.ok) throw new Error('wiki ' + res.status);
+    const j = await res.json();
+    const d = {
+      title: j.title || title,
+      description: j.description || '',
+      extract: j.extract || '',
+      thumb: j.originalimage?.source || j.thumbnail?.source || null,
+      url: j.content_urls?.desktop?.page || ('https://en.wikipedia.org/wiki/' + encodeURIComponent(title)),
+    };
+    if (!d.extract) throw new Error('empty extract');
+    addShown('beautiful-place', title);
+    renderBeautifulPlace(d);
+  } catch(e) {
+    renderBeautifulPlace(BEAUTIFUL_PLACE_FALLBACK);
+    showToast('Wikipedia unreachable — showing a default');
+  }
+}
+document.getElementById('beautiful-place-refresh').addEventListener('click', loadBeautifulPlace);
+
 // ── Color of the Day ──
 const loadColor = makeLoader('color',
   (ex) => 'You are an interior designer and color psychologist. Generate a color profile with a complementary palette. Shape: {"name":"...","hex":"#...","psychology":"...","where_to_use":"...","pairs_with":[{"name":"...","hex":"#..."},{"name":"...","hex":"#..."},{"name":"...","hex":"#..."}]} name: a specific shade with a poetic name (e.g. "Dusty Sage"). hex: an accurate hex code. psychology: what it evokes emotionally, 1-2 sentences. where_to_use: one specific interior/styling application. pairs_with: exactly 3 complementary colors, each with a poetic name and an accurate harmonizing hex.' + ex,
@@ -3340,7 +3463,7 @@ document.getElementById('weather-refresh').addEventListener('click', loadWeather
 const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
   'finance-term','stats-concept','geography-fact','logical-fallacy','cognitive-bias','etymology',
   'on-this-day','thought-experiment','health-insight','productivity-insight',
-  'flower','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'];
+  'flower','beautiful-place','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'];
 
 const INFORMATIONAL_CONTENT_IDS = {
   'history': 'history-cards', 'cooking': 'cooking-cards',
@@ -3352,7 +3475,8 @@ const INFORMATIONAL_CONTENT_IDS = {
   'on-this-day': 'on-this-day-content', 'thought-experiment': 'thought-experiment-content',
   'health-insight': 'health-insight-content',
   'productivity-insight': 'productivity-insight-content',
-  'flower': 'flower-content', 'color': 'color-content', 'design': 'design-content',
+  'flower': 'flower-content', 'beautiful-place': 'beautiful-place-content',
+  'color': 'color-content', 'design': 'design-content',
   'science': 'science-content', 'psychology': 'psychology-content',
   'weekend': 'weekend-content', 'recipe': 'recipe-content', 'flavor': 'flavor-content',
   'room': 'room-content', 'good-news': 'good-news-content', 'pairing': 'pairing-content',
@@ -3422,7 +3546,8 @@ INFORMATIONAL_SCREENS.forEach(id => {
 // ── "New activity" button ─────────────────────
 const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','health-insight',
   'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
-  'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser'];
+  'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser',
+  'beautiful-place'];
 
 ACTIVITY_SCREENS.forEach(id => {
   const header = document.querySelector('#screen-' + id + ' .activity-header');
@@ -3448,6 +3573,7 @@ const LOADERS = {
   'thought-experiment': () => loadThoughtExperiment(), 'etymology': () => loadEtymology(),
   'cognitive-bias': () => loadCognitiveBias(), 'brain-teaser': () => loadBrainTeaser(),
   'stoic-reminder': () => loadStoicReminder(),
+  'beautiful-place': () => loadBeautifulPlace(),
 };
 
 // ── Box breathing ─────────────────────────────
@@ -3964,6 +4090,50 @@ document.getElementById('srs-edit-swap').addEventListener('click', () => {
   const tmp = f.value; f.value = b.value; b.value = tmp;
 });
 
+// v8 #20 — Reword: ask Claude to rephrase both sides preserving meaning. Pure
+// form-field mutation; nothing persists until the user hits Save.
+async function rewordCard(front, back) {
+  return await callClaude(
+    'Rephrase this flashcard with the same meaning but different wording. '
+    + 'Preserve every fact; do not add new information, examples, or caveats. '
+    + 'Front stays a clean cue (term, concept name, or short question). '
+    + 'Back stays 1–2 punchy sentences with the core idea only.\n\n'
+    + 'Current front: "' + front + '"\n'
+    + 'Current back: "' + back + '"\n\n'
+    + 'Return JSON: {front, back}'
+  );
+}
+
+async function rewordButtonClick(btn, frontEl, backEl, label) {
+  const front = frontEl.value.trim();
+  const back  = backEl.value.trim();
+  if (!front && !back) { showToast('Type something first'); return; }
+  const orig = btn.textContent;
+  btn.textContent = 'Rewording…';
+  btn.disabled = true;
+  try {
+    const d = await rewordCard(front, back);
+    if (d && d.front) frontEl.value = d.front;
+    if (d && d.back)  backEl.value  = d.back;
+  } catch(e) {
+    showToast('Reword failed');
+  }
+  btn.textContent = label || orig;
+  btn.disabled = false;
+}
+
+document.getElementById('srs-edit-reword').addEventListener('click', (e) =>
+  rewordButtonClick(e.currentTarget,
+    document.getElementById('srs-edit-front'),
+    document.getElementById('srs-edit-back'),
+    'Reword'));
+
+document.getElementById('srs-preview-reword').addEventListener('click', (e) =>
+  rewordButtonClick(e.currentTarget,
+    document.getElementById('srs-preview-front'),
+    document.getElementById('srs-preview-back'),
+    'Reword'));
+
 document.getElementById('srs-edit-save').addEventListener('click', async () => {
   const card = srsEditableCard();
   if (!card) { closeSrsEdit(); return; }
@@ -4130,6 +4300,7 @@ wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '', '
 wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''), 'thought experiment');
 wireRememberIt('health-insight',    d => d.topic, d => (d.insight || '') + (d.tryThis ? '\n\nTry: ' + d.tryThis : ''), 'health insight');
 wireRememberIt('flower',     d => d.name, d => 'Meaning: ' + (d.meaning||'') + (d.fun_fact ? '\n\nFun fact: ' + d.fun_fact : ''), 'flower');
+wireRememberIt('beautiful-place', d => d.title, d => (d.description ? d.description + '\n\n' : '') + (d.extract||''), 'place');
 wireRememberIt('science',    d => d.headline, d => (d.explanation||'') + (d.why_it_matters ? '\n\nWhy it matters: ' + d.why_it_matters : ''), 'science fact');
 wireRememberIt('design',     d => d.title, d => (d.content||'') + (d.example ? '\n\nExample: ' + d.example : ''), 'design fact');
 wireRememberIt('psychology', d => d.concept, d => (d.explanation||'') + (d.try_this ? '\n\nTry this: ' + d.try_this : ''), 'psychology concept');
@@ -4822,26 +4993,36 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
 
 // Spotify PKCE
 const SPOTIFY_CLIENT_ID = '061fec005203410d94eabe844d3f5d22';
-const SPOTIFY_REDIRECT   = 'https://nates123-cmd.github.io/5-minute-app/';
+// v8 follow-up: redirect dynamically from the current origin so OAuth works on
+// localhost, deploy previews, and production without code changes. Spotify
+// requires every redirect URI to be whitelisted in the Dashboard — production
+// + http://127.0.0.1:<port>/ + http://localhost:<port>/ all need to be added.
+function spotifyRedirectUri() {
+  return location.origin + location.pathname;
+}
 
 async function spotifyLogin() {
   const arr = crypto.getRandomValues(new Uint8Array(32));
   const verifier = btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   localStorage.setItem('spotify_verifier', verifier);
+  // Stash the redirect we used so the callback can match it (Spotify requires
+  // an exact-equal redirect_uri on the token exchange).
+  localStorage.setItem('spotify_redirect_used', spotifyRedirectUri());
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
   const challenge = btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
   location.href = 'https://accounts.spotify.com/authorize?client_id=' + SPOTIFY_CLIENT_ID +
-    '&response_type=code&redirect_uri=' + encodeURIComponent(SPOTIFY_REDIRECT) +
+    '&response_type=code&redirect_uri=' + encodeURIComponent(spotifyRedirectUri()) +
     '&code_challenge_method=S256&code_challenge=' + challenge;
 }
 
 async function spotifyHandleCallback(code) {
   const verifier = localStorage.getItem('spotify_verifier') || '';
+  const redirect = localStorage.getItem('spotify_redirect_used') || spotifyRedirectUri();
   const res = await fetch('https://accounts.spotify.com/api/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({ grant_type: 'authorization_code', code,
-      redirect_uri: SPOTIFY_REDIRECT, client_id: SPOTIFY_CLIENT_ID, code_verifier: verifier })
+      redirect_uri: redirect, client_id: SPOTIFY_CLIENT_ID, code_verifier: verifier })
   });
   const data = await res.json();
   if (data.access_token) {
@@ -4849,6 +5030,7 @@ async function spotifyHandleCallback(code) {
     localStorage.setItem('spotify_refresh', data.refresh_token || '');
     localStorage.setItem('spotify_expires', String(Date.now() + (data.expires_in || 3600) * 1000));
     localStorage.removeItem('spotify_verifier');
+    localStorage.removeItem('spotify_redirect_used');
   }
 }
 
@@ -4899,20 +5081,40 @@ async function spotifyFetchLatestEpisodes(showUrl, count = 2) {
   const match = showUrl.match(/show\/([A-Za-z0-9]+)/);
   if (!match) return [];
   const showId = match[1];
-  const [showRes, epRes] = await Promise.all([
-    fetch('https://api.spotify.com/v1/shows/' + showId + '?market=US', { headers: { Authorization: 'Bearer ' + token } }),
-    fetch('https://api.spotify.com/v1/shows/' + showId + '/episodes?limit=' + count + '&market=US', { headers: { Authorization: 'Bearer ' + token } })
-  ]);
-  const showData = await showRes.json();
-  const epData = await epRes.json();
-  return (epData.items || []).map(ep => ({
-    title: ep.name || '',
-    show_name: showData.name || '',
-    summary: (ep.description || '').slice(0, 300),
-    duration_secs: ep.duration_ms ? Math.round(ep.duration_ms / 1000) : null,
-    spotify_url: ep.external_urls?.spotify || showUrl,
-    pubDate: ep.release_date || ''
-  }));
+  try {
+    const [showRes, epRes] = await Promise.all([
+      fetch('https://api.spotify.com/v1/shows/' + showId + '?market=US', { headers: { Authorization: 'Bearer ' + token } }),
+      fetch('https://api.spotify.com/v1/shows/' + showId + '/episodes?limit=' + count + '&market=US', { headers: { Authorization: 'Bearer ' + token } })
+    ]);
+    if (!epRes.ok) {
+      console.warn('[listen] Spotify episodes ' + epRes.status + ' for show ' + showId);
+      if (epRes.status === 401 || epRes.status === 403) {
+        // Token revoked (typically because a fresh auth happened on a different
+        // origin / browser tab). Wipe the cached creds so the "Spotify
+        // disconnected" banner surfaces and the user can reconnect.
+        localStorage.removeItem('spotify_token');
+        localStorage.removeItem('spotify_expires');
+        localStorage.removeItem('spotify_refresh');
+      }
+      return [];
+    }
+    const showData = showRes.ok ? await showRes.json() : {};
+    const epData = await epRes.json();
+    // v8 #18c: Spotify returns `null` entries in `items` for region-restricted
+    // episodes. Filtering before .map prevents the whole show from going dark.
+    const items = (epData.items || []).filter(ep => ep && ep.name);
+    return items.map(ep => ({
+      title: ep.name || '',
+      show_name: showData.name || '',
+      summary: (ep.description || '').slice(0, 300),
+      duration_secs: ep.duration_ms ? Math.round(ep.duration_ms / 1000) : null,
+      spotify_url: ep.external_urls?.spotify || showUrl,
+      pubDate: ep.release_date || ''
+    }));
+  } catch(e) {
+    console.warn('[listen] Spotify fetch failed for ' + showId + ':', e);
+    return [];
+  }
 }
 
 async function spotifyFetchLatestEpisode(showUrl) {
@@ -5117,6 +5319,12 @@ async function loadListenScreen() {
     if (!subs || subs.length === 0) {
       subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">No subscriptions yet. Tap Manage to add shows.</p>';
     } else {
+      // v8 #18: surface Spotify-disconnected state so silent token failures don't
+      // look like "Listen recs not refreshing" to the user.
+      const token = await spotifyToken();
+      const banner = !token
+        ? '<div class="listen-spotify-banner">Spotify disconnected — <button type="button" class="listen-spotify-reconnect">Reconnect</button></div>'
+        : '';
       // Fetch ALL queue rows (including dismissed/listened) so we never recreate an episode
       // the user already dismissed. Pending rows are derived from the same set.
       const allRows = (await sbFetch('listening_queue?order=created_at.desc')) || [];
@@ -5127,20 +5335,23 @@ async function loadListenScreen() {
         if (!titlesByShow.has(i.subscription_id)) titlesByShow.set(i.subscription_id, new Set());
         titlesByShow.get(i.subscription_id).add(i.title.toLowerCase());
       });
+      const PER_SHOW_SOFT_CAP = 8;
       for (const sub of subs) {
         try {
-          const eps = await spotifyFetchLatestEpisodes(sub.feed_url, 2);
+          // v8 #18: fetch 5 latest (was 2) so a monthly skip can't miss episodes.
+          const eps = await spotifyFetchLatestEpisodes(sub.feed_url, 5);
           const subPending = pendingRows.filter(i => i.subscription_id === sub.id);
           const seenTitles = titlesByShow.get(sub.id) || new Set();
-          let subCount = subPending.length;
+          let subTotal = subPending.length;
           for (const ep of eps) {
             const titleLc = ep.title.toLowerCase();
             const matchPending = subPending.find(i => i.title.toLowerCase() === titleLc);
             if (matchPending) {
               matchPending.pub_date = ep.pubDate || matchPending.pub_date || null;
               _listenSubsItems.push(matchPending);
-            } else if (!seenTitles.has(titleLc) && subCount < 2) {
-              // Genuinely new episode — add up to a max of 2 pending per show
+            } else if (!seenTitles.has(titleLc) && subTotal < PER_SHOW_SOFT_CAP) {
+              // v8 #18: drop the prior subCount<2 hard cap. Always materialise new
+              // episodes (a chatty show is bounded only by the soft 8-pending cap).
               const rows = await listenQueueCreate({
                 title: ep.title, show_name: ep.show_name || sub.name,
                 summary: ep.summary, source: 'subscription',
@@ -5152,14 +5363,25 @@ async function loadListenScreen() {
               if (newItem) {
                 newItem.pub_date = ep.pubDate || null;
                 _listenSubsItems.push(newItem);
-                subCount++;
+                subTotal++;
               }
             }
             // else: episode was previously in queue (dismissed) — skip
           }
         } catch(e) {}
       }
+      // v8 #18b: any pending row that didn't match a current-Spotify-latest-N
+      // episode (e.g. older but still un-listened) must still render. The prior
+      // logic only pushed items that re-appeared in the latest fetch, so once a
+      // newer episode dropped, older pending items vanished from the UI even
+      // though they were in the DB.
+      const pushedIds = new Set(_listenSubsItems.map(i => i && i.id).filter(Boolean));
+      pendingRows.forEach(p => { if (p.subscription_id && !pushedIds.has(p.id)) _listenSubsItems.push(p); });
       renderListenSubsSection();
+      if (banner) {
+        subEl.insertAdjacentHTML('afterbegin', banner);
+        subEl.querySelector('.listen-spotify-reconnect')?.addEventListener('click', () => spotifyLogin());
+      }
     }
   } catch(e) {
     subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">Failed to load subscriptions.</p>';
@@ -5419,18 +5641,43 @@ document.getElementById('listen-add-save').addEventListener('click', async () =>
 // capture flow with a two-pass (knowledge → web-search) Claude lookup.
 // ════════════════════════════════════════════════════════
 
-// Tab label → media_type filter. Listen is special-cased (Spotify queue).
-const RECS_TAB_TYPES = {
-  Books:    ['book'],
-  Articles: ['article'],
-  Movies:   ['movie'],
-  TV:       ['tv'],
-  Music:    ['music'],
-  Other:    ['other', 'podcast'],   // podcasts captured as recs land here (no Podcast tab)
+// v8 #19 — top tabs + per-tab sub-filters. Listen is special-cased (Spotify queue
+// + music recs); Watch/Read render filtered `recommendations` rows in the same pane.
+const RECS_TOP_TABS = ['Listen', 'Watch', 'Read'];
+const RECS_SUBTABS = {
+  Listen: ['All', 'Podcasts', 'Music'],
+  Watch:  ['All', 'Movies', 'TV'],
+  Read:   ['All', 'Books', 'Articles', 'Other'],
 };
-function recsTabToPrefill(tab) {
-  const m = RECS_TAB_TYPES[tab];
-  return m && m[0] !== 'other' ? m[0] : (tab === 'Other' ? 'other' : null);
+// Sub-filter → media_type set (for `recsFetch`). 'All' resolves to the union
+// of the tab's single-type subs.
+const RECS_SUB_TYPES = {
+  // Listen
+  'Listen|All':       ['music'],         // podcast queue handled via Spotify, not recommendations
+  'Listen|Podcasts':  [],                // no recommendations filter (Spotify-side only)
+  'Listen|Music':     ['music'],
+  // Watch
+  'Watch|All':        ['movie', 'tv'],
+  'Watch|Movies':     ['movie'],
+  'Watch|TV':         ['tv'],
+  // Read
+  'Read|All':         ['book', 'article', 'other'],
+  'Read|Books':       ['book'],
+  'Read|Articles':    ['article'],
+  'Read|Other':       ['other'],
+};
+function recsSubKey(top, sub) { return top + '|' + sub; }
+function recsTabToPrefill(top, sub) {
+  // 'All' → no chip pre-selection. Single-type subs map to their media_type.
+  const map = {
+    'Listen|Music': 'music',
+    'Watch|Movies': 'movie',
+    'Watch|TV':     'tv',
+    'Read|Books':   'book',
+    'Read|Articles':'article',
+    'Read|Other':   'other',
+  };
+  return map[recsSubKey(top, sub)] || null;
 }
 
 // ── Supabase helpers (mirror srs* patterns) ──────────────
@@ -5497,8 +5744,28 @@ async function updateRecsBadge() {
 }
 
 // ── Recs screen + tabs ───────────────────────────────────
-function getRecsActiveTab() { return localStorage.getItem('recs_active_tab') || 'Listen'; }
+function getRecsActiveTab() {
+  const raw = localStorage.getItem('recs_active_tab');
+  // v8 #19 migration: legacy values (Books, Articles, Movies, TV, Music, Other)
+  // collapse to a sensible new top tab so existing users land somewhere useful.
+  const legacy = { Books:'Read', Articles:'Read', Other:'Read', Movies:'Watch', TV:'Watch', Music:'Listen' };
+  if (RECS_TOP_TABS.includes(raw)) return raw;
+  return legacy[raw] || 'Listen';
+}
 function setRecsActiveTab(t) { localStorage.setItem('recs_active_tab', t); }
+function getRecsActiveSub(top) {
+  try {
+    const o = JSON.parse(localStorage.getItem('recs_active_sub') || '{}');
+    const v = o[top];
+    return (RECS_SUBTABS[top] || []).includes(v) ? v : 'All';
+  } catch(e) { return 'All'; }
+}
+function setRecsActiveSub(top, sub) {
+  let o = {};
+  try { o = JSON.parse(localStorage.getItem('recs_active_sub') || '{}'); } catch(e) {}
+  o[top] = sub;
+  localStorage.setItem('recs_active_sub', JSON.stringify(o));
+}
 
 function recFindHtml(arr) {
   if (!Array.isArray(arr) || !arr.length) return '';
@@ -5511,14 +5778,42 @@ function recFindHtml(arr) {
   }).join('') + '</div>';
 }
 
-async function renderRecsMediaTab(tab) {
+// v8 #19 — render a rec list into an arbitrary container. Used for the
+// Watch/Read pane and for the Listen tab's inline music section.
+function renderRecRow(item, top, sub, container) {
+  const div = document.createElement('div');
+  div.className = 'rec-item' + (item.status === 'consumed' ? ' consumed' : '');
+  const metaParts = [item.creator, item.year].filter(Boolean);
+  if (typeof item.rt_score === 'number') {
+    metaParts.push('RT ' + item.rt_score + '%' + (item.rt_certified ? ' (Certified Fresh)' : ''));
+  }
+  if (typeof item.imdb_score === 'number') {
+    metaParts.push('IMDb ' + item.imdb_score.toFixed(1));
+  }
+  const meta = metaParts.join(' · ');
+  div.innerHTML =
+    '<div class="rec-title">' + esc(item.title || '') + '</div>' +
+    (meta ? '<div class="rec-meta">' + esc(meta) + '</div>' : '') +
+    (item.summary ? '<div class="rec-summary">' + esc(item.summary) + '</div>' : '') +
+    recFindHtml(item.where_to_find);
+  let lpTimer = null;
+  const openSheet = (e) => { if (e) e.preventDefault(); openRecActionSheet(item, top, sub); };
+  div.addEventListener('touchstart', () => { lpTimer = setTimeout(openSheet, 500); }, { passive: true });
+  div.addEventListener('touchmove',  () => { clearTimeout(lpTimer); }, { passive: true });
+  div.addEventListener('touchend',   () => { clearTimeout(lpTimer); }, { passive: true });
+  div.addEventListener('contextmenu', openSheet);
+  container.appendChild(div);
+}
+
+async function renderRecsCombined(top, sub) {
   const pane = document.getElementById('recs-pane-recs');
   pane.innerHTML = '<p class="lul-empty">Loading…</p>';
-  let rows;
-  try { rows = await recsFetch({ mediaTypes: RECS_TAB_TYPES[tab], notSkipped: true }); }
+  const types = RECS_SUB_TYPES[recsSubKey(top, sub)] || [];
+  let rows = [];
+  try { rows = types.length ? await recsFetch({ mediaTypes: types, notSkipped: true }) : []; }
   catch(e) { pane.innerHTML = '<p class="lul-empty">Couldn\'t load — check your connection.</p>'; return; }
-  if (!rows || !rows.length) {
-    const singular = tab === 'TV' ? 'show' : tab.replace(/s$/, '').toLowerCase();
+  if (!rows.length) {
+    const singular = sub === 'TV' ? 'show' : sub === 'All' ? (top === 'Watch' ? 'movie or show' : 'thing to read') : sub.replace(/s$/, '').toLowerCase();
     pane.innerHTML =
       '<div class="rec-empty">' +
         '<div class="rec-empty-title">Nothing here yet.</div>' +
@@ -5527,34 +5822,31 @@ async function renderRecsMediaTab(tab) {
     return;
   }
   pane.innerHTML = '';
-  rows.forEach(item => {
-    const div = document.createElement('div');
-    div.className = 'rec-item' + (item.status === 'consumed' ? ' consumed' : '');
-    const metaParts = [item.creator, item.year].filter(Boolean);
-    if (typeof item.rt_score === 'number') {
-      metaParts.push('RT ' + item.rt_score + '%' + (item.rt_certified ? ' (Certified Fresh)' : ''));
+  rows.forEach(item => renderRecRow(item, top, sub, pane));
+}
+
+// Render the music-recs strip inside the Listen pane (sub-filter aware).
+async function renderListenMusicSection() {
+  const el = document.getElementById('listen-music-section');
+  if (!el) return;
+  el.innerHTML = '';
+  try {
+    const rows = await recsFetch({ mediaTypes: ['music'], notSkipped: true });
+    if (!rows || !rows.length) {
+      el.innerHTML = '<div class="listen-music-heading">Music</div>' +
+        '<p class="lul-empty" style="padding:8px 0">No music recs yet.</p>';
+      return;
     }
-    if (typeof item.imdb_score === 'number') {
-      metaParts.push('IMDb ' + item.imdb_score.toFixed(1));
-    }
-    const meta = metaParts.join(' · ');
-    div.innerHTML =
-      '<div class="rec-title">' + esc(item.title || '') + '</div>' +
-      (meta ? '<div class="rec-meta">' + esc(meta) + '</div>' : '') +
-      (item.summary ? '<div class="rec-summary">' + esc(item.summary) + '</div>' : '') +
-      recFindHtml(item.where_to_find);
-    let lpTimer = null;
-    const openSheet = (e) => { if (e) e.preventDefault(); openRecActionSheet(item, tab); };
-    div.addEventListener('touchstart', () => { lpTimer = setTimeout(openSheet, 500); }, { passive: true });
-    div.addEventListener('touchmove',  () => { clearTimeout(lpTimer); }, { passive: true });
-    div.addEventListener('touchend',   () => { clearTimeout(lpTimer); }, { passive: true });
-    div.addEventListener('contextmenu', openSheet);
-    pane.appendChild(div);
-  });
+    el.innerHTML = '<div class="listen-music-heading">Music</div>';
+    rows.forEach(item => renderRecRow(item, 'Listen', getRecsActiveSub('Listen'), el));
+  } catch(e) {
+    el.innerHTML = '<div class="listen-music-heading">Music</div>' +
+      '<p class="lul-empty" style="padding:8px 0">Couldn\'t load music recs.</p>';
+  }
 }
 
 let _recActionSheetEl = null;
-function openRecActionSheet(item, tab) {
+function openRecActionSheet(item, top, sub) {
   if (!_recActionSheetEl) {
     _recActionSheetEl = document.createElement('div');
     _recActionSheetEl.className = 'rec-action-sheet hidden';
@@ -5574,13 +5866,13 @@ function openRecActionSheet(item, tab) {
     b.addEventListener('click', async () => {
       const act = b.dataset.act;
       _recActionSheetEl.classList.add('hidden');
-      if (act === 'edit') { openRecEditModal(item, tab); return; }
+      if (act === 'edit') { openRecEditModal(item, top, sub); return; }
       try {
         if (act === 'consumed') await recsUpdate(item.id, { status: 'consumed', consumed_at: new Date().toISOString() });
         else if (act === 'skipped') await recsUpdate(item.id, { status: 'skipped' });
         else if (act === 'delete')  await recsDelete(item.id);
         else return;
-        await renderRecsMediaTab(tab);
+        await rerenderRecsCurrentView(top, sub);
         updateRecsBadge();
       } catch(e) { showToast('Action failed: ' + (e.message || 'unknown')); }
     });
@@ -5588,8 +5880,18 @@ function openRecActionSheet(item, tab) {
   _recActionSheetEl.classList.remove('hidden');
 }
 
+// v8 #19 — re-render whichever sub-view is currently visible after a CRUD action.
+async function rerenderRecsCurrentView(top, sub) {
+  if (top === 'Listen') {
+    // Listen has special-cased structure; re-rendering music inline is enough.
+    if (sub === 'Music' || sub === 'All') await renderListenMusicSection();
+  } else {
+    await renderRecsCombined(top, sub);
+  }
+}
+
 let _recEditModalEl = null;
-function openRecEditModal(item, tab) {
+function openRecEditModal(item, top, sub) {
   if (!_recEditModalEl) {
     _recEditModalEl = document.createElement('div');
     _recEditModalEl.className = 'srs-modal hidden';
@@ -5637,7 +5939,7 @@ function openRecEditModal(item, tab) {
         summary: box.querySelector('#rec-edit-summary').value.trim() || null,
       });
       _recEditModalEl.classList.add('hidden');
-      await renderRecsMediaTab(tab);
+      await rerenderRecsCurrentView(top, sub);
       updateRecsBadge();
       showToast('Updated ✓');
     } catch(e) {
@@ -5648,20 +5950,52 @@ function openRecEditModal(item, tab) {
   _recEditModalEl.classList.remove('hidden');
 }
 
-function switchRecsTab(tab) {
-  setRecsActiveTab(tab);
-  document.querySelectorAll('.recs-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+// v8 #19 — render the sub-filter pill row for the active top tab.
+function renderRecsSubtabs(top, sub) {
+  const row = document.getElementById('recs-subtabs');
+  const subs = RECS_SUBTABS[top] || [];
+  row.innerHTML = subs.map(s =>
+    '<button class="recs-subtab' + (s === sub ? ' active' : '') + '" data-sub="' + esc(s) + '">' + esc(s) + '</button>'
+  ).join('');
+  row.querySelectorAll('.recs-subtab').forEach(btn => {
+    btn.addEventListener('click', () => switchRecsSubTab(top, btn.dataset.sub));
+  });
+}
+
+function applyListenSubState(sub) {
+  // Toggle Listen pane visibility classes (CSS handles which sections show).
+  const pane = document.getElementById('recs-pane-Listen');
+  pane.classList.remove('sub-all', 'sub-podcasts', 'sub-music');
+  pane.classList.add('sub-' + sub.toLowerCase());
+}
+
+async function switchRecsSubTab(top, sub) {
+  setRecsActiveSub(top, sub);
+  renderRecsSubtabs(top, sub);
+  if (top === 'Listen') {
+    applyListenSubState(sub);
+    // Always run loadListenScreen in All/Podcasts (so subs refresh); Music skips it.
+    if (sub === 'All' || sub === 'Podcasts') await loadListenScreen();
+    if (sub === 'All' || sub === 'Music')    await renderListenMusicSection();
+  } else {
+    await renderRecsCombined(top, sub);
+  }
+}
+
+function switchRecsTab(top) {
+  setRecsActiveTab(top);
+  document.querySelectorAll('.recs-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === top));
   const listenPane = document.getElementById('recs-pane-Listen');
   const recsPane   = document.getElementById('recs-pane-recs');
-  if (tab === 'Listen') {
+  const sub = getRecsActiveSub(top);
+  if (top === 'Listen') {
     listenPane.classList.add('active');
     recsPane.classList.remove('active');
-    loadListenScreen();
   } else {
     listenPane.classList.remove('active');
     recsPane.classList.add('active');
-    renderRecsMediaTab(tab);
   }
+  switchRecsSubTab(top, sub);
 }
 
 function loadRecsScreen() {
@@ -5804,8 +6138,8 @@ function recsRefreshIfVisible() {
   updateRecsBadge();
   const recsScreen = document.getElementById('screen-recs');
   if (recsScreen && recsScreen.classList.contains('active')) {
-    const t = getRecsActiveTab();
-    if (t !== 'Listen') renderRecsMediaTab(t);
+    const top = getRecsActiveTab();
+    rerenderRecsCurrentView(top, getRecsActiveSub(top));
   }
 }
 
@@ -5908,7 +6242,8 @@ function resetRecAdd() {
 // ── Home pillar + Recs header wiring ─────────────────────
 document.getElementById('recs-home-card')?.addEventListener('click', () => navigateToActivity('recs'));
 document.getElementById('recs-add-btn')?.addEventListener('click', () => {
-  _recAddPrefill = recsTabToPrefill(getRecsActiveTab());
+  const top = getRecsActiveTab();
+  _recAddPrefill = recsTabToPrefill(top, getRecsActiveSub(top));
   navigateToActivity('rec-add');
 });
 
