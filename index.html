@@ -83,7 +83,9 @@
     body {
       display: flex;
       flex-direction: column;
-      min-height: 100dvh;
+      /* 100lvh = largest viewport height. Stable across iOS Safari URL-bar
+         toggles, so the page doesn't reflow (and flash) every scroll. */
+      min-height: 100lvh;
       padding-bottom: env(safe-area-inset-bottom);
       touch-action: pan-y;
     }
@@ -5336,10 +5338,20 @@ async function loadListenScreen() {
         titlesByShow.get(i.subscription_id).add(i.title.toLowerCase());
       });
       const PER_SHOW_SOFT_CAP = 8;
+      const HIGH_FREQ_CAP = 5;
+      const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
       for (const sub of subs) {
         try {
-          // v8 #18: fetch 5 latest (was 2) so a monthly skip can't miss episodes.
-          const eps = await spotifyFetchLatestEpisodes(sub.feed_url, 5);
+          // Fetch 10 so we can detect >5/week cadence. Shows that drop more
+          // than 5 episodes a week get capped at the latest 5 to keep the
+          // queue from flooding; everything else uses the 8-pending soft cap.
+          const eps = await spotifyFetchLatestEpisodes(sub.feed_url, 10);
+          const nowMs = Date.now();
+          const recentCount = eps.filter(ep => {
+            const t = ep.pubDate ? new Date(ep.pubDate).getTime() : NaN;
+            return !isNaN(t) && (nowMs - t) <= ONE_WEEK_MS;
+          }).length;
+          const showCap = recentCount > 5 ? HIGH_FREQ_CAP : PER_SHOW_SOFT_CAP;
           const subPending = pendingRows.filter(i => i.subscription_id === sub.id);
           const seenTitles = titlesByShow.get(sub.id) || new Set();
           let subTotal = subPending.length;
@@ -5349,9 +5361,9 @@ async function loadListenScreen() {
             if (matchPending) {
               matchPending.pub_date = ep.pubDate || matchPending.pub_date || null;
               _listenSubsItems.push(matchPending);
-            } else if (!seenTitles.has(titleLc) && subTotal < PER_SHOW_SOFT_CAP) {
+            } else if (!seenTitles.has(titleLc) && subTotal < showCap) {
               // v8 #18: drop the prior subCount<2 hard cap. Always materialise new
-              // episodes (a chatty show is bounded only by the soft 8-pending cap).
+              // episodes (a chatty show is bounded only by the soft per-show cap).
               const rows = await listenQueueCreate({
                 title: ep.title, show_name: ep.show_name || sub.name,
                 summary: ep.summary, source: 'subscription',
