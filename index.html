@@ -1938,6 +1938,7 @@
     <textarea id="srs-preview-back" class="anki-textarea" rows="4"></textarea>
     <button class="btn btn-outline" id="srs-preview-generate-back" style="margin-top:8px;width:100%;display:none">Generate Back with Claude</button>
     <button class="btn btn-outline" id="srs-preview-reword" style="margin-top:8px;width:100%">Reword</button>
+    <button class="btn btn-outline" id="srs-preview-swap" style="margin-top:8px;width:100%">⇄ Swap front &amp; back</button>
     <div style="display:flex;gap:8px;margin-top:18px">
       <button class="btn btn-outline" id="srs-preview-regenerate" style="flex:1;display:none">Regenerate</button>
       <button class="btn btn-primary" id="srs-preview-save" style="flex:1">Save</button>
@@ -4218,6 +4219,12 @@ function closeRememberPreview() {
 }
 
 document.getElementById('srs-preview-close').addEventListener('click', closeRememberPreview);
+// Swap exchanges the two preview fields; nothing persists until Save.
+document.getElementById('srs-preview-swap').addEventListener('click', () => {
+  const f = document.getElementById('srs-preview-front');
+  const b = document.getElementById('srs-preview-back');
+  const tmp = f.value; f.value = b.value; b.value = tmp;
+});
 document.getElementById('srs-preview-save').addEventListener('click', async () => {
   const front = document.getElementById('srs-preview-front').value.trim();
   const back  = document.getElementById('srs-preview-back').value.trim();
