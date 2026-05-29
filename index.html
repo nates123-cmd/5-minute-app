@@ -1279,10 +1279,10 @@
       </div>
     </button>
     <button class="pillar pillar-recs" id="recs-home-card">
-      <span class="pillar-label">Recs</span>
+      <span class="pillar-label">Listen</span>
       <div>
         <div class="pillar-num" id="recs-count">0</div>
-        <div class="pillar-sub" id="recs-sub">nothing saved</div>
+        <div class="pillar-sub" id="recs-sub">nothing queued</div>
       </div>
     </button>
   </div>
@@ -1414,21 +1414,14 @@
   <div class="srs-controls" id="srs-controls"></div>
 </div>
 
-<!-- RECS -->
+<!-- LISTEN -->
 <div id="screen-recs" class="screen">
   <div class="activity-header">
     <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Recs</span>
-    <button class="btn-settings" id="recs-add-btn" style="margin-left:auto">+ Add</button>
+    <span class="activity-title">Listen</span>
   </div>
-  <div id="recs-tabs">
-    <button class="recs-tab active" data-tab="Listen">Listen</button>
-    <button class="recs-tab" data-tab="Watch">Watch</button>
-    <button class="recs-tab" data-tab="Read">Read</button>
-  </div>
-  <div id="recs-subtabs"></div>
 
-  <!-- Listen pane — existing Listen feature + v8 #19 music section -->
+  <!-- Listen feature -->
   <div class="recs-pane active" id="recs-pane-Listen">
     <div id="screen-listen">
       <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
@@ -1441,21 +1434,8 @@
       <div id="listen-queue"></div>
       <div id="listen-subscriptions"></div>
       <div id="listen-audiobook"></div>
-      <div class="listen-music-section" id="listen-music-section"></div>
     </div>
   </div>
-
-  <!-- Recommendation media-type tabs render here -->
-  <div class="recs-pane" id="recs-pane-recs"></div>
-</div>
-
-<!-- RECOMMENDATION ADD FLOW -->
-<div id="screen-rec-add" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Capture</span>
-  </div>
-  <div id="rec-add-body"></div>
 </div>
 
 <!-- LOOK UP LATER -->
@@ -1807,7 +1787,6 @@
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-outline add-menu-opt" data-add="card">Add Card</button>
-      <button class="btn btn-outline add-menu-opt" data-add="rec">Recommendation</button>
       <button class="btn btn-outline add-menu-opt" data-add="lul">Look Up Later</button>
       <button class="btn btn-outline add-menu-opt" data-add="listen">Listen Later</button>
     </div>
@@ -2350,7 +2329,6 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'anki-input')        resetAnkiInput();
     if (a === 'look-up-later')     loadLulScreen();
     if (a === 'recs')              loadRecsScreen();
-    if (a === 'rec-add')           resetRecAdd();
   }
 }
 
@@ -4976,7 +4954,6 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('add-menu-modal').classList.add('hidden');
     if (btn.dataset.add === 'card')   navigateToActivity('anki-input');
-    if (btn.dataset.add === 'rec')    navigateToActivity('rec-add');
     if (btn.dataset.add === 'lul') {
       document.getElementById('lul-question-input').value = '';
       document.getElementById('lul-add-modal').classList.remove('hidden');
@@ -5654,88 +5631,11 @@ document.getElementById('listen-add-save').addEventListener('click', async () =>
 });
 
 // ════════════════════════════════════════════════════════
-// ── RECS ────────────────────────────────────────────────
-// Recs screen (Listen tab = existing Listen feature, unchanged;
-// other tabs = the new `recommendations` table) + Recommendation
-// capture flow with a two-pass (knowledge → web-search) Claude lookup.
+// ── LISTEN ──────────────────────────────────────────────
+// The Listen feature lives on #screen-recs (historically the
+// Recs screen — recommendations removed, Listen kept). Reached
+// from the home "Listen" pillar; add via the Add menu.
 // ════════════════════════════════════════════════════════
-
-// v8 #19 — top tabs + per-tab sub-filters. Listen is special-cased (Spotify queue
-// + music recs); Watch/Read render filtered `recommendations` rows in the same pane.
-const RECS_TOP_TABS = ['Listen', 'Watch', 'Read'];
-const RECS_SUBTABS = {
-  Listen: ['All', 'Podcasts', 'Music'],
-  Watch:  ['All', 'Movies', 'TV'],
-  Read:   ['All', 'Books', 'Articles', 'Other'],
-};
-// Sub-filter → media_type set (for `recsFetch`). 'All' resolves to the union
-// of the tab's single-type subs.
-const RECS_SUB_TYPES = {
-  // Listen
-  'Listen|All':       ['music'],         // podcast queue handled via Spotify, not recommendations
-  'Listen|Podcasts':  [],                // no recommendations filter (Spotify-side only)
-  'Listen|Music':     ['music'],
-  // Watch
-  'Watch|All':        ['movie', 'tv'],
-  'Watch|Movies':     ['movie'],
-  'Watch|TV':         ['tv'],
-  // Read
-  'Read|All':         ['book', 'article', 'other'],
-  'Read|Books':       ['book'],
-  'Read|Articles':    ['article'],
-  'Read|Other':       ['other'],
-};
-function recsSubKey(top, sub) { return top + '|' + sub; }
-function recsTabToPrefill(top, sub) {
-  // 'All' → no chip pre-selection. Single-type subs map to their media_type.
-  const map = {
-    'Listen|Music': 'music',
-    'Watch|Movies': 'movie',
-    'Watch|TV':     'tv',
-    'Read|Books':   'book',
-    'Read|Articles':'article',
-    'Read|Other':   'other',
-  };
-  return map[recsSubKey(top, sub)] || null;
-}
-
-// ── Supabase helpers (mirror srs* patterns) ──────────────
-async function recsFetch(opts = {}) {
-  const parts = [];
-  if (opts.mediaTypes && opts.mediaTypes.length) parts.push('media_type=in.(' + opts.mediaTypes.join(',') + ')');
-  if (opts.status)     parts.push('status=eq.' + opts.status);
-  if (opts.notSkipped) parts.push('status=neq.skipped');
-  parts.push('order=' + (opts.order || 'status.desc,created_at.desc'));
-  return (await sbFetch('recommendations?' + parts.join('&'))) || [];
-}
-function getRecsOfflineQueue() { try { return JSON.parse(localStorage.getItem('offline_recs_queue') || '[]'); } catch(e) { return []; } }
-function setRecsOfflineQueue(q) { localStorage.setItem('offline_recs_queue', JSON.stringify(q)); }
-async function recsCreate(rec) {
-  if (!navigator.onLine) { const q = getRecsOfflineQueue(); q.push(rec); setRecsOfflineQueue(q); return [rec]; }
-  try {
-    return await sbFetch('recommendations', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(rec) });
-  } catch(e) {
-    const q = getRecsOfflineQueue(); q.push(rec); setRecsOfflineQueue(q); return [rec];
-  }
-}
-async function recsUpdate(id, patch) {
-  return sbFetch('recommendations?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(patch) });
-}
-async function recsDelete(id) {
-  return sbFetch('recommendations?id=eq.' + id, { method: 'DELETE', prefer: 'return=minimal' });
-}
-async function syncRecsOfflineQueue() {
-  const q = getRecsOfflineQueue();
-  if (!q.length) return;
-  const failed = []; let n = 0;
-  for (const r of q) {
-    try { await sbFetch('recommendations', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(r) }); n++; }
-    catch(e) { failed.push(r); }
-  }
-  setRecsOfflineQueue(failed);
-  if (n) { showToast(n + ' rec' + (n === 1 ? '' : 's') + ' synced ✓'); updateRecsBadge(); }
-}
-window.addEventListener('online', syncRecsOfflineQueue);
 
 // Count without pulling rows (mirrors srsGetDueCount).
 async function sbCount(query) {
@@ -5747,527 +5647,24 @@ async function sbCount(query) {
   return 0;
 }
 
-// ── Combined home pillar badge (Listen queue + saved recs) ──
+// ── Home pillar badge (unlistened Listen queue) ──────────
 async function updateRecsBadge() {
   try {
-    const [listenN, recN] = await Promise.all([
-      sbCount('listening_queue?listened=eq.false&select=id').catch(() => 0),
-      sbCount('recommendations?status=eq.saved&select=id').catch(() => 0),
-    ]);
-    const n = (listenN || 0) + (recN || 0);
+    const n = (await sbCount('listening_queue?listened=eq.false&select=id').catch(() => 0)) || 0;
     const numEl = document.getElementById('recs-count');
     const subEl = document.getElementById('recs-sub');
     if (numEl) numEl.textContent = String(n);
-    if (subEl) subEl.textContent = n === 0 ? 'nothing saved' : n === 1 ? '1 to enjoy' : n + ' to enjoy';
+    if (subEl) subEl.textContent = n === 0 ? 'nothing queued' : n === 1 ? '1 to hear' : n + ' to hear';
   } catch(e) {}
 }
 
-// ── Recs screen + tabs ───────────────────────────────────
-function getRecsActiveTab() {
-  const raw = localStorage.getItem('recs_active_tab');
-  // v8 #19 migration: legacy values (Books, Articles, Movies, TV, Music, Other)
-  // collapse to a sensible new top tab so existing users land somewhere useful.
-  const legacy = { Books:'Read', Articles:'Read', Other:'Read', Movies:'Watch', TV:'Watch', Music:'Listen' };
-  if (RECS_TOP_TABS.includes(raw)) return raw;
-  return legacy[raw] || 'Listen';
-}
-function setRecsActiveTab(t) { localStorage.setItem('recs_active_tab', t); }
-function getRecsActiveSub(top) {
-  try {
-    const o = JSON.parse(localStorage.getItem('recs_active_sub') || '{}');
-    const v = o[top];
-    return (RECS_SUBTABS[top] || []).includes(v) ? v : 'All';
-  } catch(e) { return 'All'; }
-}
-function setRecsActiveSub(top, sub) {
-  let o = {};
-  try { o = JSON.parse(localStorage.getItem('recs_active_sub') || '{}'); } catch(e) {}
-  o[top] = sub;
-  localStorage.setItem('recs_active_sub', JSON.stringify(o));
-}
+// The Listen screen reuses #screen-recs; loading it renders Listen.
+function loadRecsScreen() { loadListenScreen(); }
 
-function recFindHtml(arr) {
-  if (!Array.isArray(arr) || !arr.length) return '';
-  return '<div class="rec-find">' + arr.map(w => {
-    if (!w || !w.label) return '';
-    const label = esc(w.label);
-    return w.url
-      ? '<a class="rec-find-chip" href="' + esc(w.url) + '" target="_blank" rel="noopener">' + label + '</a>'
-      : '<span class="rec-find-chip">' + label + '</span>';
-  }).join('') + '</div>';
-}
-
-// v8 #19 — render a rec list into an arbitrary container. Used for the
-// Watch/Read pane and for the Listen tab's inline music section.
-function renderRecRow(item, top, sub, container) {
-  const div = document.createElement('div');
-  div.className = 'rec-item' + (item.status === 'consumed' ? ' consumed' : '');
-  const metaParts = [item.creator, item.year].filter(Boolean);
-  if (typeof item.rt_score === 'number') {
-    metaParts.push('RT ' + item.rt_score + '%' + (item.rt_certified ? ' (Certified Fresh)' : ''));
-  }
-  if (typeof item.imdb_score === 'number') {
-    metaParts.push('IMDb ' + item.imdb_score.toFixed(1));
-  }
-  const meta = metaParts.join(' · ');
-  div.innerHTML =
-    '<div class="rec-title">' + esc(item.title || '') + '</div>' +
-    (meta ? '<div class="rec-meta">' + esc(meta) + '</div>' : '') +
-    (item.summary ? '<div class="rec-summary">' + esc(item.summary) + '</div>' : '') +
-    recFindHtml(item.where_to_find);
-  let lpTimer = null;
-  const openSheet = (e) => { if (e) e.preventDefault(); openRecActionSheet(item, top, sub); };
-  div.addEventListener('touchstart', () => { lpTimer = setTimeout(openSheet, 500); }, { passive: true });
-  div.addEventListener('touchmove',  () => { clearTimeout(lpTimer); }, { passive: true });
-  div.addEventListener('touchend',   () => { clearTimeout(lpTimer); }, { passive: true });
-  div.addEventListener('contextmenu', openSheet);
-  container.appendChild(div);
-}
-
-async function renderRecsCombined(top, sub) {
-  const pane = document.getElementById('recs-pane-recs');
-  pane.innerHTML = '<p class="lul-empty">Loading…</p>';
-  const types = RECS_SUB_TYPES[recsSubKey(top, sub)] || [];
-  let rows = [];
-  try { rows = types.length ? await recsFetch({ mediaTypes: types, notSkipped: true }) : []; }
-  catch(e) { pane.innerHTML = '<p class="lul-empty">Couldn\'t load — check your connection.</p>'; return; }
-  if (!rows.length) {
-    const singular = sub === 'TV' ? 'show' : sub === 'All' ? (top === 'Watch' ? 'movie or show' : 'thing to read') : sub.replace(/s$/, '').toLowerCase();
-    pane.innerHTML =
-      '<div class="rec-empty">' +
-        '<div class="rec-empty-title">Nothing here yet.</div>' +
-        '<div class="rec-empty-sub">Tap + Add to save your first ' + esc(singular) + '.</div>' +
-      '</div>';
-    return;
-  }
-  pane.innerHTML = '';
-  rows.forEach(item => renderRecRow(item, top, sub, pane));
-}
-
-// Render the music-recs strip inside the Listen pane (sub-filter aware).
-async function renderListenMusicSection() {
-  const el = document.getElementById('listen-music-section');
-  if (!el) return;
-  el.innerHTML = '';
-  try {
-    const rows = await recsFetch({ mediaTypes: ['music'], notSkipped: true });
-    if (!rows || !rows.length) {
-      el.innerHTML = '<div class="listen-music-heading">Music</div>' +
-        '<p class="lul-empty" style="padding:8px 0">No music recs yet.</p>';
-      return;
-    }
-    el.innerHTML = '<div class="listen-music-heading">Music</div>';
-    rows.forEach(item => renderRecRow(item, 'Listen', getRecsActiveSub('Listen'), el));
-  } catch(e) {
-    el.innerHTML = '<div class="listen-music-heading">Music</div>' +
-      '<p class="lul-empty" style="padding:8px 0">Couldn\'t load music recs.</p>';
-  }
-}
-
-let _recActionSheetEl = null;
-function openRecActionSheet(item, top, sub) {
-  if (!_recActionSheetEl) {
-    _recActionSheetEl = document.createElement('div');
-    _recActionSheetEl.className = 'rec-action-sheet hidden';
-    _recActionSheetEl.innerHTML = '<div class="rec-action-box"></div>';
-    _recActionSheetEl.addEventListener('click', (e) => { if (e.target === _recActionSheetEl) _recActionSheetEl.classList.add('hidden'); });
-    document.body.appendChild(_recActionSheetEl);
-  }
-  const box = _recActionSheetEl.querySelector('.rec-action-box');
-  box.innerHTML =
-    '<div class="srs-modal-title" style="margin-bottom:6px">' + esc(item.title || 'Recommendation') + '</div>' +
-    (item.status === 'consumed' ? '' : '<button class="btn btn-outline" data-act="consumed">Mark consumed</button>') +
-    '<button class="btn btn-outline" data-act="edit">Edit</button>' +
-    '<button class="btn btn-outline" data-act="skipped">Skip</button>' +
-    '<button class="btn btn-outline" data-act="delete" style="color:#c44">Delete</button>' +
-    '<button class="btn btn-outline" data-act="cancel">Cancel</button>';
-  box.querySelectorAll('[data-act]').forEach(b => {
-    b.addEventListener('click', async () => {
-      const act = b.dataset.act;
-      _recActionSheetEl.classList.add('hidden');
-      if (act === 'edit') { openRecEditModal(item, top, sub); return; }
-      try {
-        if (act === 'consumed') await recsUpdate(item.id, { status: 'consumed', consumed_at: new Date().toISOString() });
-        else if (act === 'skipped') await recsUpdate(item.id, { status: 'skipped' });
-        else if (act === 'delete')  await recsDelete(item.id);
-        else return;
-        await rerenderRecsCurrentView(top, sub);
-        updateRecsBadge();
-      } catch(e) { showToast('Action failed: ' + (e.message || 'unknown')); }
-    });
-  });
-  _recActionSheetEl.classList.remove('hidden');
-}
-
-// v8 #19 — re-render whichever sub-view is currently visible after a CRUD action.
-async function rerenderRecsCurrentView(top, sub) {
-  if (top === 'Listen') {
-    // Listen has special-cased structure; re-rendering music inline is enough.
-    if (sub === 'Music' || sub === 'All') await renderListenMusicSection();
-  } else {
-    await renderRecsCombined(top, sub);
-  }
-}
-
-let _recEditModalEl = null;
-function openRecEditModal(item, top, sub) {
-  if (!_recEditModalEl) {
-    _recEditModalEl = document.createElement('div');
-    _recEditModalEl.className = 'srs-modal hidden';
-    _recEditModalEl.innerHTML = '<div class="srs-modal-box"></div>';
-    _recEditModalEl.addEventListener('click', (e) => { if (e.target === _recEditModalEl) _recEditModalEl.classList.add('hidden'); });
-    document.body.appendChild(_recEditModalEl);
-  }
-  const box = _recEditModalEl.querySelector('.srs-modal-box');
-  const types = ['book', 'article', 'movie', 'tv', 'music', 'podcast', 'other'];
-  box.innerHTML =
-    '<div class="srs-modal-header"><span class="srs-modal-title">Edit recommendation</span>' +
-      '<button class="srs-modal-close" id="rec-edit-close">×</button></div>' +
-    '<label class="srs-label">Title</label>' +
-    '<textarea id="rec-edit-title" class="anki-textarea" rows="2"></textarea>' +
-    '<label class="srs-label" style="margin-top:12px">Creator / author</label>' +
-    '<input id="rec-edit-creator" class="anki-textarea" style="height:auto;padding:12px 14px" />' +
-    '<label class="srs-label" style="margin-top:12px">Year</label>' +
-    '<input id="rec-edit-year" type="number" class="anki-textarea" style="height:auto;padding:12px 14px" />' +
-    '<label class="srs-label" style="margin-top:12px">Type</label>' +
-    '<select id="rec-edit-type" class="anki-textarea" style="height:auto;padding:12px 14px">' +
-      types.map(t => '<option value="' + t + '">' + t + '</option>').join('') +
-    '</select>' +
-    '<label class="srs-label" style="margin-top:12px">Summary</label>' +
-    '<textarea id="rec-edit-summary" class="anki-textarea" rows="3"></textarea>' +
-    '<button class="btn btn-primary" id="rec-edit-save" style="width:100%;margin-top:16px">Save changes</button>';
-  box.querySelector('#rec-edit-title').value   = item.title || '';
-  box.querySelector('#rec-edit-creator').value = item.creator || '';
-  box.querySelector('#rec-edit-year').value    = (item.year != null ? item.year : '');
-  box.querySelector('#rec-edit-type').value    = types.indexOf(item.media_type) !== -1 ? item.media_type : 'other';
-  box.querySelector('#rec-edit-summary').value = item.summary || '';
-  box.querySelector('#rec-edit-close').addEventListener('click', () => _recEditModalEl.classList.add('hidden'));
-  box.querySelector('#rec-edit-save').addEventListener('click', async () => {
-    const t = box.querySelector('#rec-edit-title').value.trim();
-    if (!t) { showToast('Title can\'t be empty'); return; }
-    const yRaw = box.querySelector('#rec-edit-year').value.trim();
-    const yr = yRaw === '' ? null : parseInt(yRaw, 10);
-    const btn = box.querySelector('#rec-edit-save');
-    btn.disabled = true; btn.textContent = 'Saving…';
-    try {
-      await recsUpdate(item.id, {
-        title: t,
-        creator: box.querySelector('#rec-edit-creator').value.trim() || null,
-        year: (yr != null && !isNaN(yr)) ? yr : null,
-        media_type: box.querySelector('#rec-edit-type').value,
-        summary: box.querySelector('#rec-edit-summary').value.trim() || null,
-      });
-      _recEditModalEl.classList.add('hidden');
-      await rerenderRecsCurrentView(top, sub);
-      updateRecsBadge();
-      showToast('Updated ✓');
-    } catch(e) {
-      showToast('Update failed: ' + (e.message || 'unknown'));
-      btn.disabled = false; btn.textContent = 'Save changes';
-    }
-  });
-  _recEditModalEl.classList.remove('hidden');
-}
-
-// v8 #19 — render the sub-filter pill row for the active top tab.
-function renderRecsSubtabs(top, sub) {
-  const row = document.getElementById('recs-subtabs');
-  const subs = RECS_SUBTABS[top] || [];
-  row.innerHTML = subs.map(s =>
-    '<button class="recs-subtab' + (s === sub ? ' active' : '') + '" data-sub="' + esc(s) + '">' + esc(s) + '</button>'
-  ).join('');
-  row.querySelectorAll('.recs-subtab').forEach(btn => {
-    btn.addEventListener('click', () => switchRecsSubTab(top, btn.dataset.sub));
-  });
-}
-
-function applyListenSubState(sub) {
-  // Toggle Listen pane visibility classes (CSS handles which sections show).
-  const pane = document.getElementById('recs-pane-Listen');
-  pane.classList.remove('sub-all', 'sub-podcasts', 'sub-music');
-  pane.classList.add('sub-' + sub.toLowerCase());
-}
-
-async function switchRecsSubTab(top, sub) {
-  setRecsActiveSub(top, sub);
-  renderRecsSubtabs(top, sub);
-  if (top === 'Listen') {
-    applyListenSubState(sub);
-    // Always run loadListenScreen in All/Podcasts (so subs refresh); Music skips it.
-    if (sub === 'All' || sub === 'Podcasts') await loadListenScreen();
-    if (sub === 'All' || sub === 'Music')    await renderListenMusicSection();
-  } else {
-    await renderRecsCombined(top, sub);
-  }
-}
-
-function switchRecsTab(top) {
-  setRecsActiveTab(top);
-  document.querySelectorAll('.recs-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === top));
-  const listenPane = document.getElementById('recs-pane-Listen');
-  const recsPane   = document.getElementById('recs-pane-recs');
-  const sub = getRecsActiveSub(top);
-  if (top === 'Listen') {
-    listenPane.classList.add('active');
-    recsPane.classList.remove('active');
-  } else {
-    listenPane.classList.remove('active');
-    recsPane.classList.add('active');
-  }
-  switchRecsSubTab(top, sub);
-}
-
-function loadRecsScreen() {
-  switchRecsTab(getRecsActiveTab());
-}
-
-document.querySelectorAll('.recs-tab').forEach(tab => {
-  tab.addEventListener('click', () => switchRecsTab(tab.dataset.tab));
-});
-
-// ── Recommendation capture flow ──────────────────────────
-const REC_MEDIA_CHIPS = [
-  { label: 'Book', val: 'book' }, { label: 'Article', val: 'article' },
-  { label: 'Movie', val: 'movie' }, { label: 'TV', val: 'tv' },
-  { label: 'Music', val: 'music' }, { label: 'Podcast', val: 'podcast' },
-  { label: 'Other', val: 'other' },
-];
-
-const REC_SYS_PASS1 =
-"You are a recommendation lookup assistant. The user has been told to read, watch, or listen to something and they're typing its name (or a fragment of a name) to save it for later.\n\n" +
-"Your job:\n1. Identify what they're referring to\n2. Return structured JSON describing it\n3. If you can't be confident, ask for a web search\n\n" +
-"Return JSON only, no preamble or explanation.\n\n" +
-"Confidence rules:\n" +
-"- \"confident: true\" only if there's clearly one canonical answer in the global cultural record. \"Atomic Habits\" -> confident (one famous book). \"Inception\" -> confident. \"The Office\" -> NOT confident (US vs UK; ask for candidates).\n" +
-"- \"needs_search: true\" if the answer depends on current information you can't know reliably — streaming availability, recent releases (last 2 years), where a current article lives online, recent podcast episodes.\n\n" +
-"Region: assume the user is in the United States. For streaming availability and every \"where_to_find\" entry, give US options only (US Netflix / Max / Hulu / Disney+ / Prime Video, bookshop.org or US Amazon, US Apple Podcasts / Spotify). Do not list services or links unavailable in the US.\n" +
-"- Otherwise return ambiguous candidates (2-4 max).\n\n" +
-"Schemas:\n\n" +
-"Confident:\n{ \"confident\": true, \"needs_search\": false, \"title\": string, \"creator\": string|null, \"year\": number|null, \"media_type\": \"book\"|\"article\"|\"movie\"|\"tv\"|\"music\"|\"podcast\"|\"other\", \"summary\": string (one sentence, under 25 words), \"where_to_find\": [{\"label\": string, \"url\": string|null}] | [] }\n\n" +
-"Ambiguous:\n{ \"confident\": false, \"needs_search\": false, \"candidates\": [ {\"title\": string, \"creator\": string, \"year\": number, \"media_type\": string, \"identifier\": string (5-10 word distinguishing description)} ] }\n\n" +
-"Needs search:\n{ \"confident\": false, \"needs_search\": true, \"reason\": string (brief, for logging) }\n\n" +
-"When a media-type hint is provided it is AUTHORITATIVE, not a soft preference:\n" +
-"- Only identify something whose media_type equals the hint. The one allowed exception: movie and tv are interchangeable (a hinted movie may resolve to a TV series/miniseries and vice versa). No other cross-type substitution — a hint of movie must never return a musician, album, book, podcast, etc.\n" +
-"- If nothing of the hinted (or movie<->tv) type plausibly matches, return needs_search or a no-match. Do NOT drift to a different type just because a different-type work is more famous.\n" +
-"- Every candidate must be within the hinted (or movie<->tv) type.\n\n" +
-"Title interpretation (with or without a hint):\n" +
-"- Treat the user's text as the TITLE of the work, not a fragment to expand toward a more famous name. \"Cube\" means the work literally titled Cube — never \"Ice Cube\" the rapper. Never add words to reach a more popular superstring.\n" +
-"- Short or generic titles are fine; prefer the exact-titled work (of the hinted type) over a fuzzy popular substring match of another type.";
-
-const REC_SYS_SEARCH_PREFIX =
-"You have access to a web search tool. Use it to find current information about the recommendation — especially streaming availability, recent releases, and where articles live online. The user is in the United States: search for and report US streaming availability and US links only. Search once, synthesize the result, then return the structured JSON. Never return needs_search: true on this pass — you must give a confident result or candidates.";
-
-function parseRecJson(text) {
-  if (!text) return null;
-  let t = String(text).trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/, '');
-  const s = t.indexOf('{'), e = t.lastIndexOf('}');
-  if (s === -1 || e === -1 || e < s) return null;
-  try { return JSON.parse(t.slice(s, e + 1)); } catch(_) { return null; }
-}
-
-async function recApiLookup(query, mediaHint, useWebSearch) {
-  const key = getApiKey();
-  if (!key) throw new Error('no-api-key');
-  const sys = useWebSearch ? (REC_SYS_SEARCH_PREFIX + '\n\n' + REC_SYS_PASS1) : REC_SYS_PASS1;
-  let userMsg = 'User typed: "' + query + '"';
-  if (mediaHint) userMsg += '\nThe user explicitly selected the media type: ' + String(mediaHint).toUpperCase() +
-    '. Treat this as an authoritative filter (movie<->tv interchangeable; no other cross-type results). ' +
-    'Interpret the text as the title of a ' + mediaHint + ', not as a fragment of a more famous different-type name.';
-  const body = { model: 'claude-sonnet-4-5', max_tokens: 1024, system: sys, messages: [{ role: 'user', content: userMsg }] };
-  if (useWebSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search', max_uses: 3 }];
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(await res.text());
-  const data = await res.json();
-  const text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('\n');
-  return parseRecJson(text);
-}
-
-let _recAddPrefill = null;   // media_type to pre-select (set by Recs "+ Add")
-
-function renderRecInput(selectedType) {
-  const body = document.getElementById('rec-add-body');
-  body.innerHTML =
-    '<div class="rec-add-title">Add a recommendation</div>' +
-    '<div class="rec-add-subtitle">What did someone tell you to check out?</div>' +
-    '<textarea id="rec-add-input" rows="2" placeholder="e.g. Atomic Habits, The Bear, a Patrick Radden Keefe article…"></textarea>' +
-    '<div class="rec-chip-help">Optional — narrows it down</div>' +
-    '<div class="rec-chips" id="rec-add-chips">' +
-      REC_MEDIA_CHIPS.map(c => '<button class="rec-chip" data-val="' + c.val + '">' + c.label + '</button>').join('') +
-    '</div>' +
-    '<button class="btn btn-primary" id="rec-add-go" style="width:100%;margin-top:24px;opacity:0.4" disabled>Look it up</button>';
-  const input = document.getElementById('rec-add-input');
-  const goBtn = document.getElementById('rec-add-go');
-  let chosenType = selectedType || null;
-  function syncGo() {
-    const has = input.value.trim().length > 0;
-    goBtn.disabled = !has;
-    goBtn.style.opacity = has ? '1' : '0.4';
-  }
-  input.addEventListener('input', syncGo);
-  document.querySelectorAll('#rec-add-chips .rec-chip').forEach(chip => {
-    if (chip.dataset.val === chosenType) chip.classList.add('active');
-    chip.addEventListener('click', () => {
-      const willActivate = !chip.classList.contains('active');
-      document.querySelectorAll('#rec-add-chips .rec-chip').forEach(c => c.classList.remove('active'));
-      if (willActivate) { chip.classList.add('active'); chosenType = chip.dataset.val; }
-      else chosenType = null;
-    });
-  });
-  goBtn.addEventListener('click', () => {
-    const q = input.value.trim();
-    if (!q || goBtn.disabled) return;
-    goBtn.disabled = true;
-    captureRec(q, chosenType);
-  });
-  syncGo();
-  setTimeout(() => input.focus(), 60);
-}
-
-// Fire-and-forget: save the raw entry to the Recs queue immediately, return
-// home, then enrich it in the background (mirrors the Listen Later pattern).
-async function captureRec(query, mediaHint) {
-  let id = null;
-  try {
-    const created = await recsCreate({
-      title: query,
-      creator: null, year: null,
-      media_type: mediaHint || 'other',
-      summary: null, where_to_find: [],
-      raw_input: query, source_query: query,
-      status: 'saved',
-    });
-    id = Array.isArray(created) ? (created[0] && created[0].id) : (created && created.id);
-  } catch(e) {
-    showToast('Save failed: ' + (e.message || 'unknown'));
-    return;
-  }
-  updateRecsBadge();
-  navigateToActivity('home', true);
-  recSavedToast('Saved to Recs — looking it up…');
-  if (id) recEnrich(id, query, mediaHint);   // background, not awaited
-}
-
-// Background two-pass lookup (knowledge → web search). On a confident match,
-// patch the row in place. Ambiguous / no-match / error → leave the raw row.
-function recsRefreshIfVisible() {
-  updateRecsBadge();
-  const recsScreen = document.getElementById('screen-recs');
-  if (recsScreen && recsScreen.classList.contains('active')) {
-    const top = getRecsActiveTab();
-    rerenderRecsCurrentView(top, getRecsActiveSub(top));
-  }
-}
-
-// JustWatch proxy (Supabase Edge Function). Source of truth for movie/TV.
-const JW_FN_URL = SB_URL + '/functions/v1/justwatch';
-async function jwLookup(title, year) {
-  try {
-    const u = new URL(JW_FN_URL);
-    u.searchParams.set('title', title);
-    if (year) u.searchParams.set('year', String(year));
-    const res = await fetch(u.toString(), { headers: { apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY } });
-    if (!res.ok) return null;
-    const d = await res.json();
-    const list = d && d.results;
-    if (!Array.isArray(list) || !list.length) return null;
-    let best = list[0];                 // function already popularity + year sorts
-    if (year) {
-      const y = Number(year);
-      const near = list.find(x => Math.abs((x.year || 0) - y) <= 1);
-      if (near) best = near;
-    }
-    return best;
-  } catch(e) { return null; }
-}
-
-async function applyJwUpdate(id, jw, fallbackSummary) {
-  const s = jw.scoring || {};
-  await recsUpdate(id, {
-    title: jw.title || undefined,
-    year: typeof jw.year === 'number' ? jw.year : null,
-    media_type: jw.type === 'SHOW' ? 'tv' : 'movie',
-    summary: jw.summary || fallbackSummary || null,
-    where_to_find: Array.isArray(jw.where_to_find) ? jw.where_to_find : [],
-    rt_score: typeof s.rt === 'number' ? s.rt : null,
-    rt_certified: typeof s.rt_certified === 'boolean' ? s.rt_certified : null,
-    imdb_score: typeof s.imdb === 'number' ? s.imdb : null,
-  });
-  recsRefreshIfVisible();
-}
-
-async function recEnrich(id, query, mediaHint) {
-  try {
-    // Movie/TV → JustWatch is source of truth (title/year/where_to_find).
-    if (mediaHint === 'movie' || mediaHint === 'tv') {
-      const jw = await jwLookup(query, null);
-      if (jw) { await applyJwUpdate(id, jw); return; }
-      // no JW match → fall through to Claude identification
-    }
-    let r = await recApiLookup(query, mediaHint, false);
-    if (r && r.confident === false && r.needs_search === true) {
-      r = await recApiLookup(query, mediaHint, true);
-    }
-    if (!r || r.confident !== true) return;
-    // Claude identified a film/show → let JustWatch own its streaming data.
-    if (r.media_type === 'movie' || r.media_type === 'tv') {
-      const jw = await jwLookup(r.title || query, r.year);
-      if (jw) { await applyJwUpdate(id, jw, r.summary); return; }
-    }
-    await recsUpdate(id, {
-      title: r.title || query,
-      creator: r.creator || null,
-      year: typeof r.year === 'number' ? r.year : null,
-      media_type: r.media_type || mediaHint || 'other',
-      summary: r.summary || null,
-      where_to_find: Array.isArray(r.where_to_find) ? r.where_to_find : [],
-    });
-    recsRefreshIfVisible();
-  } catch(e) { /* leave the raw row as-is */ }
-}
-
-let _recSavedToastEl = null;
-function recSavedToast(msg) {
-  if (!_recSavedToastEl) {
-    _recSavedToastEl = document.createElement('div');
-    _recSavedToastEl.style.cssText =
-      'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--ink-on);' +
-      'border-radius:var(--radius-pill);padding:10px 18px;font-size:13px;z-index:500;display:flex;gap:14px;align-items:center;max-width:90vw;';
-    document.body.appendChild(_recSavedToastEl);
-  }
-  _recSavedToastEl.innerHTML = '';
-  const span = document.createElement('span');
-  span.textContent = msg || 'Saved to Recs';
-  const view = document.createElement('button');
-  view.textContent = 'View';
-  view.style.cssText = 'background:none;border:none;color:var(--ink-on);font-weight:600;text-decoration:underline;cursor:pointer;font-size:13px;flex-shrink:0;';
-  view.addEventListener('click', () => { _recSavedToastEl.style.display = 'none'; navigateToActivity('recs'); });
-  _recSavedToastEl.appendChild(span);
-  _recSavedToastEl.appendChild(view);
-  _recSavedToastEl.style.display = 'flex';
-  clearTimeout(_recSavedToastEl._t);
-  _recSavedToastEl._t = setTimeout(() => { _recSavedToastEl.style.display = 'none'; }, 3000);
-}
-
-function resetRecAdd() {
-  const prefill = _recAddPrefill;
-  _recAddPrefill = null;
-  renderRecInput(prefill);
-}
-
-// ── Home pillar + Recs header wiring ─────────────────────
+// ── Home pillar wiring ───────────────────────────────────
 document.getElementById('recs-home-card')?.addEventListener('click', () => navigateToActivity('recs'));
-document.getElementById('recs-add-btn')?.addEventListener('click', () => {
-  const top = getRecsActiveTab();
-  _recAddPrefill = recsTabToPrefill(top, getRecsActiveSub(top));
-  navigateToActivity('rec-add');
-});
 
 updateRecsBadge();
-syncRecsOfflineQueue();
 
 // ── Timer Menu ───────────────────────────────────────────
 document.getElementById('btn-timer-menu').addEventListener('click', () =>
