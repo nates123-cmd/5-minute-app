@@ -120,6 +120,12 @@
       outline: none;
     }
     #screen-apikey input:focus { border-color: var(--accent); }
+    #screen-otp { justify-content: center; gap: 14px; text-align: center; }
+    #screen-otp h1 { font-size: 1.6rem; font-weight: 600; letter-spacing: -0.5px; }
+    #screen-otp p  { color: var(--muted); font-size: 0.95rem; line-height: 1.55; }
+    #screen-otp input { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 1rem; color: var(--text); outline: none; text-align: center; }
+    #screen-otp input:focus { border-color: var(--accent); }
+    #otp-code { letter-spacing: 4px; font-variant-numeric: tabular-nums; }
 
     /* Home */
     #screen-home { gap: 16px; }
@@ -1219,12 +1225,25 @@
 <div id="offline-banner">Offline — cards will sync when reconnected</div>
 
 <!-- API KEY SETUP -->
+<div id="screen-otp" class="screen">
+  <h1>Break</h1>
+  <p id="otp-msg">Sign in with your email. We'll send you an 8-digit code.</p>
+  <input type="email" id="otp-email" placeholder="you@example.com" autocomplete="email" />
+  <input type="text" id="otp-code" inputmode="numeric" maxlength="8" placeholder="8-digit code" autocomplete="one-time-code" style="display:none" />
+  <button class="btn btn-primary" id="otp-send">Email me a code</button>
+  <button class="btn btn-primary" id="otp-verify" style="display:none">Sign in</button>
+  <button class="btn" id="otp-back" style="display:none;background:none;color:var(--muted)">Use a different email</button>
+  <p id="otp-err" style="color:#b00020;font-size:0.85rem;display:none"></p>
+  <p style="font-size:0.78rem;color:var(--muted)">Your data is private to your account.</p>
+</div>
+
 <div id="screen-apikey" class="screen">
   <h1>Break</h1>
   <p>A calm alternative to scrolling socials.<br>Paste your Anthropic API key to get started. It stays on your device.</p>
   <input type="password" id="apikey-input" placeholder="sk-ant-..." autocomplete="off" spellcheck="false" />
   <button class="btn btn-primary" id="apikey-save">Get Started</button>
   <p style="font-size:0.78rem;color:var(--muted)">Stored in localStorage — only sent to api.anthropic.com</p>
+  <button class="btn" id="otp-signout" style="background:none;color:var(--muted);font-size:0.85rem;text-decoration:underline">Sign out <span id="otp-whoami"></span></button>
 </div>
 
 <!-- ACTIVITY SETTINGS -->
@@ -2199,8 +2218,10 @@ document.getElementById('apikey-save').addEventListener('click', () => {
 
 document.getElementById('btn-settings').addEventListener('click', () => {
   document.getElementById('apikey-input').value = getApiKey();
+  const who = document.getElementById('otp-whoami'); if (who) who.textContent = authedEmail() ? '(' + authedEmail() + ')' : '';
   showScreen('apikey');
 });
+document.getElementById('otp-signout')?.addEventListener('click', signOut);
 
 // ── Claude API ────────────────────────────────
 async function callClaude(userPrompt) {
@@ -3710,7 +3731,7 @@ function runBoxPhase() {
 });
 
 // ── Init ──────────────────────────────────────
-showScreen(getApiKey() ? 'home' : 'apikey');
+// boot() is invoked at the very end (after all helpers + listeners exist).
 
 if ('serviceWorker' in navigator) {
   const isLocal = location.hostname === 'localhost' || location.hostname === '127.0.0.1';
@@ -3724,12 +3745,107 @@ if ('serviceWorker' in navigator) {
 const SB_URL  = 'https://xsmnfcmtbpeaccnyinkr.supabase.co';
 const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzbW5mY210YnBlYWNjbnlpbmtyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzODQ3MjksImV4cCI6MjA5Mzk2MDcyOX0.flUt1SAkkt1ppcKCR2XnPKbAaS4PjCLMzi3Gu08jVWo';
 
+// ── Suite auth (Supabase email OTP, 8-digit) ──────────────
+// Session is stored under the supabase-js key so the whole suite (incl. the
+// React apps on the same origin) shares one sign-in.
+const SB_AUTH_KEY = 'sb-xsmnfcmtbpeaccnyinkr-auth-token';
+function _authSession() { try { return JSON.parse(localStorage.getItem(SB_AUTH_KEY) || 'null'); } catch(e) { return null; } }
+function _setAuthSession(x) { if (x && x.access_token) localStorage.setItem(SB_AUTH_KEY, JSON.stringify(x)); else localStorage.removeItem(SB_AUTH_KEY); }
+function hasSession() { const x = _authSession(); return !!(x && x.access_token); }
+function authedEmail() { const x = _authSession(); return (x && x.user && x.user.email) || ''; }
+function _sessionExpired(x) { const exp = x && x.expires_at ? x.expires_at * 1000 : 0; return Date.now() > exp - 60000; }
+async function _refreshSession() {
+  const x = _authSession();
+  if (!x || !x.refresh_token) return null;
+  try {
+    const r = await fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+      method: 'POST', headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: x.refresh_token }),
+    });
+    if (!r.ok) { _setAuthSession(null); return null; }
+    const ns = await r.json(); _setAuthSession(ns); return ns;
+  } catch(e) { return null; }
+}
+async function authToken() {
+  let x = _authSession();
+  if (!x || !x.access_token) return null;
+  if (_sessionExpired(x)) x = await _refreshSession();
+  return (x && x.access_token) || null;
+}
+async function sbBearer() { return (await authToken()) || SB_KEY; }
+async function otpSend(email) {
+  const r = await fetch(SB_URL + '/auth/v1/otp', {
+    method: 'POST', headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, create_user: true }),
+  });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.msg || e.error_description || e.error || 'Could not send code'); }
+}
+async function otpVerify(email, token) {
+  const r = await fetch(SB_URL + '/auth/v1/verify', {
+    method: 'POST', headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email, token: token, type: 'email' }),
+  });
+  if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.msg || e.error_description || e.error || 'Invalid or expired code'); }
+  const x = await r.json(); _setAuthSession(x); return x;
+}
+function signOut() { _setAuthSession(null); boot(); }
+
+function showOtpGate() {
+  const emailEl = document.getElementById('otp-email');
+  const codeEl  = document.getElementById('otp-code');
+  const sendBtn = document.getElementById('otp-send');
+  const verBtn  = document.getElementById('otp-verify');
+  const backBtn = document.getElementById('otp-back');
+  const errEl   = document.getElementById('otp-err');
+  const msgEl   = document.getElementById('otp-msg');
+  const showErr = (m) => { errEl.textContent = m || ''; errEl.style.display = m ? 'block' : 'none'; };
+  const toEmail = () => {
+    codeEl.style.display = 'none'; verBtn.style.display = 'none'; backBtn.style.display = 'none';
+    emailEl.style.display = ''; sendBtn.style.display = '';
+    msgEl.textContent = "Sign in with your email. We'll send you an 8-digit code.";
+    showErr('');
+  };
+  toEmail();
+  sendBtn.onclick = async () => {
+    const email = emailEl.value.trim();
+    if (!email) { showErr('Enter your email.'); return; }
+    sendBtn.disabled = true; sendBtn.textContent = 'Sending…'; showErr('');
+    try {
+      await otpSend(email);
+      emailEl.style.display = 'none'; sendBtn.style.display = 'none';
+      codeEl.style.display = ''; verBtn.style.display = ''; backBtn.style.display = '';
+      msgEl.textContent = 'Enter the 8-digit code sent to ' + email + '.';
+      codeEl.value = ''; codeEl.focus();
+    } catch(e) { showErr(e.message); }
+    sendBtn.disabled = false; sendBtn.textContent = 'Email me a code';
+  };
+  verBtn.onclick = async () => {
+    const email = emailEl.value.trim();
+    const code = codeEl.value.trim();
+    if (code.length !== 8) { showErr('The code is 8 digits.'); return; }
+    verBtn.disabled = true; verBtn.textContent = 'Verifying…'; showErr('');
+    try { await otpVerify(email, code); boot(); }
+    catch(e) { showErr(e.message); verBtn.disabled = false; verBtn.textContent = 'Sign in'; }
+  };
+  backBtn.onclick = toEmail;
+  codeEl.oninput = () => { codeEl.value = codeEl.value.replace(/\D/g, '').slice(0, 8); };
+  showScreen('otp');
+}
+
+// Auth-aware boot: require a session, then the Anthropic key, then home.
+function boot() {
+  if (!hasSession()) { showOtpGate(); return; }
+  if (!getApiKey()) { showScreen('apikey'); return; }
+  showScreen('home');
+}
+
 async function sbFetch(path, opts = {}) {
+  const _bearer = await sbBearer();
   const res = await fetch(SB_URL + '/rest/v1/' + path, {
     ...opts,
     headers: {
       'apikey': SB_KEY,
-      'Authorization': 'Bearer ' + SB_KEY,
+      'Authorization': 'Bearer ' + _bearer,
       'Content-Type': 'application/json',
       'Prefer': opts.prefer || 'return=representation',
       ...(opts.headers || {}),
@@ -3754,8 +3870,9 @@ async function srsGetDue() {
 
 async function srsGetDueCount() {
   const today = localDateStr();
+  const _bearer = await sbBearer();
   const res = await fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + '&select=id', {
-    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + _bearer, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
   });
   const count = res.headers.get('content-range');
   if (count) { const m = count.match(/\/(\d+)/); return m ? parseInt(m[1]) : 0; }
@@ -5639,8 +5756,9 @@ document.getElementById('listen-add-save').addEventListener('click', async () =>
 
 // Count without pulling rows (mirrors srsGetDueCount).
 async function sbCount(query) {
+  const _bearer = await sbBearer();
   const res = await fetch(SB_URL + '/rest/v1/' + query, {
-    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
+    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + _bearer, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
   });
   const cr = res.headers.get('content-range');
   if (cr) { const m = cr.match(/\/(\d+)/); return m ? parseInt(m[1]) : 0; }
@@ -5677,6 +5795,8 @@ document.querySelectorAll('.timer-menu-opt').forEach(btn => {
     startTimer(Number(btn.dataset.mins));
   });
 });
+
+boot();
 </script>
 </body>
 </html>
