@@ -1331,7 +1331,7 @@
   <div id="stoic-content"></div>
   <button class="btn-refresh" id="stoic-refresh">New passage</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="stoic-still-btn">Reflect on it in Still</button>
+    <button class="btn btn-outline" id="stoic-ink-btn">Reflect on it in Ink</button>
   </div>
 </div>
 
@@ -1344,7 +1344,7 @@
   <div id="stoic-reminder-content"></div>
   <button class="btn-refresh" id="stoic-reminder-refresh">New reminder</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="stoic-reminder-still-btn">Reflect on it in Still</button>
+    <button class="btn btn-outline" id="stoic-reminder-ink-btn">Reflect on it in Ink</button>
   </div>
 </div>
 
@@ -1467,7 +1467,7 @@
   <div id="introspection-content"></div>
   <button class="btn-refresh" id="introspection-refresh">New question</button>
   <div class="activity-actions">
-    <button class="btn btn-outline" id="introspection-still-btn">Reflect on it in Still</button>
+    <button class="btn btn-outline" id="introspection-ink-btn">Reflect on it in Ink</button>
   </div>
 </div>
 
@@ -1936,11 +1936,11 @@ let selectedDuration = '5min';
 const searchTerms    = {};
 const ankiData       = {};
 
-async function openInStill(text) {
+async function openInInk(text) {
   if (!text) return;
   try { await navigator.clipboard.writeText(text); } catch(e) {}
-  showToast('Opening Still');
-  const url = 'https://nates123-cmd.github.io/Still-App/?capture=' + encodeURIComponent(text);
+  showToast('Opening Ink');
+  const url = 'https://nates123-cmd.github.io/Ink/?screen=capture&text=' + encodeURIComponent(text);
   setTimeout(() => { window.open(url, '_blank', 'noopener'); }, 400);
 }
 
@@ -2642,9 +2642,9 @@ function renderStoic(d) {
 
 document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
 
-document.getElementById('stoic-still-btn').addEventListener('click', async () => {
+document.getElementById('stoic-ink-btn').addEventListener('click', async () => {
   if (!stoicData) return;
-  openInStill('"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation);
+  openInInk('"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation);
 });
 
 // ── Shared loader helper ─────────────────────
@@ -2706,9 +2706,9 @@ const loadIntrospection = makeLoader(
   { question: 'What would you do differently if no one would ever find out?', prompt: 'Write for 60 seconds without stopping. Don\'t edit.' }
 );
 document.getElementById('introspection-refresh').addEventListener('click', loadIntrospection);
-document.getElementById('introspection-still-btn').addEventListener('click', async () => {
+document.getElementById('introspection-ink-btn').addEventListener('click', async () => {
   if (!introspectionData) return;
-  openInStill(introspectionData.question + '\n\n' + introspectionData.prompt);
+  openInInk(introspectionData.question + '\n\n' + introspectionData.prompt);
 });
 
 // ── Mental Math ───────────────────────────────
@@ -2924,9 +2924,9 @@ const loadStoicReminder = makeLoader(
 
 document.getElementById('stoic-reminder-refresh').addEventListener('click', loadStoicReminder);
 
-document.getElementById('stoic-reminder-still-btn').addEventListener('click', async () => {
+document.getElementById('stoic-reminder-ink-btn').addEventListener('click', async () => {
   if (!stoicReminderData) return;
-  openInStill(stoicReminderData.reminder + '\n\n' + stoicReminderData.context);
+  openInInk(stoicReminderData.reminder + '\n\n' + stoicReminderData.context);
 });
 
 // ── Anki Input screen ─────────────────────────
