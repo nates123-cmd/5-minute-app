@@ -88,6 +88,16 @@
       min-height: 100lvh;
       padding-bottom: env(safe-area-inset-bottom);
       touch-action: pan-y;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Re-enable selection only where the user's own words live */
+    input, textarea, select, [contenteditable],
+    .anki-textarea, .srs-card-text {
+      -webkit-user-select: text;
+      user-select: text;
     }
 
     .screen {
