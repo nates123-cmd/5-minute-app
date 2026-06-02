@@ -3543,10 +3543,12 @@ INFORMATIONAL_SCREENS.forEach(id => {
 });
 
 // ── "New activity" button ─────────────────────
-const ACTIVITY_SCREENS = ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe','health-insight',
-  'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
-  'geography-fact','logical-fallacy','on-this-day','thought-experiment','etymology','cognitive-bias','brain-teaser',
-  'beautiful-place'];
+// Derived from ACTIVITY_REGISTRY so every activity screen gets the button
+// (quiz slugs share other screens and run their own adaptive flow, so skip them).
+// The forEach below guards on the header existing, so a slug without a matching
+// screen is harmless. Hardcoding the list silently dropped the button from newer
+// registry activities (productivity-insight, flower, color, …) — patch #1da13f45.
+const ACTIVITY_SCREENS = [...new Set(ACTIVITY_REGISTRY.filter(a => !a.quiz).map(a => a.slug))];
 
 ACTIVITY_SCREENS.forEach(id => {
   const header = document.querySelector('#screen-' + id + ' .activity-header');
