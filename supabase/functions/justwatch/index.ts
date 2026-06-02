@@ -43,7 +43,7 @@ const CORS = {
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
-const SEARCH_QUERY = "query GetSearchTitles($country: Country!, $language: Language!, $first: Int!, $filter: TitleFilter!) { popularTitles(country: $country, first: $first, filter: $filter, sortBy: POPULAR) { edges { node { __typename ... on MovieOrShow { objectType content(country: $country, language: $language) { title originalReleaseYear shortDescription fullPath } offers(country: $country, platform: WEB) { monetizationType standardWebURL package { clearName } } } } } } }";
+const SEARCH_QUERY = "query GetSearchTitles($country: Country!, $language: Language!, $first: Int!, $filter: TitleFilter!) { popularTitles(country: $country, first: $first, filter: $filter, sortBy: POPULAR) { edges { node { __typename ... on MovieOrShow { objectType content(country: $country, language: $language) { title originalReleaseYear shortDescription fullPath scoring { imdbScore imdbVotes tomatoMeter certifiedFresh tmdbScore jwRating } } offers(country: $country, platform: WEB) { monetizationType standardWebURL package { clearName } } } } } } }";
 
 // Clean display labels for the providers worth surfacing.
 const SUB_PROVIDERS = {
@@ -145,7 +145,8 @@ Deno.serve(async (req) => {
   title = title.trim();
   if (!title) return json({ error: "missing ?title" }, 400);
 
-  const cacheKey = title.toLowerCase() + "|" + (year || "");
+  // v2: scoring fields added; bump key so old v1 entries (no scores) are abandoned.
+  const cacheKey = "v2|" + title.toLowerCase() + "|" + (year || "");
   const cached = await cacheGet(cacheKey);
   if (cached && !debug) return json({ ...cached, cached: true });
 
@@ -178,6 +179,7 @@ Deno.serve(async (req) => {
     .filter((n) => n && n.content)
     .map((n) => {
       const jwUrl = n.content.fullPath ? "https://www.justwatch.com" + n.content.fullPath : null;
+      const s = n.content.scoring || {};
       const out = {
         title: n.content.title,
         year: n.content.originalReleaseYear || null,
@@ -185,6 +187,12 @@ Deno.serve(async (req) => {
         summary: n.content.shortDescription || null,
         jwUrl,
         where_to_find: shapeOffers(n.offers, jwUrl),
+        scoring: {
+          rt: typeof s.tomatoMeter === "number" ? s.tomatoMeter : null,
+          rt_certified: !!s.certifiedFresh,
+          imdb: typeof s.imdbScore === "number" ? s.imdbScore : null,
+          imdb_votes: typeof s.imdbVotes === "number" ? s.imdbVotes : null,
+        },
       };
       if (debug) out._rawOffers = n.offers;
       return out;
