@@ -3866,7 +3866,13 @@ async function sbFetch(path, opts = {}) {
       ...(opts.headers || {}),
     },
   });
-  if (!res.ok) { const t = await res.text(); throw new Error(t); }
+  if (!res.ok) {
+    // 401 = bearer rejected (expired/revoked user token, or anon-key fallback
+    // hitting RLS). Session is dead; clear it and reopen the OTP gate so writes
+    // don't silently fail forever instead of routing back to login.
+    if (res.status === 401) { _setAuthSession(null); showOtpGate(); throw new Error('Session expired — sign in again'); }
+    const t = await res.text(); throw new Error(t);
+  }
   const text = await res.text();
   return text ? JSON.parse(text) : null;
 }
