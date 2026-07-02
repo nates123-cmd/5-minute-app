@@ -4067,17 +4067,14 @@ async function renderStateLine() {
   if (!el) return;
   let snap;
   try { snap = await clSnapshot(); } catch (e) { el.hidden = true; el.onclick = null; return; }
+  // Only the ripe-cluster signal lives here; the cards-due count is already shown
+  // on the Flashcards pillar, so no cards-due fallback line (would be redundant).
   const ripe = snap.clusters.filter(c => c.ripe).sort((a, b) => b.dueFrac - a.dueFrac);
-  const due = snap.dueCount;
   let text = '', action = null;
   if (ripe.length) {
     const c = ripe[0];
-    text = 'The ' + c.name + ' cluster is ripe to explain.'
-         + (due ? ' ' + due + ' card' + (due === 1 ? '' : 's') + ' due.' : '');
+    text = 'The ' + c.name + ' cluster is ripe to explain.';
     action = () => arStartFromCluster(c.id, c.name).catch(() => showToast('Could not start — try again'));
-  } else if (due) {
-    text = due + ' card' + (due === 1 ? '' : 's') + ' due.';
-    action = () => navigateToActivity('srs-review');
   }
   if (!text) { el.hidden = true; el.onclick = null; return; }
   el.textContent = text;
