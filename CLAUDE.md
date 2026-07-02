@@ -36,7 +36,9 @@ SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // anon key, safe to commit
 ### Tables
 | Table | Key columns |
 |---|---|
-| `flashcards` | id, front, back, source, interval, ease_factor, next_review, status, created_at |
+| `flashcards` | id, front, back, source, interval, ease_factor, next_review, status, created_at, context ('fun'), cluster_id (FK→clusters, nullable), last_missed_at |
+| `deep_dives` | id, user_id, title, prompt, key_points (jsonb), summary, context, source, cluster_id (FK→clusters, nullable), created_at, last_reviewed_at |
+| `clusters` | id, user_id, name, context, created_at — lazy groupings of flashcards; created when active recall assembles a concept "from my cards" (`ddGenerateFromCards`). Per-user RLS. |
 | `quiz_performance` | id, topic, difficulty (1–5), hit_rate, asked_questions (jsonb), updated_at |
 | `listening_subscriptions` | id, name, feed_url, created_at |
 | `listening_queue` | id, title, show_name, summary, source, subscription_id, duration_secs, spotify_url, listened, pub_date, recommended_by, created_at |
@@ -74,7 +76,14 @@ Quiz-specific Claude fetch — same pattern, used for quiz question generation a
 Saves flashcard to Supabase. Supports offline queuing via `localStorage['offline_card_queue']` — syncs on `window online` event.
 
 ### `sm2(card, rating)`
-SM-2 spaced repetition: rating 0 = miss (interval→1), 1 = hard (interval×1.2, ease−0.15), 2 = easy (interval×ease, ease+0.1).
+SM-2 spaced repetition: rating 0 = miss (interval→1), 1 = hard (interval×1.2, ease−0.15), 2 = easy (interval×ease, ease+0.1). A miss (review flow + AR write-back) also stamps `last_missed_at` for cluster ripeness.
+
+### Learning path: clusters, ripeness, state line, capture
+- **Clusters** = lazy flashcard groupings. `ddGenerateFromCards` finds one coherent concept, creates a `clusters` row, tags member cards' `cluster_id`. Tuning constants (v1 locked): `CLUSTER_MIN_CARDS=8` (availability floor), `RIPE_DUE_QUORUM=0.4`, `MISS_WINDOW_DAYS=7`.
+- **`clSnapshot()`** — one cheap pass (2 queries: all fun cards + clusters). Returns `{dueCount, clusters:[{id,name,total,due,dueFrac,available,ripe}]}`. A cluster is *available* at 8+ cards, *ripe* when ≥40% due OR any member missed within 7d.
+- **`renderStateLine()`** — one declarative home line, computed fresh on every `screenchange==='home'`. Priority: ripe cluster (tap → `arStartFromCluster`) > cards due (tap → review) > nothing. "Due" language only, never "overdue"; ignorable, zero persistence.
+- **Cluster picker** — Deep Dives "From my cards" tab (`ddRenderClusterPicker`): available clusters, ripe-first, tap to run active recall; plus "Assemble a new concept" (`dd-assemble-btn`).
+- **Capture at seams** — `quizMissCapture(q,a)` (inline "Keep this?" once per miss, deterministic card, no API) and `proposeReadCandidates(mountEl, text, source)` (2-3 candidates at end of Stoic passage + history rabbit hole, one-tap keep, silent on error/3.2s timeout). Both dedupe via `cardExists(front)` and mint through `srsCreate`.
 
 ### `navigateToActivity(slug, skipLoad)`
 Central routing — shows the right screen, triggers load function if not skipLoad.

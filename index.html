@@ -482,8 +482,6 @@
     .am-img { width: 100%; max-height: 240px; object-fit: cover; border-radius: var(--radius-md, 12px); display: block; }
     .bp-img-wrap { margin: 0 0 14px; }
     .bp-img { width: 100%; max-height: 280px; object-fit: cover; border-radius: var(--radius-md, 12px); display: block; }
-    .listen-spotify-banner { font-size: 0.82rem; color: var(--text); background: var(--surface, var(--card-bg)); border-radius: var(--radius-md, 12px); padding: 10px 14px; margin: 4px 0 12px; display: flex; align-items: center; gap: 6px; }
-    .listen-spotify-reconnect { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; cursor: pointer; font: inherit; }
     .am-tag { font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
     .am-field { margin-top: 12px; font-size: 0.92rem; line-height: 1.55; color: var(--text); }
     .am-label { display: block; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
@@ -627,6 +625,44 @@
     .lul-links { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; }
     .lul-links a { font-size: 0.85rem; color: var(--accent); text-decoration: underline; word-break: break-all; }
     .lul-empty { text-align: center; color: var(--muted); font-size: 0.9rem; padding: 40px 0; line-height: 1.6; }
+    .lul-thread { display: flex; flex-direction: column; gap: 12px; margin-top: 14px; }
+    .lul-fu { border-left: 2px solid var(--accent-4, var(--accent)); padding: 2px 0 2px 12px; }
+    .lul-fu-q { font-size: 0.86rem; font-weight: 600; line-height: 1.4; margin-bottom: 5px; }
+    .lul-fu-a { font-size: 0.88rem; line-height: 1.55; color: var(--text); white-space: pre-wrap; }
+    .lul-followup { display: flex; gap: 8px; align-items: flex-end; margin-top: 14px; }
+    .lul-followup-input { flex: 1; resize: vertical; }
+    .lul-followup-ask { flex: 0 0 auto; padding: 11px 16px; }
+
+    /* ── Deep Dives ──────────────────────────── */
+    .dd-item { background: var(--card-bg); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; cursor: pointer; }
+    .dd-item:active { transform: scale(0.99); }
+    .dd-title { font-family: var(--font-serif); font-weight: 600; font-size: 1.05rem; line-height: 1.35; }
+    .dd-summary { font-size: 0.88rem; color: var(--text-muted, var(--muted)); line-height: 1.5; margin-top: 6px; }
+    .dd-meta { font-size: 0.75rem; color: var(--text-faint, var(--muted)); margin-top: 10px; }
+
+    /* Cluster picker (From my cards tab) */
+    .dd-cluster-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; font-family: var(--font); color: var(--text); }
+    .dd-cluster-name { font-weight: 600; font-size: 0.92rem; }
+    .dd-cluster-meta { font-size: 0.75rem; color: var(--text-muted, var(--muted)); white-space: nowrap; }
+
+    /* ── State line (home) ───────────────────── */
+    .state-line { display: block; width: 100%; text-align: left; background: transparent; border: none; border-left: 3px solid var(--accent-3, var(--accent)); padding: 4px 0 4px 12px; margin: 4px 0 14px; font-size: 0.9rem; line-height: 1.5; color: var(--text-muted, var(--text)); font-family: var(--font); cursor: pointer; }
+    .state-line[hidden] { display: none; }
+
+    /* ── Capture at the seams ────────────────── */
+    .keep-row { background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; }
+    .keep-q { font-size: 0.82rem; color: var(--text-muted, var(--muted)); margin-bottom: 6px; }
+    .keep-card { font-size: 0.9rem; line-height: 1.5; margin-bottom: 10px; }
+    .keep-btns { display: flex; gap: 8px; }
+    .keep-btns .btn { flex: 1; padding: 9px 8px; font-size: 0.85rem; }
+    .read-capture { margin-top: 16px; }
+    .read-capture-head { font-size: 0.82rem; color: var(--text-muted, var(--muted)); margin-bottom: 8px; }
+    .read-cand { display: flex; gap: 10px; align-items: center; justify-content: space-between; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; }
+    .read-cand.kept { opacity: 0.5; }
+    .read-cand-body { font-size: 0.86rem; line-height: 1.45; }
+    .read-cand-back { color: var(--text-muted, var(--muted)); margin-top: 3px; }
+    .read-keep { white-space: nowrap; padding: 8px 14px; font-size: 0.82rem; }
+    .read-skip-all { background: none; border: none; color: var(--text-faint, var(--muted)); font-size: 0.8rem; font-family: var(--font); cursor: pointer; padding: 4px 0; }
 
     /* ── SRS Flashcards ──────────────────────── */
     .srs-progress { font-size: 0.82rem; color: var(--muted); text-align: center; margin-bottom: 16px; min-height: 1.2em; }
@@ -1290,14 +1326,9 @@
     <span>Capture</span>
   </button>
 
+  <button id="state-line" class="state-line" hidden></button>
+
   <div class="pillars">
-    <button class="pillar pillar-review" id="srs-due-card" data-activity="srs-review">
-      <span class="pillar-label">Review</span>
-      <div>
-        <div class="pillar-num" id="srs-due-count">0</div>
-        <div class="pillar-sub" id="srs-due-sub">cards due</div>
-      </div>
-    </button>
     <button class="pillar pillar-queue" id="lul-home-card">
       <span class="pillar-label">Queue</span>
       <div>
@@ -1305,11 +1336,18 @@
         <div class="pillar-sub" id="lul-sub">to look up</div>
       </div>
     </button>
-    <button class="pillar pillar-recs" id="recs-home-card">
-      <span class="pillar-label">Listen</span>
+    <button class="pillar pillar-recs" id="deep-dive-home-card">
+      <span class="pillar-label">Deep Dives</span>
       <div>
-        <div class="pillar-num" id="recs-count">0</div>
-        <div class="pillar-sub" id="recs-sub">nothing queued</div>
+        <div class="pillar-num" id="dd-count">0</div>
+        <div class="pillar-sub" id="dd-sub">topics</div>
+      </div>
+    </button>
+    <button class="pillar pillar-review" id="srs-due-card" data-activity="srs-review">
+      <span class="pillar-label">Flashcards</span>
+      <div>
+        <div class="pillar-num" id="srs-due-count">0</div>
+        <div class="pillar-sub" id="srs-due-sub">cards due</div>
       </div>
     </button>
   </div>
@@ -1442,27 +1480,14 @@
 </div>
 
 <!-- LISTEN -->
-<div id="screen-recs" class="screen">
+<div id="screen-deep-dives" class="screen">
   <div class="activity-header">
     <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Listen</span>
+    <span class="activity-title">Deep Dives</span>
+    <button class="btn-settings" id="dd-add-btn" title="Add a deep dive" style="margin-left:auto;font-size:1.4rem;line-height:1">+</button>
   </div>
-
-  <!-- Listen feature -->
-  <div class="recs-pane active" id="recs-pane-Listen">
-    <div id="screen-listen">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
-        <button class="btn-settings" id="listen-manage-btn">Manage</button>
-      </div>
-      <div id="listen-sort-bar" style="display:flex;gap:6px;margin-bottom:14px">
-        <button class="btn btn-primary listen-sort-btn" data-sort="recent" style="flex:1">Most recent</button>
-        <button class="btn btn-outline listen-sort-btn" data-sort="shortest" style="flex:1">Shortest</button>
-      </div>
-      <div id="listen-queue"></div>
-      <div id="listen-subscriptions"></div>
-      <div id="listen-audiobook"></div>
-    </div>
-  </div>
+  <p class="framing">Concepts you want to understand, not just memorize. Tap one to explain it from memory.</p>
+  <div id="dd-list"></div>
 </div>
 
 <!-- LOOK UP LATER -->
@@ -1773,6 +1798,81 @@
   </div>
 </div>
 
+<!-- ACTIVE RECALL -->
+<div id="screen-active-recall" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Active Recall</span>
+  </div>
+
+  <!-- Phase: setup -->
+  <div id="ar-setup">
+    <div id="ar-dive-title" style="font-family:var(--font-serif);font-size:1.3rem;line-height:1.3;margin:4px 0 6px"></div>
+    <p class="framing">Explain this from memory. Pick how you want to answer.</p>
+    <label class="srs-label" style="margin-top:12px">Mode</label>
+    <div class="srs-half-toggle" id="ar-mode-toggle">
+      <button class="srs-mode-btn" data-ar-mode="mental">Mental</button>
+      <button class="srs-mode-btn" data-ar-mode="type">Type</button>
+      <button class="srs-mode-btn active" data-ar-mode="speak">Speak</button>
+    </div>
+    <p class="framing" id="ar-mode-hint" style="font-size:0.82rem;margin-top:8px"></p>
+    <button class="btn btn-primary" id="ar-begin" style="width:100%;margin-top:18px">Begin</button>
+  </div>
+
+  <!-- Phase: loading -->
+  <div id="ar-loading" style="display:none;text-align:center;padding:48px 0">
+    <p class="framing" id="ar-loading-msg">Assembling a concept from your cards…</p>
+  </div>
+
+  <!-- Phase: answer -->
+  <div id="ar-answer" style="display:none">
+    <div id="ar-prompt" style="background:var(--surface);border-radius:var(--radius-md,14px);padding:18px;font-family:var(--font-serif);font-size:1.1rem;line-height:1.4;margin-bottom:18px"></div>
+
+    <!-- mental -->
+    <div id="ar-mental" style="display:none">
+      <button class="btn btn-outline" id="ar-reveal" style="width:100%">Reveal key points</button>
+      <div id="ar-mental-points" style="display:none;margin-top:16px"></div>
+      <div id="ar-mental-rate" style="display:none;margin-top:18px">
+        <label class="srs-label">How did that go?</label>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="btn btn-outline ar-rate-btn" data-ar-rate="0" style="flex:1">Miss</button>
+          <button class="btn btn-outline ar-rate-btn" data-ar-rate="1" style="flex:1">Hard</button>
+          <button class="btn btn-primary ar-rate-btn" data-ar-rate="2" style="flex:1">Easy</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- type -->
+    <div id="ar-type" style="display:none">
+      <label class="srs-label">Explain it from memory</label>
+      <textarea id="ar-type-input" class="anki-textarea" rows="6" placeholder="Say what you know…"></textarea>
+      <button class="btn btn-primary" id="ar-type-submit" style="width:100%;margin-top:12px">Submit</button>
+    </div>
+
+    <!-- speak -->
+    <div id="ar-speak" style="display:none">
+      <div id="ar-speak-live" style="text-align:center">
+        <button class="btn btn-primary" id="ar-record" style="width:100%">Start recording</button>
+        <p class="framing" id="ar-record-state" style="font-size:0.82rem;margin-top:8px"></p>
+      </div>
+      <textarea id="ar-speak-transcript" class="anki-textarea" rows="6" placeholder="Your words appear here…" style="margin-top:12px"></textarea>
+      <button class="btn btn-primary" id="ar-speak-submit" style="width:100%;margin-top:12px;display:none">Submit</button>
+      <p class="framing" id="ar-speak-fallback" style="display:none;color:var(--accent);margin-top:12px"></p>
+    </div>
+  </div>
+
+  <!-- Phase: feedback -->
+  <div id="ar-feedback" style="display:none">
+    <div id="ar-feedback-prose" style="background:var(--surface);border-radius:var(--radius-md,14px);padding:18px;line-height:1.5;margin-bottom:18px"></div>
+    <label class="srs-label">Key points</label>
+    <div id="ar-feedback-points" style="margin-top:8px"></div>
+    <div id="ar-save-wrap" style="margin-top:20px">
+      <button class="btn btn-outline" id="ar-save-cards" style="width:100%">Pull terms into flashcards</button>
+    </div>
+    <button class="btn btn-primary" id="ar-done" style="width:100%;margin-top:12px">Done</button>
+  </div>
+</div>
+
 <!-- DONE -->
 <div id="screen-done" class="screen">
   <h2>Time's up.</h2>
@@ -1815,55 +1915,32 @@
     <div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn btn-outline add-menu-opt" data-add="card">Add Card</button>
       <button class="btn btn-outline add-menu-opt" data-add="lul">Look Up Later</button>
-      <button class="btn btn-outline add-menu-opt" data-add="listen">Listen Later</button>
+      <button class="btn btn-outline add-menu-opt" data-add="dive">Deep Dive</button>
     </div>
   </div>
 </div>
 
-<!-- Listen Add Modal -->
-<div id="listen-add-modal" class="srs-modal hidden">
+<!-- Deep Dive Add Modal -->
+<div id="dd-add-modal" class="srs-modal hidden">
   <div class="srs-modal-box">
     <div class="srs-modal-header">
-      <span class="srs-modal-title">Listen Later</span>
-      <button class="srs-modal-close" id="listen-add-close">×</button>
+      <span class="srs-modal-title">New Deep Dive</span>
+      <button class="srs-modal-close" id="dd-add-close">×</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:16px">
-      <button class="btn btn-primary listen-add-tab" data-tab="podcast" style="flex:1">Podcast</button>
-      <button class="btn btn-outline listen-add-tab" data-tab="custom" style="flex:1">Custom</button>
+      <button class="btn btn-primary dd-add-tab" data-dd-tab="topic" style="flex:1">Name a topic</button>
+      <button class="btn btn-outline dd-add-tab" data-dd-tab="cards" style="flex:1">From my cards</button>
     </div>
-    <div id="listen-tab-podcast">
-      <label class="srs-label">Show or episode</label>
-      <textarea id="listen-add-title" class="anki-textarea" rows="2" placeholder="Show name or paste a Spotify URL"></textarea>
+    <div id="dd-tab-topic">
+      <label class="srs-label">Topic you want to understand</label>
+      <textarea id="dd-topic-input" class="anki-textarea" rows="2" placeholder="e.g. How beer is made"></textarea>
     </div>
-    <div id="listen-tab-custom" class="hidden">
-      <label class="srs-label">Title</label>
-      <textarea id="listen-add-custom-title" class="anki-textarea" rows="2" placeholder="e.g. Veritasium — Why Planes Disappear"></textarea>
-      <label class="srs-label" style="margin-top:12px">Duration (minutes)</label>
-      <input id="listen-add-duration" type="number" min="1" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. 20" />
+    <div id="dd-tab-cards" class="hidden">
+      <p class="framing" style="font-size:0.85rem">Concepts assembled from flashcards you already have. Tap one to explain it from memory.</p>
+      <div id="dd-cluster-list"></div>
+      <button class="btn btn-outline" id="dd-assemble-btn" style="width:100%;margin-top:8px">Assemble a new concept from my cards</button>
     </div>
-    <label class="srs-label" style="margin-top:12px">Recommended by (optional)</label>
-    <input id="listen-add-recby" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. Dad" />
-    <button class="btn btn-primary" id="listen-add-save" style="width:100%;margin-top:16px">Save</button>
-  </div>
-</div>
-
-<!-- Listen Manage Modal -->
-<div id="listen-manage-modal" class="srs-modal hidden">
-  <div class="srs-modal-box">
-    <div class="srs-modal-header">
-      <span class="srs-modal-title">Subscriptions</span>
-      <button class="srs-modal-close" id="listen-manage-close">×</button>
-    </div>
-    <div id="listen-subs-list" style="margin-bottom:16px"></div>
-    <label class="srs-label">Add show (paste Spotify show URL)</label>
-    <input id="listen-sub-input" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="https://open.spotify.com/show/..." />
-    <label class="srs-label" style="margin-top:12px">Show name</label>
-    <input id="listen-sub-name" type="text" class="anki-textarea" style="height:auto;padding:12px 14px" placeholder="e.g. Interesting Times with Ross Douthat" />
-    <button class="btn btn-primary" id="listen-sub-add" style="width:100%;margin-top:16px">Add Subscription</button>
-    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
-      <div style="font-size:0.82rem;color:var(--muted);margin-bottom:10px" id="listen-spotify-status">Spotify: not connected</div>
-      <button class="btn btn-outline" id="listen-spotify-connect" style="width:100%">Connect Spotify</button>
-    </div>
+    <button class="btn btn-primary" id="dd-add-save" style="width:100%;margin-top:16px">Create</button>
   </div>
 </div>
 
@@ -2344,9 +2421,9 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'weather')           loadWeather();
     if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
+    if (a === 'deep-dives')        loadDeepDives();
     if (a === 'anki-input')        resetAnkiInput();
     if (a === 'look-up-later')     loadLulScreen();
-    if (a === 'recs')              loadRecsScreen();
   }
 }
 
@@ -2498,6 +2575,7 @@ async function loadHistory() {
       const wikiUrl = 'https://en.wikipedia.org/wiki/' + encodeURIComponent(topics[0].wikipediaSlug);
       hCard.insertAdjacentHTML('beforeend', cardFooter('history', topics[0].title, wikiUrl));
       addSwipeListener(hCard, 'history', topics[0].title, loadHistory);
+      proposeReadCandidates(container, topics[0].title + '. ' + topics[0].hook, 'history');
     }
   } catch(e) {
     container.innerHTML = '<div class="ai-card"><p style="color:red;font-size:0.8rem">' + esc(e.message) + '</p></div>';
@@ -2656,6 +2734,7 @@ function renderStoic(d) {
   const card = container.querySelector('.ai-card');
   card.insertAdjacentHTML('beforeend', cardFooter('stoic', key, ''));
   addSwipeListener(card, 'stoic', key, loadStoic);
+  proposeReadCandidates(container, d.passage + '\n\n' + d.explanation, 'stoic');
 }
 
 document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
@@ -3710,12 +3789,7 @@ function runBoxPhase() {
   ['srs-preview-back',       'srs-preview-save'],
   ['anki-front',             'anki-input-submit'],
   ['anki-back',              'anki-input-submit'],
-  ['listen-add-title',       'listen-add-save'],
-  ['listen-add-custom-title','listen-add-save'],
-  ['listen-add-duration',    'listen-add-save'],
-  ['listen-add-recby',       'listen-add-save'],
-  ['listen-sub-input',       'listen-sub-add'],
-  ['listen-sub-name',        'listen-sub-add'],
+  ['dd-topic-input',         'dd-add-save'],
 ].forEach(([inputId, btnId]) => {
   const el = document.getElementById(inputId);
   if (!el) return;
@@ -3898,6 +3972,181 @@ async function srsGetDueCount() {
   const count = res.headers.get('content-range');
   if (count) { const m = count.match(/\/(\d+)/); return m ? parseInt(m[1]) : 0; }
   return 0;
+}
+
+// ── Concept clusters + ripeness ───────────────────────────────────────────
+// Clusters are lazy groupings of flashcards, created when active recall
+// assembles a concept from your cards. They carry no schedule of their own;
+// ripeness is inherited from member-card due-state. Tuning knobs (v1 locked —
+// see the Learning Path spec: raise the quorum if the state line fires too often).
+const CLUSTER_MIN_CARDS = 8;   // availability floor — a cluster needs this many cards to surface
+const RIPE_DUE_QUORUM   = 0.4; // >= this fraction of a cluster's cards due => ripe
+const MISS_WINDOW_DAYS  = 7;   // a Miss this recent is a fresh gap => ripe
+
+async function clCreate(name) {
+  const rows = await sbFetch('clusters', { method: 'POST', prefer: 'return=representation', body: JSON.stringify({ name }) });
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+async function clTagCards(clusterId, cardIds) {
+  for (const id of cardIds) { try { await srsUpdate(id, { cluster_id: clusterId }); } catch (e) {} }
+}
+
+// One cheap pass: all fun cards + all clusters, grouped in JS. Returns the due
+// count (all fun cards) and per-cluster ripeness. Two Supabase queries total.
+async function clSnapshot() {
+  const today = localDateStr();
+  const cut = new Date(); cut.setDate(cut.getDate() - MISS_WINDOW_DAYS);
+  const missCut = cut.toISOString();
+  let cards, clusters;
+  try {
+    [cards, clusters] = await Promise.all([
+      sbFetch('flashcards?context=eq.fun&select=id,cluster_id,next_review,last_missed_at&limit=2000'),
+      sbFetch('clusters?select=id,name&order=created_at.desc'),
+    ]);
+  } catch (e) { return { dueCount: 0, clusters: [] }; }
+  cards = cards || []; clusters = clusters || [];
+  const dueCount = cards.filter(c => c.next_review && c.next_review <= today).length;
+  const byCluster = {};
+  cards.forEach(c => { if (c.cluster_id) (byCluster[c.cluster_id] || (byCluster[c.cluster_id] = [])).push(c); });
+  const out = clusters.map(cl => {
+    const mem = byCluster[cl.id] || [];
+    const total = mem.length;
+    const due = mem.filter(c => c.next_review && c.next_review <= today).length;
+    const missed = mem.some(c => c.last_missed_at && c.last_missed_at >= missCut);
+    const dueFrac = total ? due / total : 0;
+    const available = total >= CLUSTER_MIN_CARDS;
+    const ripe = available && (dueFrac >= RIPE_DUE_QUORUM || missed);
+    return { id: cl.id, name: cl.name, total, due, dueFrac, available, ripe };
+  });
+  return { dueCount, clusters: out };
+}
+
+// Rebuild a dive from a cluster's current cards (used when no stored dive exists).
+async function ddGenerateFromClusterCards(clusterId, name) {
+  const cards = await sbFetch('flashcards?cluster_id=eq.' + clusterId + '&select=id,front,back&limit=25');
+  if (!cards || !cards.length) throw new Error('cluster is empty');
+  const payload = cards.map(c => ({ id: c.id, front: c.front, back: c.back }));
+  const out = await callClaudeAR(
+    'Below are flashcards (id, front, back) that all belong to the concept "' + (name || '') + '". '
+    + 'Write: a short "title"; a single "Explain this" prompt (imperative, do NOT reveal the answer); '
+    + 'a one-sentence "summary"; and 3 to 4 "keyPoints", each with "text" and "cardId" (one of the given ids).\n\n'
+    + JSON.stringify(payload)
+    + '\n\nReturn JSON only: {"title":"...","prompt":"...","summary":"...","keyPoints":[{"text":"...","cardId":"..."}]}'
+  );
+  return {
+    title: out.title || name || 'Concept from your cards',
+    prompt: out.prompt || '', summary: out.summary || '',
+    key_points: Array.isArray(out.keyPoints) ? out.keyPoints : [],
+    source: 'cards', cluster_id: clusterId,
+  };
+}
+
+// Deep-link target for the state line and cluster picker: run active recall on a
+// cluster, reusing a stored dive when one exists.
+async function arStartFromCluster(clusterId, name) {
+  try {
+    const dives = await sbFetch('deep_dives?cluster_id=eq.' + clusterId + '&order=created_at.desc&limit=1');
+    if (dives && dives.length) { arStartSession(dives[0]); return; }
+  } catch (e) {}
+  const dive = await ddGenerateFromClusterCards(clusterId, name);
+  arStartSession(dive);
+}
+
+// True if a card with this exact front already exists (near-dup guard for capture).
+async function cardExists(front) {
+  try {
+    const rows = await sbFetch('flashcards?select=id&limit=1&front=eq.' + encodeURIComponent(String(front).trim()));
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (e) { return false; }
+}
+
+// The home state line: one declarative, tappable, ignorable line. Ripe cluster
+// first, then cards due, else nothing. Computed fresh every home render.
+async function renderStateLine() {
+  const el = document.getElementById('state-line');
+  if (!el) return;
+  let snap;
+  try { snap = await clSnapshot(); } catch (e) { el.hidden = true; el.onclick = null; return; }
+  const ripe = snap.clusters.filter(c => c.ripe).sort((a, b) => b.dueFrac - a.dueFrac);
+  const due = snap.dueCount;
+  let text = '', action = null;
+  if (ripe.length) {
+    const c = ripe[0];
+    text = 'The ' + c.name + ' cluster is ripe to explain.'
+         + (due ? ' ' + due + ' card' + (due === 1 ? '' : 's') + ' due.' : '');
+    action = () => arStartFromCluster(c.id, c.name).catch(() => showToast('Could not start — try again'));
+  } else if (due) {
+    text = due + ' card' + (due === 1 ? '' : 's') + ' due.';
+    action = () => navigateToActivity('srs-review');
+  }
+  if (!text) { el.hidden = true; el.onclick = null; return; }
+  el.textContent = text;
+  el.onclick = action;
+  el.hidden = false;
+}
+
+// ── Capture at the seams ──────────────────────────────────────────────────
+// Quiz miss: propose the would-be card once, inline, one tap to keep. The card
+// is deterministic (question -> front, correct answer -> back), no API call.
+async function quizMissCapture(question, answer) {
+  const slot = document.getElementById('quiz-keep-slot');
+  if (!slot || !question || !answer) return;
+  if (await cardExists(question)) return; // near-dup, don't propose
+  if (!document.getElementById('quiz-keep-slot')) return; // user already advanced
+  slot.innerHTML =
+    '<div class="keep-row">' +
+      '<div class="keep-q">Keep this?</div>' +
+      '<div class="keep-card"><strong>' + esc(question) + '</strong><br>' + esc(answer) + '</div>' +
+      '<div class="keep-btns">' +
+        '<button class="btn btn-primary keep-yes">Keep</button>' +
+        '<button class="btn btn-outline keep-no">Dismiss</button>' +
+      '</div>' +
+    '</div>';
+  slot.querySelector('.keep-yes').addEventListener('click', async () => {
+    slot.querySelector('.keep-yes').disabled = true;
+    try { const r = await srsCreate(question, answer, quizTopic); if (!r?.offline) updateDueBadge(); showToast(r?.offline ? 'Saved offline' : 'Kept'); } catch (e) {}
+    slot.innerHTML = '';
+  });
+  slot.querySelector('.keep-no').addEventListener('click', () => { slot.innerHTML = ''; });
+}
+
+// End-of-read: propose 2-3 candidate cards from content just consumed. One tap
+// keeps. Silent on API error or >3s timeout — capture is a bonus, never a blocker.
+async function proposeReadCandidates(mountEl, contentText, srsSource) {
+  if (!mountEl || !contentText || !hasSession()) return;
+  let out;
+  try {
+    out = await Promise.race([
+      callClaude('From the passage below, propose 2 or 3 atomic flashcards worth remembering. '
+        + 'Each: a clean front cue (a term or short specific question) and a back of 1 to 2 punchy sentences. No fluff.\n\n'
+        + 'Passage:\n"' + contentText + '"\n\nReturn JSON: {"cards":[{"front":"...","back":"..."}]}'),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 3200)),
+    ]);
+  } catch (e) { return; }
+  let cards = (out && out.cards) || [];
+  if (!Array.isArray(cards)) return;
+  cards = cards.filter(c => c && c.front && c.back).slice(0, 3);
+  const fresh = [];
+  for (const c of cards) { if (!(await cardExists(c.front))) fresh.push(c); }
+  if (!fresh.length) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'read-capture';
+  wrap.innerHTML =
+    '<div class="read-capture-head">Worth remembering?</div>' +
+    fresh.map((c, i) =>
+      '<div class="read-cand" data-i="' + i + '">' +
+        '<div class="read-cand-body"><strong>' + esc(c.front) + '</strong><div class="read-cand-back">' + esc(c.back) + '</div></div>' +
+        '<button class="btn btn-outline read-keep" data-i="' + i + '">Keep</button>' +
+      '</div>').join('') +
+    '<button class="read-skip-all">Skip all</button>';
+  mountEl.appendChild(wrap);
+  wrap.querySelectorAll('.read-keep').forEach(b => b.addEventListener('click', async () => {
+    const c = fresh[+b.dataset.i];
+    b.disabled = true; b.textContent = 'Kept';
+    try { const r = await srsCreate(c.front, c.back, srsSource); if (!r?.offline) updateDueBadge(); } catch (e) {}
+    const row = b.closest('.read-cand'); if (row) row.classList.add('kept');
+  }));
+  wrap.querySelector('.read-skip-all').addEventListener('click', () => wrap.remove());
 }
 
 // ── Offline queue ─────────────────────────────
@@ -4126,6 +4375,7 @@ async function rateSrsCard(rating) {
   else if (rating === 1) srsStats.hard++;
   else srsStats.easy++;
   const updates = sm2(card, rating);
+  if (rating === 0) updates.last_missed_at = new Date().toISOString(); // fresh-gap signal for cluster ripeness
   try { await srsUpdate(card.id, updates); } catch(e) {}
   srsCurrent++;
   renderSrsCard();
@@ -4397,6 +4647,507 @@ document.getElementById('srs-preview-generate-back').addEventListener('click', a
   btn.disabled = false;
 });
 
+// ── Active Recall + Deep Dives ────────────────────────────
+// Deep Dives = a persistent library of concepts (topics) you want to UNDERSTAND,
+// the tier above atomic flashcards. Tapping a dive runs an Active Recall session:
+// explain the whole thing from memory (Mental / Type / Speak), get graded, and
+// optionally pull the key terms down into the flashcard deck. On-demand shelf —
+// no due dates; a dive just records last_reviewed_at.
+const AR_MODE_HINTS = {
+  mental: 'Think it through, reveal the key points, then rate yourself.',
+  type:   'Type your explanation from memory. Claude reads it back to you.',
+  speak:  'Say it out loud. Transcribed in your browser, then graded.',
+};
+let arState = null;
+let arRecog = null;
+let arRecording = false;
+
+// Dedicated Claude fetch — mirrors callClaude but with more headroom for the
+// grading/keypoint JSON (callClaude caps at 1000 tokens).
+async function callClaudeAR(userPrompt, maxTokens = 1400) {
+  if (!hasSession()) throw new Error('Sign in to use AI');
+  const res = await fetch(SB_URL + '/functions/v1/claude', {
+    method: 'POST',
+    headers: await claudeHeaders(),
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: maxTokens,
+      system: 'You are a study coach. Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble.',
+      messages: [{ role: 'user', content: userPrompt }],
+    }),
+  });
+  if (!res.ok) throw new Error('Claude proxy ' + res.status);
+  const data = await res.json();
+  const text = typeof data.text === 'string' ? data.text : (data.content?.[0]?.text || '');
+  return extractJson(text.trim());
+}
+
+// ── Deep Dives data (Supabase; per-user RLS via default auth.uid()) ──
+async function ddFetch()       { return sbFetch('deep_dives?order=created_at.desc'); }
+async function ddCreate(obj)   { return sbFetch('deep_dives', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(obj) }); }
+async function ddUpdate(id, f) { return sbFetch('deep_dives?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(f) }); }
+async function ddDelete(id)    { return sbFetch('deep_dives?id=eq.' + id, { method: 'DELETE' }); }
+
+// Generate the explain-prompt + summary + key points for a named topic.
+async function ddGenerateTopic(title, contextText) {
+  const out = await callClaudeAR(
+    'The user wants to deeply understand this topic: "' + title + '".\n'
+    + (contextText ? 'Context they already have:\n"' + contextText + '"\n\n' : '')
+    + 'Write: a single "Explain this" prompt asking them to explain the topic from memory '
+    + '(one or two imperative sentences, do NOT reveal the answer); a one-sentence summary of the concept; '
+    + 'and 3 to 5 key points a strong explanation must hit.\n\n'
+    + 'Return JSON only: {"prompt":"...","summary":"...","keyPoints":[{"text":"..."}]}'
+  );
+  return {
+    title,
+    prompt: out.prompt || ('Explain ' + title + ' from memory.'),
+    summary: out.summary || '',
+    key_points: Array.isArray(out.keyPoints) ? out.keyPoints : [],
+  };
+}
+
+// Assemble a concept from existing flashcards (the auto-cluster path — kept as a
+// secondary source). Key points carry cardId so misses can resurface those cards.
+async function ddGenerateFromCards() {
+  const cards = await sbFetch('flashcards?context=eq.fun&order=next_review.asc&limit=15');
+  if (!cards || cards.length < CLUSTER_MIN_CARDS) throw new Error('need at least ' + CLUSTER_MIN_CARDS + ' cards first');
+  const payload = cards.map(c => ({ id: c.id, front: c.front, back: c.back }));
+  const out = await callClaudeAR(
+    'Below are flashcards, each a single atomic fact, as JSON (id, front, back). '
+    + 'Find ONE coherent concept that at least ' + CLUSTER_MIN_CARDS + ' of them share. Return: a short "title" for the concept; '
+    + 'a single "Explain this" prompt (imperative, do NOT reveal the answer); a one-sentence "summary"; '
+    + '"memberIds" = the ids of ALL cards that belong to this concept (aim for ' + CLUSTER_MIN_CARDS + ' or more); '
+    + 'and 3 to 4 key points, each with "text" and "cardId" (the id of the source card it traces to, one of the given ids).\n\n'
+    + JSON.stringify(payload)
+    + '\n\nReturn JSON only: {"title":"...","prompt":"...","summary":"...","memberIds":["..."],"keyPoints":[{"text":"...","cardId":"..."}]}'
+  );
+  const validIds = new Set(cards.map(c => c.id));
+  let members = (Array.isArray(out.memberIds) ? out.memberIds : []).filter(id => validIds.has(id));
+  (Array.isArray(out.keyPoints) ? out.keyPoints : []).forEach(k => { if (k.cardId && validIds.has(k.cardId)) members.push(k.cardId); });
+  members = [...new Set(members)];
+  const dive = {
+    title: out.title || 'Concept from your cards',
+    prompt: out.prompt || '',
+    summary: out.summary || '',
+    key_points: Array.isArray(out.keyPoints) ? out.keyPoints : [],
+    source: 'cards',
+  };
+  // Lazy cluster: persist the grouping so ripeness can be computed later.
+  if (members.length) {
+    try {
+      const cl = await clCreate(dive.title);
+      if (cl && cl.id) { dive.cluster_id = cl.id; await clTagCards(cl.id, members); }
+    } catch (e) {}
+  }
+  return dive;
+}
+
+function fmtDDDate(iso) {
+  try { return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  catch (e) { return ''; }
+}
+
+// ── Deep Dives library screen ──
+async function loadDeepDives() {
+  const list = document.getElementById('dd-list');
+  list.innerHTML = '<p class="lul-empty">Loading…</p>';
+  let dives;
+  try { dives = await ddFetch(); }
+  catch (e) { list.innerHTML = '<p class="lul-empty">Failed to load. Check your connection.</p>'; return; }
+  if (!dives || !dives.length) {
+    list.innerHTML = '<div class="lul-empty">No deep dives yet.<br>Tap + to add a topic you want to understand.</div>';
+    return;
+  }
+  list.innerHTML = dives.map(d => {
+    const n = Array.isArray(d.key_points) ? d.key_points.length : 0;
+    const meta = n + ' key point' + (n === 1 ? '' : 's') + (d.last_reviewed_at ? ' · last ' + fmtDDDate(d.last_reviewed_at) : '');
+    return '<div class="dd-item" data-id="' + d.id + '">'
+      + '<div class="dd-title">' + esc(d.title) + '</div>'
+      + (d.summary ? '<div class="dd-summary">' + esc(d.summary) + '</div>' : '')
+      + '<div class="dd-meta">' + esc(meta) + '</div>'
+      + '</div>';
+  }).join('');
+  list.querySelectorAll('.dd-item').forEach((el, i) => {
+    el.addEventListener('click', () => arStartSession(dives[i]));
+    el.addEventListener('contextmenu', e => { e.preventDefault(); ddConfirmDelete(dives[i]); });
+    let lpTimer = null;
+    el.addEventListener('touchstart', () => { lpTimer = setTimeout(() => ddConfirmDelete(dives[i]), 600); }, { passive: true });
+    ['touchend','touchmove','touchcancel'].forEach(ev =>
+      el.addEventListener(ev, () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } }, { passive: true }));
+  });
+}
+
+async function ddConfirmDelete(dive) {
+  if (!confirm('Delete "' + dive.title + '"?')) return;
+  try { await ddDelete(dive.id); showToast('Deleted'); loadDeepDives(); updateDeepDiveBadge(); }
+  catch (e) { showToast('Delete failed'); }
+}
+
+// ── Add-dive modal ──
+let ddAddTab = 'topic';
+function ddSetAddTab(tab) {
+  ddAddTab = tab;
+  document.querySelectorAll('.dd-add-tab').forEach(b =>
+    b.className = 'btn ' + (b.dataset.ddTab === tab ? 'btn-primary' : 'btn-outline') + ' dd-add-tab');
+  document.getElementById('dd-tab-topic').classList.toggle('hidden', tab !== 'topic');
+  document.getElementById('dd-tab-cards').classList.toggle('hidden', tab !== 'cards');
+  // The shared Create button drives the topic tab only; the cards tab has its own actions.
+  document.getElementById('dd-add-save').style.display = tab === 'topic' ? '' : 'none';
+  if (tab === 'cards') ddRenderClusterPicker();
+}
+
+// The active-recall cluster picker: available (8+ card) concepts, ripe first.
+async function ddRenderClusterPicker() {
+  const list = document.getElementById('dd-cluster-list');
+  if (!list) return;
+  list.innerHTML = '<p class="lul-empty" style="padding:8px 0">Loading…</p>';
+  let snap;
+  try { snap = await clSnapshot(); } catch (e) { list.innerHTML = ''; return; }
+  const avail = snap.clusters.filter(c => c.available).sort((a, b) => (b.ripe - a.ripe) || (b.dueFrac - a.dueFrac));
+  if (!avail.length) {
+    list.innerHTML = '<p class="lul-empty" style="padding:8px 0">No concepts yet. Assemble one below.</p>';
+    return;
+  }
+  list.innerHTML = avail.map(c =>
+    '<button class="dd-cluster-row" data-id="' + c.id + '" data-name="' + esc(c.name) + '">' +
+      '<span class="dd-cluster-name">' + esc(c.name) + '</span>' +
+      '<span class="dd-cluster-meta">' + c.total + ' cards' + (c.ripe ? ' · ripe' : '') + '</span>' +
+    '</button>'
+  ).join('');
+  list.querySelectorAll('.dd-cluster-row').forEach(b => b.addEventListener('click', () => {
+    document.getElementById('dd-add-modal').classList.add('hidden');
+    arStartFromCluster(b.dataset.id, b.dataset.name).catch(e => showToast('Could not start — ' + (e.message || 'try again')));
+  }));
+}
+
+document.querySelectorAll('.dd-add-tab').forEach(b =>
+  b.addEventListener('click', () => ddSetAddTab(b.dataset.ddTab)));
+document.getElementById('dd-add-btn')?.addEventListener('click', () => {
+  document.getElementById('dd-topic-input').value = '';
+  ddSetAddTab('topic');
+  document.getElementById('dd-add-modal').classList.remove('hidden');
+  setTimeout(() => document.getElementById('dd-topic-input').focus(), 60);
+});
+document.getElementById('dd-add-close')?.addEventListener('click', () =>
+  document.getElementById('dd-add-modal').classList.add('hidden'));
+// Topic tab: name a topic, Claude builds a dive.
+document.getElementById('dd-add-save')?.addEventListener('click', async () => {
+  if (!hasSession()) { showToast('Sign in to use AI'); return; }
+  const btn = document.getElementById('dd-add-save');
+  btn.textContent = 'Creating…'; btn.disabled = true;
+  try {
+    const title = document.getElementById('dd-topic-input').value.trim();
+    if (!title) { showToast('Name a topic first'); btn.textContent = 'Create'; btn.disabled = false; return; }
+    const dive = await ddGenerateTopic(title);
+    if (!dive.key_points || !dive.key_points.length) throw new Error('could not build that dive');
+    await ddCreate({ title: dive.title, prompt: dive.prompt, summary: dive.summary, key_points: dive.key_points, source: 'manual' });
+    document.getElementById('dd-add-modal').classList.add('hidden');
+    showToast('Deep dive added');
+    updateDeepDiveBadge();
+    if (document.getElementById('screen-deep-dives').classList.contains('active')) loadDeepDives();
+  } catch (e) {
+    showToast('Could not create — ' + (e.message || 'try again'));
+  }
+  btn.textContent = 'Create'; btn.disabled = false;
+});
+// Cards tab: assemble a new concept from existing cards, persist a cluster, run it now.
+document.getElementById('dd-assemble-btn')?.addEventListener('click', async () => {
+  if (!hasSession()) { showToast('Sign in to use AI'); return; }
+  const btn = document.getElementById('dd-assemble-btn');
+  const label = btn.textContent;
+  btn.textContent = 'Assembling…'; btn.disabled = true;
+  try {
+    const dive = await ddGenerateFromCards();
+    if (!dive.key_points || !dive.key_points.length) throw new Error('could not build that concept');
+    const rows = await ddCreate({ title: dive.title, prompt: dive.prompt, summary: dive.summary, key_points: dive.key_points, source: 'cards', cluster_id: dive.cluster_id || null });
+    document.getElementById('dd-add-modal').classList.add('hidden');
+    updateDeepDiveBadge();
+    if (document.getElementById('screen-deep-dives').classList.contains('active')) loadDeepDives();
+    const saved = Array.isArray(rows) ? rows[0] : rows;
+    arStartSession(saved && saved.id ? saved : dive);
+  } catch (e) {
+    showToast('Could not assemble — ' + (e.message || 'try again'));
+  }
+  btn.textContent = label; btn.disabled = false;
+});
+
+// Create a dive straight from a Look Up Later item.
+async function ddFromLul(title, contextText) {
+  const dive = await ddGenerateTopic(title, contextText);
+  if (!dive.key_points || !dive.key_points.length) throw new Error('could not build that dive');
+  await ddCreate({ title: dive.title, prompt: dive.prompt, summary: dive.summary, key_points: dive.key_points, source: 'look-up-later' });
+  updateDeepDiveBadge();
+}
+
+// ── Active Recall session (runs on a chosen dive) ──
+function arPhase(name) {
+  ['setup','loading','answer','feedback'].forEach(p => {
+    const el = document.getElementById('ar-' + p);
+    if (el) el.style.display = p === name ? '' : 'none';
+  });
+}
+function arSetMode(m) {
+  if (!arState) return;
+  arState.mode = m;
+  localStorage.setItem('ar_mode', m);
+  document.querySelectorAll('#ar-mode-toggle .srs-mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.arMode === m));
+  const hint = document.getElementById('ar-mode-hint');
+  if (hint) hint.textContent = AR_MODE_HINTS[m] || '';
+}
+function arStartSession(dive) {
+  arState = {
+    dive,
+    mode: localStorage.getItem('ar_mode') || 'speak',
+    prompt: dive.prompt || ('Explain ' + dive.title + ' from memory.'),
+    keyPoints: Array.isArray(dive.key_points) ? dive.key_points : [],
+    verdicts: [], bucket: null,
+  };
+  if (arRecording) arStopRecording();
+  showScreen('active-recall');
+  document.getElementById('ar-dive-title').textContent = dive.title;
+  arSetMode(arState.mode);
+  arPhase('setup');
+}
+
+document.getElementById('ar-mode-toggle')?.addEventListener('click', e => {
+  const b = e.target.closest('[data-ar-mode]'); if (!b) return;
+  arSetMode(b.dataset.arMode);
+});
+document.getElementById('ar-begin')?.addEventListener('click', () => {
+  if (!arState || !arState.keyPoints.length) { showToast('This dive has no content yet'); return; }
+  arRenderAnswer();
+});
+
+function arRenderAnswer() {
+  arPhase('answer');
+  document.getElementById('ar-prompt').textContent = arState.prompt;
+  ['mental','type','speak'].forEach(m =>
+    document.getElementById('ar-' + m).style.display = m === arState.mode ? '' : 'none');
+  if (arState.mode === 'mental') arSetupMental();
+  else if (arState.mode === 'type') arSetupType();
+  else arSetupSpeak();
+}
+
+// ── Mental ──
+function arSetupMental() {
+  const pts = document.getElementById('ar-mental-points');
+  pts.style.display = 'none'; pts.innerHTML = '';
+  document.getElementById('ar-mental-rate').style.display = 'none';
+  const reveal = document.getElementById('ar-reveal');
+  reveal.style.display = ''; reveal.disabled = false;
+  document.querySelectorAll('#ar-mental-rate .ar-rate-btn').forEach(x => x.disabled = false);
+}
+document.getElementById('ar-reveal')?.addEventListener('click', () => {
+  const box = document.getElementById('ar-mental-points');
+  box.innerHTML = arState.keyPoints.map(k => arPointHtml(k.text, null)).join('');
+  box.style.display = '';
+  document.getElementById('ar-reveal').style.display = 'none';
+  document.getElementById('ar-mental-rate').style.display = '';
+});
+document.getElementById('ar-mental-rate')?.addEventListener('click', async e => {
+  const b = e.target.closest('[data-ar-rate]'); if (!b) return;
+  const rating = parseInt(b.dataset.arRate);
+  arState.bucket = ['miss','hard','easy'][rating];
+  document.querySelectorAll('#ar-mental-rate .ar-rate-btn').forEach(x => x.disabled = true);
+  await arWriteBackMental(rating);
+  await arMarkReviewed();
+  arShowFeedback(null);
+});
+
+// ── Type ──
+function arSetupType() { document.getElementById('ar-type-input').value = ''; }
+document.getElementById('ar-type-submit')?.addEventListener('click', async () => {
+  const ans = document.getElementById('ar-type-input').value.trim();
+  if (!ans) { showToast('Write something first'); return; }
+  await arGradeAndFinish(ans, document.getElementById('ar-type-submit'));
+});
+
+// ── Speak ──
+function arSetupSpeak() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const live = document.getElementById('ar-speak-live');
+  const fb = document.getElementById('ar-speak-fallback');
+  const submit = document.getElementById('ar-speak-submit');
+  const transcript = document.getElementById('ar-speak-transcript');
+  transcript.value = '';
+  if (!SR) {
+    live.style.display = 'none';
+    fb.style.display = '';
+    fb.textContent = 'Speech recognition is not available in this browser. Type your answer below instead.';
+    submit.style.display = '';
+    return;
+  }
+  live.style.display = '';
+  fb.style.display = 'none';
+  submit.style.display = 'none';
+  document.getElementById('ar-record').textContent = 'Start recording';
+  document.getElementById('ar-record-state').textContent = '';
+  arRecording = false; arRecog = null;
+}
+document.getElementById('ar-record')?.addEventListener('click', () => {
+  if (arRecording) arStopRecording(); else arStartRecording();
+});
+function arStartRecording() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return;
+  const transcriptEl = document.getElementById('ar-speak-transcript');
+  let finalText = transcriptEl.value ? transcriptEl.value.trim() + ' ' : '';
+  arRecog = new SR();
+  arRecog.continuous = true; arRecog.interimResults = true; arRecog.lang = 'en-US';
+  arRecog.onresult = e => {
+    let interim = '';
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const tr = e.results[i][0].transcript;
+      if (e.results[i].isFinal) finalText += tr + ' '; else interim += tr;
+    }
+    transcriptEl.value = (finalText + interim).trim();
+  };
+  arRecog.onerror = ev => {
+    document.getElementById('ar-record-state').textContent = 'Mic error: ' + (ev.error || 'unknown');
+    arStopRecording();
+  };
+  try { arRecog.start(); } catch (e) {}
+  arRecording = true;
+  document.getElementById('ar-record').textContent = 'Stop recording';
+  document.getElementById('ar-record-state').textContent = 'Listening…';
+}
+function arStopRecording() {
+  arRecording = false;
+  try { arRecog && arRecog.stop(); } catch (e) {}
+  const rec = document.getElementById('ar-record');
+  if (rec) rec.textContent = 'Start recording';
+  const state = document.getElementById('ar-record-state');
+  const transcript = document.getElementById('ar-speak-transcript');
+  const submit = document.getElementById('ar-speak-submit');
+  if (transcript && transcript.value.trim()) {
+    if (state) state.textContent = 'Recorded. Edit if needed, then submit.';
+    if (submit) submit.style.display = '';
+  } else if (state) { state.textContent = ''; }
+}
+document.getElementById('ar-speak-submit')?.addEventListener('click', async () => {
+  if (arRecording) arStopRecording();
+  const ans = document.getElementById('ar-speak-transcript').value.trim();
+  if (!ans) { showToast('Nothing to submit yet'); return; }
+  await arGradeAndFinish(ans, document.getElementById('ar-speak-submit'));
+});
+
+// ── Grading (Type + Speak converge) ──
+async function arGradeAndFinish(answer, btn) {
+  const label = btn.textContent;
+  btn.textContent = 'Grading…'; btn.disabled = true;
+  try {
+    const graded = await arGrade(answer);
+    arState.bucket = graded.bucket;
+    arState.verdicts = Array.isArray(graded.verdicts) ? graded.verdicts : [];
+    await arWriteBackSurgical(arState.verdicts);
+    await arMarkReviewed();
+    arShowFeedback(graded);
+  } catch (e) {
+    showToast('Grading failed — ' + (e.message || 'try again'));
+    btn.textContent = label; btn.disabled = false;
+    return;
+  }
+  btn.textContent = label; btn.disabled = false;
+}
+async function arGrade(answer) {
+  const points = arState.keyPoints.map((k, i) => (i + 1) + '. ' + k.text).join('\n');
+  return await callClaudeAR(
+    'You are grading a from-memory explanation. Be encouraging but honest.\n\n'
+    + 'Prompt the user was asked: "' + arState.prompt + '"\n\n'
+    + 'Key points a strong answer must hit (numbered):\n' + points + '\n\n'
+    + "User's explanation:\n\"" + answer + '"\n\n'
+    + 'Return JSON only with exactly three fields: '
+    + '"feedback" (2 to 3 sentences of specific prose, second person, naming what they hit and what they missed — NO score, grade, number, letter, or percentage), '
+    + '"verdicts" (array of {"index": <0-based key point number>, "hit": <true or false>} for EVERY key point), '
+    + '"bucket" (one of "miss", "hard", "easy" — overall, quiet, never shown to the user).'
+  );
+}
+
+// ── Feedback ──
+function arTagHtml(hit) {
+  const color = hit ? 'var(--accent-3)' : 'var(--accent)';
+  return '<span style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:'
+    + color + ';margin-right:8px;font-weight:600">' + (hit ? 'hit' : 'missed') + '</span>';
+}
+function arPointHtml(text, hit) {
+  const tag = (hit === null || hit === undefined) ? '' : arTagHtml(hit);
+  return '<div style="padding:9px 0;border-bottom:1px solid var(--border);line-height:1.45">' + tag + esc(text) + '</div>';
+}
+function arShowFeedback(graded) {
+  arPhase('feedback');
+  const prose = document.getElementById('ar-feedback-prose');
+  if (graded && graded.feedback) { prose.style.display = ''; prose.textContent = graded.feedback; }
+  else { prose.style.display = 'none'; prose.textContent = ''; }
+  const verdictFor = i => (graded && graded.verdicts) ? graded.verdicts.find(v => v.index === i) : null;
+  document.getElementById('ar-feedback-points').innerHTML = arState.keyPoints.map((k, i) => {
+    const v = verdictFor(i);
+    return arPointHtml(k.text, v ? !!v.hit : null);
+  }).join('');
+  const saveBtn = document.getElementById('ar-save-cards');
+  saveBtn.style.display = ''; saveBtn.disabled = false; saveBtn.textContent = 'Pull terms into flashcards';
+}
+document.getElementById('ar-done')?.addEventListener('click', () => showScreen('home'));
+document.getElementById('ar-save-cards')?.addEventListener('click', arExtractTerms);
+
+// Update last_reviewed_at on the dive (fire-and-forget; on-demand shelf, no due dates).
+async function arMarkReviewed() {
+  if (!arState || !arState.dive || !arState.dive.id) return;
+  try { await ddUpdate(arState.dive.id, { last_reviewed_at: new Date().toISOString() }); } catch (e) {}
+}
+
+// ── Write-back to the flashcard deck (resurface signal only — direct next_review
+// pull-forward, NOT a full SM-2 re-grade). Only affects cards a key point traces
+// to (card-sourced dives); topic dives have no cardIds, so this is a no-op. ──
+function arTomorrow() { const d = new Date(); d.setDate(d.getDate() + 1); return localDateStr(d); }
+async function arWriteBackSurgical(verdicts) {
+  const tomorrow = arTomorrow();
+  const missedIds = new Set();
+  (verdicts || []).forEach(v => {
+    if (v && v.hit === false) {
+      const kp = arState.keyPoints[v.index];
+      if (kp && kp.cardId) missedIds.add(kp.cardId);
+    }
+  });
+  const missedAt = new Date().toISOString();
+  for (const id of missedIds) { try { await srsUpdate(id, { next_review: tomorrow, last_missed_at: missedAt }); } catch (e) {} }
+}
+async function arWriteBackMental(rating) {
+  if (rating !== 0) return; // only a self-declared miss force-resurfaces the cards
+  const tomorrow = arTomorrow();
+  const missedAt = new Date().toISOString();
+  const ids = new Set(arState.keyPoints.map(k => k.cardId).filter(Boolean));
+  for (const id of ids) { try { await srsUpdate(id, { next_review: tomorrow, last_missed_at: missedAt }); } catch (e) {} }
+}
+
+// Pull the key terms from this dive down into atomic flashcards (context defaults
+// to 'fun' server-side). Skippable.
+async function arExtractTerms() {
+  if (!hasSession()) { showToast('Sign in to use AI'); return; }
+  const btn = document.getElementById('ar-save-cards');
+  btn.textContent = 'Pulling terms…'; btn.disabled = true;
+  try {
+    const points = arState.keyPoints.map((k, i) => (i + 1) + '. ' + k.text).join('\n');
+    const out = await callClaudeAR(
+      'From the concept "' + arState.dive.title + '", extract the key TERMS a learner should memorize as atomic flashcards. '
+      + 'Use the key points below as the source. Front: the term or a short specific question. Back: 1 to 2 punchy sentences defining it. '
+      + 'Return 3 to 8 cards.\n\nKey points:\n' + points + '\n\nReturn JSON only: {"cards":[{"front":"...","back":"..."}]}'
+    );
+    const cards = (out && out.cards) || [];
+    let saved = 0;
+    for (const c of cards) {
+      if (!c.front || !c.back) continue;
+      try { await srsCreate(c.front, c.back, 'Deep Dive'); saved++; } catch (e) {}
+    }
+    showToast(saved ? saved + ' card' + (saved === 1 ? '' : 's') + ' saved' : 'Nothing saved');
+    if (saved) updateDueBadge();
+    btn.style.display = 'none';
+  } catch (e) {
+    showToast('Could not pull terms — ' + (e.message || 'try again'));
+    btn.textContent = 'Pull terms into flashcards'; btn.disabled = false;
+  }
+}
+
 // Wire up "Remember It" for each activity using ankiData
 function wireRememberIt(slug, frontFn, backFn, kind) {
   injectRememberIt(slug, () => {
@@ -4440,6 +5191,9 @@ async function lulUpdate(id, answer, tl_dr, links) {
   return sbFetch('look_up_later?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ answer, tl_dr, links }) });
 }
 async function lulDelete(id) { return sbFetch('look_up_later?id=eq.' + id, { method: 'DELETE' }); }
+async function lulSetFollowups(id, arr) {
+  return sbFetch('look_up_later?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ followups: arr }) });
+}
 
 async function lulResearch(id, question) {
   try {
@@ -4485,23 +5239,47 @@ function lulRenderAnswer(el, id, data, list) {
   const cleanTlDr = lulCleanText(data.tl_dr);
   const validTlDr = cleanTlDr && !cleanTlDr.startsWith('[') && !cleanTlDr.startsWith('{');
 
+  const question = el.querySelector('.lul-question').textContent;
+  let followups = Array.isArray(data.followups) ? data.followups.slice() : [];
+
   const answerEl = document.createElement('div');
   answerEl.className = 'lul-answer';
   answerEl.innerHTML =
     (validTlDr ? '<div class="lul-tldr"><span class="lul-tldr-label">TL;DR</span>' + esc(cleanTlDr) + '</div>' : '') +
     '<div class="lul-summary">' + esc(cleanSummary) + '</div>' +
     (data.links && data.links.length ? '<div class="lul-links">' + data.links.map(l => '<a href="' + esc(l.url) + '" target="_blank" rel="noopener">' + esc(l.title) + '</a>').join('') + '</div>' : '') +
+    '<div class="lul-thread"></div>' +
+    '<div class="lul-followup">' +
+      '<textarea class="anki-textarea lul-followup-input" rows="2" placeholder="Ask a follow-up about this…"></textarea>' +
+      '<button class="btn btn-outline lul-followup-ask">Ask</button>' +
+    '</div>' +
     '<div class="lul-answer-actions">' +
       '<div class="lul-3btns">' +
-        '<button class="btn btn-outline lul-remember-btn">Remember It</button>' +
+        '<button class="btn btn-outline lul-remember-btn">Make Flashcard</button>' +
         '<a class="btn btn-outline lul-google-btn" target="_blank" rel="noopener">Google It</a>' +
         '<button class="btn btn-outline lul-claude-btn">Claude It</button>' +
       '</div>' +
-      '<button class="btn btn-outline lul-done-btn" style="width:100%">Done — remove from queue</button>' +
+      '<button class="btn btn-outline lul-dive-btn" style="width:100%;margin-top:8px">Add to Deep Dive</button>' +
+      '<button class="btn btn-outline lul-done-btn" style="width:100%;margin-top:8px">Done — remove from queue</button>' +
     '</div>';
   el.querySelector('.lul-actions').replaceWith(answerEl);
 
-  const question = el.querySelector('.lul-question').textContent;
+  const threadEl = answerEl.querySelector('.lul-thread');
+  function renderThread() {
+    threadEl.innerHTML = followups.map(f =>
+      '<div class="lul-fu">' +
+        '<div class="lul-fu-q">' + esc(f.q) + '</div>' +
+        '<div class="lul-fu-a">' + esc(f.a) + '</div>' +
+      '</div>').join('');
+  }
+  renderThread();
+
+  // Combined research context for pushes: summary + the full follow-up thread.
+  function fullContext() {
+    let c = (validTlDr ? cleanTlDr + '\n\n' : '') + (cleanSummary || '');
+    followups.forEach(f => { c += '\n\nQ: ' + f.q + '\nA: ' + f.a; });
+    return c;
+  }
 
   // Google It
   answerEl.querySelector('.lul-google-btn').href =
@@ -4514,13 +5292,42 @@ function lulRenderAnswer(el, id, data, list) {
     setTimeout(() => { window.location.href = 'claude://'; }, 600);
   });
 
-  // Remember It — Claude condenses to a flashcard, opens editable preview WITH
-  // Regenerate + Generate Back buttons (Patch v6 #4).
+  // Ask a follow-up — context-aware, appended to the thread and persisted.
+  answerEl.querySelector('.lul-followup-ask').addEventListener('click', async () => {
+    const input = answerEl.querySelector('.lul-followup-input');
+    const q = input.value.trim();
+    if (!q) { showToast('Type a question first'); return; }
+    const askBtn = answerEl.querySelector('.lul-followup-ask');
+    askBtn.textContent = 'Thinking…'; askBtn.disabled = true; input.disabled = true;
+    try {
+      const priorThread = followups.map(f => 'Q: ' + f.q + '\nA: ' + f.a).join('\n\n');
+      const res = await callClaude(
+        'You are helping the user research a topic. Answer their follow-up specifically and factually in 1 to 3 short paragraphs. No preamble.\n\n'
+        + 'Original topic/question: "' + question + '"\n'
+        + 'What they already know:\n"' + (cleanSummary || '(none)') + '"\n'
+        + (priorThread ? 'Earlier follow-ups:\n' + priorThread + '\n' : '')
+        + '\nNew follow-up: "' + q + '"\n\n'
+        + 'Return JSON: {"answer":"..."}'
+      );
+      const a = lulCleanText(res.answer || '');
+      if (a) {
+        followups.push({ q, a });
+        renderThread();
+        input.value = '';
+        try { await lulSetFollowups(id, followups); } catch(e) {}
+      } else { showToast('No answer — try rephrasing'); }
+    } catch(e) {
+      showToast('Ask failed: ' + (e.message || 'unknown error'));
+    }
+    askBtn.textContent = 'Ask'; askBtn.disabled = false; input.disabled = false;
+  });
+
+  // Make Flashcard — one reviewed card (editable preview), fed the full thread.
   answerEl.querySelector('.lul-remember-btn').addEventListener('click', async () => {
     const btn = answerEl.querySelector('.lul-remember-btn');
     btn.textContent = 'Generating…';
     btn.disabled = true;
-    const context = (validTlDr ? cleanTlDr + '\n\n' : '') + (cleanSummary || '');
+    const context = fullContext();
     try {
       const card = await callClaude(
         'Condense this into a single flashcard. Front: a clean, specific question. Back: a concise 1–2 sentence answer with the key fact. Question asked: "' + question + '". Full answer: "' + context + '". Return JSON: {"front":"...","back":"..."}'
@@ -4540,8 +5347,16 @@ function lulRenderAnswer(el, id, data, list) {
     } catch(e) {
       showToast('Generation failed: ' + (e.message || 'unknown error'));
     }
-    btn.textContent = 'Remember It';
+    btn.textContent = 'Make Flashcard';
     btn.disabled = false;
+  });
+
+  // Add to Deep Dive — build a dive from the topic + full research thread.
+  answerEl.querySelector('.lul-dive-btn').addEventListener('click', async () => {
+    const btn = answerEl.querySelector('.lul-dive-btn');
+    btn.textContent = 'Adding…'; btn.disabled = true;
+    try { await ddFromLul(question, fullContext()); showToast('Added to Deep Dives'); btn.textContent = 'Added to Deep Dives'; }
+    catch(e) { showToast('Could not add — ' + (e.message || 'try again')); btn.textContent = 'Add to Deep Dive'; btn.disabled = false; }
   });
 
   answerEl.querySelector('.lul-done-btn').addEventListener('click', async () => {
@@ -4566,6 +5381,7 @@ async function loadLulScreen() {
       <div class="lul-question">${esc(item.question)}</div>
       <div class="lul-actions">
         <button class="btn btn-primary lul-research-btn">${item.answer ? 'Read Answer' : 'Research It'}</button>
+        <button class="btn btn-outline lul-dive-btn">Deep Dive</button>
         <button class="btn btn-outline lul-dismiss-btn">Dismiss</button>
       </div>
     </div>`).join('');
@@ -4582,9 +5398,17 @@ async function loadLulScreen() {
       updateLulBadge();
     });
 
+    // Deep Dive — route the raw question straight into a deep-dive topic.
+    el.querySelector('.lul-dive-btn').addEventListener('click', async () => {
+      const btn = el.querySelector('.lul-dive-btn');
+      btn.textContent = 'Adding…'; btn.disabled = true;
+      try { await ddFromLul(question); showToast('Added to Deep Dives'); btn.textContent = 'Added'; }
+      catch(e) { showToast('Could not add — ' + (e.message || 'try again')); btn.textContent = 'Deep Dive'; btn.disabled = false; }
+    });
+
     el.querySelector('.lul-research-btn').addEventListener('click', async () => {
       if (item.answer) {
-        lulRenderAnswer(el, id, { tl_dr: item.tl_dr, summary: item.answer, links: item.links || [] }, list);
+        lulRenderAnswer(el, id, { tl_dr: item.tl_dr, summary: item.answer, links: item.links || [], followups: item.followups || [] }, list);
         return;
       }
       const btn = el.querySelector('.lul-research-btn');
@@ -4597,6 +5421,7 @@ async function loadLulScreen() {
         );
         const safeTlDr = typeof data.tl_dr === 'string' && !data.tl_dr.startsWith('[') && !data.tl_dr.startsWith('{') ? data.tl_dr : '';
       await lulUpdate(id, data.summary, safeTlDr, data.links || []);
+        data.followups = item.followups || [];
         lulRenderAnswer(el, id, data, list);
       } catch(e) {
         showToast('Research failed: ' + (e.message || 'unknown error'));
@@ -4639,8 +5464,10 @@ updateLulBadge();
 const srsFab = document.getElementById('srs-fab');
 document.addEventListener('screenchange', (e) => {
   srsFab.style.display = (e.detail === 'srs-review') ? 'flex' : 'none';
+  if (e.detail === 'home') renderStateLine();
 });
 srsFab.style.display = 'none';
+renderStateLine();
 
 // ── Quiz Activities ───────────────────────────
 const QUIZ_TOPICS = {
@@ -4990,6 +5817,7 @@ function showQuizActions(question, correct, wasCorrect) {
   // Geography quiz only: when answer was marked wrong, offer an override (Patch v6 #13).
   const showIWasRight = !wasCorrect && quizTopic === 'geography';
   actionsEl.innerHTML =
+    '<div id="quiz-keep-slot"></div>' +
     '<button class="btn btn-primary" id="quiz-got-it">Got it</button>' +
     (showIWasRight ? '<button class="btn btn-outline" id="quiz-i-was-right">I was right</button>' : '') +
     '<button class="btn btn-outline" id="quiz-remember">Remember It</button>' +
@@ -4998,6 +5826,9 @@ function showQuizActions(question, correct, wasCorrect) {
       '<button class="btn btn-outline" id="quiz-ask-claude">Ask Claude</button>' +
     '</div>' +
     '<div id="quiz-claude-panel"></div>';
+
+  // Miss-only, one-tap capture. Asked once; dismiss and it stays gone (no roundup).
+  if (!wasCorrect) quizMissCapture(question, correct);
 
   document.getElementById('quiz-got-it').addEventListener('click', () => advanceQuiz(wasCorrect));
 
@@ -5096,683 +5927,14 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
       document.getElementById('lul-add-modal').classList.remove('hidden');
       setTimeout(() => document.getElementById('lul-question-input').focus(), 60);
     }
-    if (btn.dataset.add === 'listen') {
-      document.getElementById('listen-add-title').value = '';
-      document.getElementById('listen-add-custom-title').value = '';
-      document.getElementById('listen-add-duration').value = '';
-      document.getElementById('listen-add-recby').value = '';
-      // Reset to podcast tab
-      document.querySelectorAll('.listen-add-tab').forEach(t => t.className = 'btn btn-outline listen-add-tab');
-      document.querySelector('.listen-add-tab[data-tab="podcast"]').className = 'btn btn-primary listen-add-tab';
-      document.getElementById('listen-tab-podcast').classList.remove('hidden');
-      document.getElementById('listen-tab-custom').classList.add('hidden');
-      document.getElementById('listen-add-modal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('listen-add-title').focus(), 60);
+    if (btn.dataset.add === 'dive') {
+      document.getElementById('dd-topic-input').value = '';
+      ddSetAddTab('topic');
+      document.getElementById('dd-add-modal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('dd-topic-input').focus(), 60);
     }
   });
 });
-
-// ── Something to Listen To ───────────────────────────────
-
-// Spotify PKCE
-const SPOTIFY_CLIENT_ID = '061fec005203410d94eabe844d3f5d22';
-// v8 follow-up: redirect dynamically from the current origin so OAuth works on
-// localhost, deploy previews, and production without code changes. Spotify
-// requires every redirect URI to be whitelisted in the Dashboard — production
-// + http://127.0.0.1:<port>/ + http://localhost:<port>/ all need to be added.
-function spotifyRedirectUri() {
-  return location.origin + location.pathname;
-}
-
-async function spotifyLogin() {
-  const arr = crypto.getRandomValues(new Uint8Array(32));
-  const verifier = btoa(String.fromCharCode(...arr)).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  localStorage.setItem('spotify_verifier', verifier);
-  // Stash the redirect we used so the callback can match it (Spotify requires
-  // an exact-equal redirect_uri on the token exchange).
-  localStorage.setItem('spotify_redirect_used', spotifyRedirectUri());
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier));
-  const challenge = btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-  location.href = 'https://accounts.spotify.com/authorize?client_id=' + SPOTIFY_CLIENT_ID +
-    '&response_type=code&redirect_uri=' + encodeURIComponent(spotifyRedirectUri()) +
-    '&code_challenge_method=S256&code_challenge=' + challenge;
-}
-
-async function spotifyHandleCallback(code) {
-  const verifier = localStorage.getItem('spotify_verifier') || '';
-  const redirect = localStorage.getItem('spotify_redirect_used') || spotifyRedirectUri();
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'authorization_code', code,
-      redirect_uri: redirect, client_id: SPOTIFY_CLIENT_ID, code_verifier: verifier })
-  });
-  const data = await res.json();
-  if (data.access_token) {
-    localStorage.setItem('spotify_token', data.access_token);
-    localStorage.setItem('spotify_refresh', data.refresh_token || '');
-    localStorage.setItem('spotify_expires', String(Date.now() + (data.expires_in || 3600) * 1000));
-    localStorage.removeItem('spotify_verifier');
-    localStorage.removeItem('spotify_redirect_used');
-  }
-}
-
-async function spotifyToken() {
-  if (Date.now() < Number(localStorage.getItem('spotify_expires') || 0) - 60000)
-    return localStorage.getItem('spotify_token') || '';
-  const refresh = localStorage.getItem('spotify_refresh');
-  if (!refresh) return '';
-  const res = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refresh, client_id: SPOTIFY_CLIENT_ID })
-  });
-  const data = await res.json();
-  if (data.access_token) {
-    localStorage.setItem('spotify_token', data.access_token);
-    localStorage.setItem('spotify_expires', String(Date.now() + (data.expires_in || 3600) * 1000));
-    return data.access_token;
-  }
-  return '';
-}
-
-async function spotifySearchShow(query) {
-  try {
-    const token = await spotifyToken();
-    if (!token) return null;
-    const res = await fetch('https://api.spotify.com/v1/search?q=' + encodeURIComponent(query) + '&type=show&limit=1&market=US',
-      { headers: { 'Authorization': 'Bearer ' + token } });
-    const data = await res.json();
-    return data.shows?.items?.[0]?.external_urls?.spotify || null;
-  } catch(e) { return null; }
-}
-
-// Handle Spotify OAuth callback on page load
-(async () => {
-  const code = new URLSearchParams(location.search).get('code');
-  if (code) {
-    await spotifyHandleCallback(code);
-    history.replaceState({}, '', location.pathname);
-    showToast('Spotify connected ✓');
-  }
-})();
-
-// Podcast feed helpers
-async function spotifyFetchLatestEpisodes(showUrl, count = 2) {
-  const token = await spotifyToken();
-  if (!token) return [];
-  const match = showUrl.match(/show\/([A-Za-z0-9]+)/);
-  if (!match) return [];
-  const showId = match[1];
-  try {
-    const [showRes, epRes] = await Promise.all([
-      fetch('https://api.spotify.com/v1/shows/' + showId + '?market=US', { headers: { Authorization: 'Bearer ' + token } }),
-      fetch('https://api.spotify.com/v1/shows/' + showId + '/episodes?limit=' + count + '&market=US', { headers: { Authorization: 'Bearer ' + token } })
-    ]);
-    if (!epRes.ok) {
-      console.warn('[listen] Spotify episodes ' + epRes.status + ' for show ' + showId);
-      if (epRes.status === 401 || epRes.status === 403) {
-        // Token revoked (typically because a fresh auth happened on a different
-        // origin / browser tab). Wipe the cached creds so the "Spotify
-        // disconnected" banner surfaces and the user can reconnect.
-        localStorage.removeItem('spotify_token');
-        localStorage.removeItem('spotify_expires');
-        localStorage.removeItem('spotify_refresh');
-      }
-      return [];
-    }
-    const showData = showRes.ok ? await showRes.json() : {};
-    const epData = await epRes.json();
-    // v8 #18c: Spotify returns `null` entries in `items` for region-restricted
-    // episodes. Filtering before .map prevents the whole show from going dark.
-    const items = (epData.items || []).filter(ep => ep && ep.name);
-    return items.map(ep => ({
-      title: ep.name || '',
-      show_name: showData.name || '',
-      summary: (ep.description || '').slice(0, 300),
-      duration_secs: ep.duration_ms ? Math.round(ep.duration_ms / 1000) : null,
-      spotify_url: ep.external_urls?.spotify || showUrl,
-      pubDate: ep.release_date || ''
-    }));
-  } catch(e) {
-    console.warn('[listen] Spotify fetch failed for ' + showId + ':', e);
-    return [];
-  }
-}
-
-async function spotifyFetchLatestEpisode(showUrl) {
-  const eps = await spotifyFetchLatestEpisodes(showUrl, 1);
-  return eps[0] || null;
-}
-
-// Supabase helpers
-async function listenSubsFetch() { return sbFetch('listening_subscriptions?order=created_at.asc'); }
-async function listenQueueFetch() { return sbFetch('listening_queue?listened=eq.false&order=created_at.desc'); }
-async function listenQueueCreate(row) { return sbFetch('listening_queue', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(row) }); }
-async function listenQueueDismiss(id) { return sbFetch('listening_queue?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ listened: true }) }); }
-async function listenSubCreate(row) { return sbFetch('listening_subscriptions', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(row) }); }
-async function listenSubDelete(id) {
-  // Remove pending queue items from this show so they leave the queue,
-  // then detach any historical/listened rows so the FK releases the subscription.
-  await sbFetch('listening_queue?subscription_id=eq.' + id + '&listened=eq.false', { method: 'DELETE' });
-  await sbFetch('listening_queue?subscription_id=eq.' + id, {
-    method: 'PATCH', prefer: 'return=minimal',
-    body: JSON.stringify({ subscription_id: null }),
-  });
-  return sbFetch('listening_subscriptions?id=eq.' + id, { method: 'DELETE' });
-}
-
-async function listenEnrich(id, title) {
-  try {
-    let episodeTitle = null, showName = null, summary = null, durationSecs = null, spotifyUrl = null;
-    const token = await spotifyToken();
-
-    if (token) {
-      try {
-        // If user pasted a Spotify episode URL
-        if (title.includes('open.spotify.com/episode/')) {
-          const epMatch = title.match(/episode\/([A-Za-z0-9]+)/);
-          if (epMatch) {
-            const epRes = await fetch('https://api.spotify.com/v1/episodes/' + epMatch[1] + '?market=US', { headers: { Authorization: 'Bearer ' + token } });
-            const ep = await epRes.json();
-            episodeTitle = ep.name;
-            showName = ep.show?.name;
-            summary = (ep.description || '').slice(0, 300);
-            durationSecs = ep.duration_ms ? Math.round(ep.duration_ms / 1000) : null;
-            spotifyUrl = ep.external_urls?.spotify || title;
-          }
-        } else {
-          // Show URL or show name — search Spotify then get latest episode
-          let showUrl = title.includes('open.spotify.com/show/') ? title : null;
-          if (!showUrl) {
-            const searchRes = await fetch('https://api.spotify.com/v1/search?q=' + encodeURIComponent(title) + '&type=show&limit=1&market=US',
-              { headers: { Authorization: 'Bearer ' + token } });
-            const searchData = await searchRes.json();
-            const show = searchData.shows?.items?.[0];
-            if (show) showUrl = show.external_urls?.spotify || ('https://open.spotify.com/show/' + show.id);
-          }
-          if (showUrl) {
-            const ep = await spotifyFetchLatestEpisode(showUrl);
-            if (ep) {
-              episodeTitle = ep.title;
-              showName = ep.show_name;
-              summary = ep.summary;
-              durationSecs = ep.duration_secs;
-              spotifyUrl = ep.spotify_url;
-            }
-          }
-        }
-      } catch(e) {}
-    }
-
-    // Fall back to Claude summary if Spotify returned nothing
-    if (!summary) {
-      try {
-        const cd = await callClaude('For this podcast: "' + title + '". Return JSON: {"show_name":"...","summary":"1-2 sentences about what this show covers"}');
-        if (!showName && typeof cd?.show_name === 'string') showName = cd.show_name;
-        if (typeof cd?.summary === 'string') summary = cd.summary;
-      } catch(e) {}
-    }
-
-    const patch = {
-      title: episodeTitle || title,
-      show_name: showName || '',
-      summary: summary || '',
-      duration_secs: durationSecs,
-      spotify_url: spotifyUrl || ('https://open.spotify.com/search/' + encodeURIComponent(title))
-    };
-    await sbFetch('listening_queue?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(patch) });
-  } catch(e) {}
-}
-
-// Kept as a callable helper (called from dismiss / unsubscribe / add paths).
-// No longer targets a home element — Listen now feeds the combined Recs badge.
-async function updateListenBadge() { return updateRecsBadge(); }
-
-function fmtListenDate(d) {
-  if (!d) return '';
-  const date = new Date(d);
-  if (isNaN(date.getTime())) return '';
-  const now = new Date();
-  const opts = { month: 'short', day: 'numeric' };
-  if (date.getFullYear() !== now.getFullYear()) opts.year = 'numeric';
-  return date.toLocaleDateString('en-US', opts);
-}
-function listenRenderItem(item, container) {
-  const div = document.createElement('div');
-  div.className = 'lul-item';
-  div.dataset.id = item.id;
-  const dur = item.duration_secs ? Math.round(item.duration_secs / 60) + ' min' : '';
-  const dateStr = fmtListenDate(item.pub_date);
-  const meta = [item.show_name, dateStr, dur].filter(Boolean).join(' · ');
-  const recBy = item.recommended_by ? '<div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Rec by ' + esc(item.recommended_by) + '</div>' : '';
-  const summary = item.summary ? '<div class="lul-summary" style="margin-top:8px">' + esc(item.summary) + '</div>' : '';
-  const spotifyUrl = item.source !== 'custom' ? (item.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(item.title))) : null;
-  div.innerHTML =
-    '<div class="lul-question">' + esc(item.title) + '</div>' +
-    (meta ? '<div style="font-size:0.78rem;color:var(--muted);margin-top:2px">' + esc(meta) + '</div>' : '') +
-    recBy + summary +
-    '<div class="lul-actions" style="margin-top:12px">' +
-      (spotifyUrl ? '<a class="btn btn-primary" href="' + esc(spotifyUrl) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">Open in Spotify</a>' : '') +
-      '<button class="btn ' + (spotifyUrl ? 'btn-outline' : 'btn-primary') + ' listen-dismiss" style="flex:1">Dismiss</button>' +
-    '</div>';
-  div.querySelector('.listen-dismiss').addEventListener('click', async () => {
-    try { await listenQueueDismiss(item.id); } catch(e) {}
-    div.remove();
-    if (!container.querySelector('.lul-item')) container.innerHTML = '<p class="lul-empty">Nothing queued.</p>';
-    updateListenBadge();
-  });
-  container.appendChild(div);
-}
-
-// Listen sort: 'recent' | 'shortest'. Cached items let us re-sort without re-fetching Spotify.
-let _listenSubsItems = [];
-let _listenQueueItems = [];
-const LISTEN_SUB_HEADER   = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:8px">Subscriptions</div>';
-const LISTEN_QUEUE_HEADER = '<div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin:16px 0 8px">Your Queue</div>';
-
-function getListenSort() { return localStorage.getItem('listen_sort') || 'recent'; }
-function setListenSort(v) { localStorage.setItem('listen_sort', v); }
-function listenRecencyTime(item) {
-  // Prefer real episode publish date; fall back to when it was added.
-  const t = item.pub_date ? new Date(item.pub_date).getTime() : NaN;
-  if (!isNaN(t)) return t;
-  return new Date(item.created_at || 0).getTime();
-}
-function sortListenItems(items) {
-  const mode = getListenSort();
-  return items.slice().sort((a, b) => {
-    if (mode === 'shortest') {
-      const da = (a.duration_secs == null) ? Infinity : a.duration_secs;
-      const db = (b.duration_secs == null) ? Infinity : b.duration_secs;
-      if (da !== db) return da - db;
-    }
-    return listenRecencyTime(b) - listenRecencyTime(a);
-  });
-}
-function updateListenSortUI() {
-  const mode = getListenSort();
-  document.querySelectorAll('.listen-sort-btn').forEach(b => {
-    const active = b.dataset.sort === mode;
-    b.classList.toggle('btn-primary', active);
-    b.classList.toggle('btn-outline', !active);
-  });
-}
-function renderListenSubsSection() {
-  const subEl = document.getElementById('listen-subscriptions');
-  subEl.innerHTML = LISTEN_SUB_HEADER;
-  if (_listenSubsItems.length === 0) {
-    subEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">No new episodes.</p>';
-    return;
-  }
-  sortListenItems(_listenSubsItems).forEach(item => listenRenderItem(item, subEl));
-}
-function renderListenQueueSection() {
-  const queueEl = document.getElementById('listen-queue');
-  queueEl.innerHTML = LISTEN_QUEUE_HEADER;
-  if (_listenQueueItems.length === 0) {
-    queueEl.innerHTML += '<p class="lul-empty" style="padding:8px 0">Nothing queued. Tap + to add.</p>';
-    return;
-  }
-  sortListenItems(_listenQueueItems).forEach(item => listenRenderItem(item, queueEl));
-}
-
-document.querySelectorAll('.listen-sort-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    setListenSort(btn.dataset.sort);
-    updateListenSortUI();
-    renderListenSubsSection();
-    renderListenQueueSection();
-  });
-});
-
-async function loadListenScreen() {
-  const subEl   = document.getElementById('listen-subscriptions');
-  const queueEl = document.getElementById('listen-queue');
-  const bookEl  = document.getElementById('listen-audiobook');
-  subEl.innerHTML = '<p class="lul-empty" style="padding:12px 0">Checking subscriptions…</p>';
-  queueEl.innerHTML = '';
-  _listenSubsItems = [];
-  _listenQueueItems = [];
-  updateListenSortUI();
-
-  // A. Subscriptions
-  try {
-    const subs = await listenSubsFetch();
-    if (!subs || subs.length === 0) {
-      subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">No subscriptions yet. Tap Manage to add shows.</p>';
-    } else {
-      // v8 #18: surface Spotify-disconnected state so silent token failures don't
-      // look like "Listen recs not refreshing" to the user.
-      const token = await spotifyToken();
-      const banner = !token
-        ? '<div class="listen-spotify-banner">Spotify disconnected — <button type="button" class="listen-spotify-reconnect">Reconnect</button></div>'
-        : '';
-      // Fetch ALL queue rows (including dismissed/listened) so we never recreate an episode
-      // the user already dismissed. Pending rows are derived from the same set.
-      const allRows = (await sbFetch('listening_queue?order=created_at.desc')) || [];
-      const pendingRows = allRows.filter(i => i.listened === false);
-      const titlesByShow = new Map();
-      allRows.forEach(i => {
-        if (!i.subscription_id) return;
-        if (!titlesByShow.has(i.subscription_id)) titlesByShow.set(i.subscription_id, new Set());
-        titlesByShow.get(i.subscription_id).add(i.title.toLowerCase());
-      });
-      const PER_SHOW_SOFT_CAP = 8;
-      const HIGH_FREQ_CAP = 5;
-      const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-      for (const sub of subs) {
-        try {
-          // Fetch 10 so we can detect >5/week cadence. Shows that drop more
-          // than 5 episodes a week get capped at the latest 5 to keep the
-          // queue from flooding; everything else uses the 8-pending soft cap.
-          const eps = await spotifyFetchLatestEpisodes(sub.feed_url, 10);
-          const nowMs = Date.now();
-          const recentCount = eps.filter(ep => {
-            const t = ep.pubDate ? new Date(ep.pubDate).getTime() : NaN;
-            return !isNaN(t) && (nowMs - t) <= ONE_WEEK_MS;
-          }).length;
-          const showCap = recentCount > 5 ? HIGH_FREQ_CAP : PER_SHOW_SOFT_CAP;
-          const subPending = pendingRows.filter(i => i.subscription_id === sub.id);
-          const seenTitles = titlesByShow.get(sub.id) || new Set();
-          let subTotal = subPending.length;
-          for (const ep of eps) {
-            const titleLc = ep.title.toLowerCase();
-            const matchPending = subPending.find(i => i.title.toLowerCase() === titleLc);
-            if (matchPending) {
-              matchPending.pub_date = ep.pubDate || matchPending.pub_date || null;
-              _listenSubsItems.push(matchPending);
-            } else if (!seenTitles.has(titleLc) && subTotal < showCap) {
-              // v8 #18: drop the prior subCount<2 hard cap. Always materialise new
-              // episodes (a chatty show is bounded only by the soft per-show cap).
-              const rows = await listenQueueCreate({
-                title: ep.title, show_name: ep.show_name || sub.name,
-                summary: ep.summary, source: 'subscription',
-                subscription_id: sub.id,
-                duration_secs: ep.duration_secs,
-                spotify_url: ep.spotify_url || ('https://open.spotify.com/search/' + encodeURIComponent(sub.name))
-              });
-              const newItem = Array.isArray(rows) ? rows[0] : rows;
-              if (newItem) {
-                newItem.pub_date = ep.pubDate || null;
-                _listenSubsItems.push(newItem);
-                subTotal++;
-              }
-            }
-            // else: episode was previously in queue (dismissed) — skip
-          }
-        } catch(e) {}
-      }
-      // v8 #18b: any pending row that didn't match a current-Spotify-latest-N
-      // episode (e.g. older but still un-listened) must still render. The prior
-      // logic only pushed items that re-appeared in the latest fetch, so once a
-      // newer episode dropped, older pending items vanished from the UI even
-      // though they were in the DB.
-      const pushedIds = new Set(_listenSubsItems.map(i => i && i.id).filter(Boolean));
-      pendingRows.forEach(p => { if (p.subscription_id && !pushedIds.has(p.id)) _listenSubsItems.push(p); });
-      renderListenSubsSection();
-      if (banner) {
-        subEl.insertAdjacentHTML('afterbegin', banner);
-        subEl.querySelector('.listen-spotify-reconnect')?.addEventListener('click', () => spotifyLogin());
-      }
-    }
-  } catch(e) {
-    subEl.innerHTML = '<p class="lul-empty" style="padding:8px 0">Failed to load subscriptions.</p>';
-  }
-
-  // B. Manual queue
-  try {
-    _listenQueueItems = (await listenQueueFetch() || []).filter(i => i.source === 'manual' || i.source === 'custom');
-    renderListenQueueSection();
-  } catch(e) {}
-
-  // C. Currently listening (audiobook)
-  renderAudiobookCard(bookEl);
-
-  // Badge-lag fix: newly-materialized subscription episodes are now in the
-  // queue, so refresh the home Recs count without needing a page reload.
-  updateRecsBadge();
-}
-
-function renderAudiobookCard(el) {
-  const book = (() => { try { return JSON.parse(localStorage.getItem('listen_current_book') || 'null'); } catch(e) { return null; } })();
-  el.innerHTML = '';
-  const div = document.createElement('div');
-  div.className = 'lul-item';
-  div.style.marginTop = '8px';
-  if (book) {
-    const appUrl   = book.app === 'audible' ? 'audible://'
-                   : book.app === 'blinkist' ? 'https://www.blinkist.com/'
-                   : 'libbyapp://';
-    const appLabel = book.app === 'audible' ? 'Open Audible'
-                   : book.app === 'blinkist' ? 'Open Blinkist'
-                   : 'Open Libby';
-    div.innerHTML =
-      '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:6px">Currently Listening</div>' +
-      '<div class="lul-question">' + esc(book.title) + '</div>' +
-      (book.author ? '<div style="font-size:0.82rem;color:var(--muted);margin-top:2px">' + esc(book.author) + '</div>' : '') +
-      '<div class="lul-actions" style="margin-top:12px">' +
-        '<a class="btn btn-primary" href="' + appUrl + '" target="_blank" rel="noopener" style="flex:1;text-align:center;text-decoration:none">' + appLabel + '</a>' +
-        '<button class="btn btn-outline listen-book-change" style="flex:1">Change</button>' +
-      '</div>';
-    div.querySelector('.listen-book-change').addEventListener('click', () => openBookForm(el));
-  } else {
-    div.innerHTML =
-      '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:8px">Currently Listening</div>' +
-      '<button class="btn btn-outline listen-book-add" style="width:100%">Reading or listening to something? Add it.</button>';
-    div.querySelector('.listen-book-add').addEventListener('click', () => openBookForm(el));
-  }
-  el.appendChild(div);
-}
-
-function openBookForm(el) {
-  const book = (() => { try { return JSON.parse(localStorage.getItem('listen_current_book') || 'null'); } catch(e) { return null; } })();
-  const div = el.querySelector('.lul-item');
-  div.innerHTML =
-    '<div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted);margin-bottom:10px">Currently Listening</div>' +
-    '<input id="book-title-input" class="anki-textarea" style="height:auto;padding:10px 14px;margin-bottom:8px" placeholder="Title" value="' + esc(book?.title || '') + '" />' +
-    '<input id="book-author-input" class="anki-textarea" style="height:auto;padding:10px 14px;margin-bottom:8px" placeholder="Author" value="' + esc(book?.author || '') + '" />' +
-    '<div style="display:flex;gap:8px;margin-bottom:12px">' +
-      '<button class="btn ' + ((!book || (book.app !== 'audible' && book.app !== 'blinkist')) ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="libby" style="flex:1">Libby</button>' +
-      '<button class="btn ' + (book?.app === 'audible' ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="audible" style="flex:1">Audible</button>' +
-      '<button class="btn ' + (book?.app === 'blinkist' ? 'btn-primary' : 'btn-outline') + ' book-app-btn" data-app="blinkist" style="flex:1">Blinkist</button>' +
-    '</div>' +
-    '<div style="display:flex;gap:8px">' +
-      '<button class="btn btn-primary" id="book-save-btn" style="flex:1">Save</button>' +
-      (book ? '<button class="btn btn-outline" id="book-clear-btn" style="flex:1">Clear</button>' : '') +
-    '</div>';
-  let selectedApp = book?.app || 'libby';
-  div.querySelectorAll('.book-app-btn').forEach(b => {
-    b.addEventListener('click', () => {
-      selectedApp = b.dataset.app;
-      div.querySelectorAll('.book-app-btn').forEach(x => x.className = 'btn btn-outline book-app-btn');
-      b.className = 'btn btn-primary book-app-btn';
-    });
-  });
-  div.querySelector('#book-save-btn').addEventListener('click', () => {
-    const title = div.querySelector('#book-title-input').value.trim();
-    if (!title) { showToast('Enter a title'); return; }
-    localStorage.setItem('listen_current_book', JSON.stringify({
-      title, author: div.querySelector('#book-author-input').value.trim(), app: selectedApp
-    }));
-    renderAudiobookCard(el);
-  });
-  if (book) div.querySelector('#book-clear-btn')?.addEventListener('click', () => {
-    localStorage.removeItem('listen_current_book');
-    renderAudiobookCard(el);
-  });
-}
-
-// Manage subscriptions modal
-document.getElementById('listen-manage-btn').addEventListener('click', async () => {
-  await renderSubsList();
-  const token = localStorage.getItem('spotify_token');
-  document.getElementById('listen-spotify-status').textContent = token ? 'Spotify: connected ✓' : 'Spotify: not connected';
-  document.getElementById('listen-manage-modal').classList.remove('hidden');
-});
-document.getElementById('listen-manage-close').addEventListener('click', () =>
-  document.getElementById('listen-manage-modal').classList.add('hidden'));
-
-// Pull-to-refresh on the Listen screen
-(function setupListenPullToRefresh() {
-  const screen = document.getElementById('screen-listen');
-  if (!screen) return;
-  const ind = document.createElement('div');
-  ind.id = 'listen-pull-indicator';
-  ind.innerHTML = '<div class="listen-pull-spinner"></div>';
-  screen.insertBefore(ind, screen.firstChild);
-
-  const THRESHOLD = 70;
-  let startY = null;
-  let currentPull = 0;
-  let pulling = false;
-  let refreshing = false;
-
-  function reset(animate) {
-    ind.style.transition = animate ? 'transform 0.25s ease, opacity 0.25s ease' : 'none';
-    ind.style.transform = 'translate(-50%, -100%)';
-    ind.style.opacity = '0';
-    ind.classList.remove('refreshing');
-    if (animate) setTimeout(() => { ind.style.transition = ''; }, 280);
-  }
-
-  screen.addEventListener('touchstart', (e) => {
-    if (refreshing) return;
-    if (window.scrollY > 0) return;
-    startY = e.touches[0].clientY;
-    currentPull = 0;
-    pulling = true;
-    ind.style.transition = 'none';
-  }, { passive: true });
-
-  screen.addEventListener('touchmove', (e) => {
-    if (!pulling || refreshing) return;
-    const dy = e.touches[0].clientY - startY;
-    if (dy <= 0) { currentPull = 0; ind.style.opacity = '0'; ind.style.transform = 'translate(-50%, -100%)'; return; }
-    currentPull = Math.min(dy * 0.5, 120);
-    ind.style.transform = 'translate(-50%, calc(-100% + ' + currentPull + 'px))';
-    ind.style.opacity = String(Math.min(currentPull / THRESHOLD, 1));
-  }, { passive: true });
-
-  const onEnd = async () => {
-    if (!pulling || refreshing) { pulling = false; return; }
-    pulling = false;
-    if (currentPull >= THRESHOLD) {
-      refreshing = true;
-      ind.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
-      ind.style.transform = 'translate(-50%, calc(-100% + ' + THRESHOLD + 'px))';
-      ind.style.opacity = '1';
-      ind.classList.add('refreshing');
-      try { await loadListenScreen(); } catch(e) {}
-      refreshing = false;
-      reset(true);
-    } else {
-      reset(true);
-    }
-  };
-  screen.addEventListener('touchend', onEnd, { passive: true });
-  screen.addEventListener('touchcancel', onEnd, { passive: true });
-})();
-
-async function renderSubsList() {
-  const el = document.getElementById('listen-subs-list');
-  el.innerHTML = 'Loading…';
-  const subs = await listenSubsFetch().catch(() => []);
-  if (!subs || subs.length === 0) { el.innerHTML = '<p style="color:var(--muted);font-size:0.85rem">No subscriptions yet.</p>'; return; }
-  el.innerHTML = subs.map(s =>
-    '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)">' +
-      '<span style="font-size:0.9rem">' + esc(s.name) + '</span>' +
-      '<button class="btn-settings" style="color:#c44" data-sub-id="' + s.id + '">Remove</button>' +
-    '</div>'
-  ).join('');
-  el.querySelectorAll('[data-sub-id]').forEach(btn => {
-    btn.addEventListener('click', async () => {
-      btn.disabled = true;
-      const original = btn.textContent;
-      btn.textContent = 'Removing…';
-      try {
-        await listenSubDelete(btn.dataset.subId);
-        await renderSubsList();
-        updateListenBadge();
-      } catch(e) {
-        showToast('Remove failed: ' + (e.message || 'unknown'));
-        btn.disabled = false;
-        btn.textContent = original;
-      }
-    });
-  });
-}
-
-document.getElementById('listen-sub-add').addEventListener('click', async () => {
-  const url  = document.getElementById('listen-sub-input').value.trim();
-  const name = document.getElementById('listen-sub-name').value.trim();
-  if (!url || !name) { showToast('Enter a Spotify show URL and name'); return; }
-  if (!url.includes('open.spotify.com/show/')) { showToast('Paste a Spotify show URL (open.spotify.com/show/…)'); return; }
-  const btn = document.getElementById('listen-sub-add');
-  btn.textContent = 'Saving…'; btn.disabled = true;
-  try {
-    await listenSubCreate({ name, feed_url: url });
-    document.getElementById('listen-sub-input').value = '';
-    document.getElementById('listen-sub-name').value = '';
-    showToast('Subscription added ✓');
-    await renderSubsList();
-  } catch(e) { showToast('Error: ' + e.message); }
-  btn.textContent = 'Add Subscription'; btn.disabled = false;
-});
-
-document.getElementById('listen-spotify-connect').addEventListener('click', () => spotifyLogin());
-
-// Listen add modal
-document.getElementById('listen-add-close').addEventListener('click', () =>
-  document.getElementById('listen-add-modal').classList.add('hidden'));
-
-document.querySelectorAll('.listen-add-tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.listen-add-tab').forEach(t => t.className = 'btn btn-outline listen-add-tab');
-    tab.className = 'btn btn-primary listen-add-tab';
-    const isCustom = tab.dataset.tab === 'custom';
-    document.getElementById('listen-tab-podcast').classList.toggle('hidden', isCustom);
-    document.getElementById('listen-tab-custom').classList.toggle('hidden', !isCustom);
-  });
-});
-
-document.getElementById('listen-add-save').addEventListener('click', async () => {
-  const isCustom = document.querySelector('.listen-add-tab[data-tab="custom"]').classList.contains('btn-primary');
-  const recBy = document.getElementById('listen-add-recby').value.trim();
-  let title, row;
-  if (isCustom) {
-    title = document.getElementById('listen-add-custom-title').value.trim();
-    if (!title) { showToast('Enter a title'); return; }
-    const mins = parseInt(document.getElementById('listen-add-duration').value) || 0;
-    row = { title, recommended_by: recBy || null, source: 'custom', duration_secs: mins > 0 ? mins * 60 : null };
-  } else {
-    title = document.getElementById('listen-add-title').value.trim();
-    if (!title) { showToast('Enter a show or episode name'); return; }
-    row = { title, recommended_by: recBy || null, source: 'manual' };
-  }
-  const btn = document.getElementById('listen-add-save');
-  btn.textContent = 'Saving…'; btn.disabled = true;
-  try {
-    const rows = await listenQueueCreate(row);
-    const newRow = Array.isArray(rows) ? rows[0] : rows;
-    document.getElementById('listen-add-modal').classList.add('hidden');
-    document.getElementById('listen-add-title').value = '';
-    document.getElementById('listen-add-custom-title').value = '';
-    document.getElementById('listen-add-duration').value = '';
-    document.getElementById('listen-add-recby').value = '';
-    showToast(isCustom ? 'Saved ✓' : 'Saved — enriching in background ✓');
-    updateListenBadge();
-    if (!isCustom && newRow?.id) listenEnrich(newRow.id, title);
-  } catch(e) { showToast('Error: ' + e.message); }
-  btn.textContent = 'Save'; btn.disabled = false;
-});
-
-// ════════════════════════════════════════════════════════
-// ── LISTEN ──────────────────────────────────────────────
-// The Listen feature lives on #screen-recs (historically the
-// Recs screen — recommendations removed, Listen kept). Reached
-// from the home "Listen" pillar; add via the Add menu.
-// ════════════════════════════════════════════════════════
 
 // Count without pulling rows (mirrors srsGetDueCount).
 async function sbCount(query) {
@@ -5785,24 +5947,22 @@ async function sbCount(query) {
   return 0;
 }
 
-// ── Home pillar badge (unlistened Listen queue) ──────────
-async function updateRecsBadge() {
+// ── Home pillar badge (deep dives count) ──────────
+async function updateDeepDiveBadge() {
+  const numEl = document.getElementById('dd-count');
+  const subEl = document.getElementById('dd-sub');
+  if (!numEl) return;
   try {
-    const n = (await sbCount('listening_queue?listened=eq.false&select=id').catch(() => 0)) || 0;
-    const numEl = document.getElementById('recs-count');
-    const subEl = document.getElementById('recs-sub');
-    if (numEl) numEl.textContent = String(n);
-    if (subEl) subEl.textContent = n === 0 ? 'nothing queued' : n === 1 ? '1 to hear' : n + ' to hear';
+    const n = await sbCount('deep_dives?select=id');
+    numEl.textContent = String(n);
+    if (subEl) subEl.textContent = n === 1 ? 'topic' : 'topics';
   } catch(e) {}
 }
 
-// The Listen screen reuses #screen-recs; loading it renders Listen.
-function loadRecsScreen() { loadListenScreen(); }
-
 // ── Home pillar wiring ───────────────────────────────────
-document.getElementById('recs-home-card')?.addEventListener('click', () => navigateToActivity('recs'));
+document.getElementById('deep-dive-home-card')?.addEventListener('click', () => navigateToActivity('deep-dives'));
 
-updateRecsBadge();
+updateDeepDiveBadge();
 
 // ── Timer Menu ───────────────────────────────────────────
 document.getElementById('btn-timer-menu').addEventListener('click', () =>
