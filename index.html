@@ -1968,7 +1968,7 @@
       <button class="srs-modal-close" id="lul-add-close">×</button>
     </div>
     <label class="srs-label">Question or topic</label>
-    <textarea id="lul-question-input" class="anki-textarea" rows="4" placeholder="e.g. How much did USSR and US spies actually kill each other?"></textarea>
+    <textarea id="lul-question-input" class="anki-textarea" rows="6" style="min-height:140px" placeholder="e.g. How much did USSR and US spies actually kill each other?"></textarea>
     <button class="btn btn-primary" id="lul-add-save" style="width:100%;margin-top:16px">Save</button>
   </div>
 </div>
@@ -2303,7 +2303,7 @@ document.getElementById('btn-settings').addEventListener('click', () => {
 document.getElementById('otp-signout')?.addEventListener('click', signOut);
 
 // ── Claude API ────────────────────────────────
-async function callClaude(userPrompt) {
+async function callClaude(userPrompt, opts = {}) {
   if (!hasSession()) throw new Error('Sign in to use AI');
 
   const res = await fetch(SB_URL + '/functions/v1/claude', {
@@ -2311,7 +2311,7 @@ async function callClaude(userPrompt) {
     headers: await claudeHeaders(),
     body: JSON.stringify({
       model: 'claude-sonnet-4-6',
-      max_tokens: 1000,
+      max_tokens: opts.max_tokens || 1000,
       system: 'You are a helpful assistant. Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble. Just the raw JSON object or array.',
       messages: [{ role: 'user', content: userPrompt }],
     }),
@@ -5195,7 +5195,8 @@ async function lulSetFollowups(id, arr) {
 async function lulResearch(id, question) {
   try {
     const data = await callClaude(
-      'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}'
+      'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}',
+      { max_tokens: 2000 }
     );
     // lulUpdate signature is (id, answer, tl_dr, links). Guard tl_dr against
     // JSON leakage, mirroring loadLulScreen's safeTlDr check.
@@ -5414,7 +5415,8 @@ async function loadLulScreen() {
       el.querySelector('.lul-dismiss-btn').disabled = true;
       try {
         const data = await callClaude(
-          'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}'
+          'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}',
+          { max_tokens: 2000 }
         );
         const safeTlDr = typeof data.tl_dr === 'string' && !data.tl_dr.startsWith('[') && !data.tl_dr.startsWith('{') ? data.tl_dr : '';
       await lulUpdate(id, data.summary, safeTlDr, data.links || []);
