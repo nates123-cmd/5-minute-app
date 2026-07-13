@@ -37,7 +37,7 @@ SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // anon key, safe to commit
 | Table | Key columns |
 |---|---|
 | `flashcards` | id, front, back, source, interval, ease_factor, next_review, status, created_at, context ('fun'), cluster_id (FK→clusters, nullable), last_missed_at |
-| `deep_dives` | id, user_id, title, prompt, key_points (jsonb), summary, context, source, cluster_id (FK→clusters, nullable), created_at, last_reviewed_at |
+| `deep_dives` | id, user_id, title, prompt, key_points (jsonb), summary, context, source, cluster_id (FK→clusters, nullable), created_at, last_reviewed_at, **status** ('active'\|'archived'), **archived_at**, **resurface_at** (date), **next_review** (date), **interval**, **ease_factor**, **last_bucket** ('miss'\|'hard'\|'easy'), **review_count**, **last_score** (0–1 key-point hit fraction) |
 | `clusters` | id, user_id, name, context, created_at — lazy groupings of flashcards; created when active recall assembles a concept "from my cards" (`ddGenerateFromCards`). Per-user RLS. |
 | `quiz_performance` | id, topic, difficulty (1–5), hit_rate, asked_questions (jsonb), updated_at |
 | `listening_subscriptions` | id, name, feed_url, created_at |
@@ -77,6 +77,16 @@ Saves flashcard to Supabase. Supports offline queuing via `localStorage['offline
 
 ### `sm2(card, rating)`
 SM-2 spaced repetition: rating 0 = miss (interval→1), 1 = hard (interval×1.2, ease−0.15), 2 = easy (interval×ease, ease+0.1). A miss (review flow + AR write-back) also stamps `last_missed_at` for cluster ripeness.
+
+### Deep Dives: archive, resurfacing, drill cadence
+A dive is no longer a flat on-demand shelf — it carries a **miss / hard / easy status** that sets how often it comes back.
+
+- **The grade is AI-driven.** `arGrade` already returned an overall `bucket` plus per-key-point `verdicts`; both now land on the row. `ddEffectiveBucket(aiBucket, hitFrac)` takes **whichever is harsher** — Claude's verdict, or the band its own hit-fraction falls in (<0.5 miss, <0.85 hard, else easy) — so a confident answer that skipped half the key points still grades as a miss. Mental mode has no AI read, so the self-rating is the grade.
+- **`ddSchedule(dive, bucket)`** — SM-2-lite, stretched for concepts: miss → 1d (ease −0.20); hard → 3d, then ×1.2 (ease −0.15); easy → 7d, then ×ease (ease +0.10, cap 2.6). Writes `interval`, `ease_factor`, `next_review`, `last_bucket`. A dive with no `next_review` has never been drilled and counts as **due**.
+- **Swipe a `.dd-item` left → archive** (`ddWireRow` / `ddArchive`), reversible via the **undo bar** (`showUndo`, 6s). Long-press still deletes. Archive ≠ delete.
+- **Resurfacing** is the "bring it back into my vision" mechanism: archiving sets `resurface_at = today + DD_LEASH[last_bucket]` (miss 14d, hard 30d, easy 90d, never-drilled 45d). When the leash runs out the dive reappears **on its own** at the top of the shelf under "Back from the archive" and counts in the home pillar badge — no restore needed.
+- **Re-drilling a resurfaced dive** (`ddApplyGrade`): graded miss/hard → auto-restored to active (you clearly need it); graded easy → stays archived with the leash **doubled** (cap 365d). Spaced retirement.
+- Deep Dives screen has a `Shelf | Archived` segment (`ddView`); Shelf sections = Back from the archive → Due → Scheduled. Home badge = due + resurfaced ("to drill"), falling back to shelf size.
 
 ### Learning path: clusters, ripeness, state line, capture
 - **Clusters** = lazy flashcard groupings. `ddGenerateFromCards` finds one coherent concept, creates a `clusters` row, tags member cards' `cluster_id`. Tuning constants (v1 locked): `CLUSTER_MIN_CARDS=8` (availability floor), `RIPE_DUE_QUORUM=0.4`, `MISS_WINDOW_DAYS=7`.

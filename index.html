@@ -635,11 +635,44 @@
     .lul-followup-ask { flex: 0 0 auto; padding: 11px 16px; }
 
     /* ── Deep Dives ──────────────────────────── */
-    .dd-item { background: var(--card-bg); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; cursor: pointer; }
+    .dd-item { background: var(--card-bg); border-radius: var(--radius); padding: 16px; cursor: pointer; position: relative; }
     .dd-item:active { transform: scale(0.99); }
     .dd-title { font-family: var(--font-serif); font-weight: 600; font-size: 1.05rem; line-height: 1.35; }
     .dd-summary { font-size: 0.88rem; color: var(--text-muted, var(--muted)); line-height: 1.5; margin-top: 6px; }
-    .dd-meta { font-size: 0.75rem; color: var(--text-faint, var(--muted)); margin-top: 10px; }
+    .dd-meta { font-size: 0.75rem; color: var(--text-faint, var(--muted)); margin-top: 10px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    /* Swipe-left-to-archive row: the .dd-item slides, revealing the backdrop under it. */
+    .dd-row { position: relative; overflow: hidden; border-radius: var(--radius); margin-bottom: 12px; }
+    .dd-row-back { position: absolute; inset: 0; display: flex; align-items: center; justify-content: flex-end;
+      padding-right: 18px; background: var(--surface-2, var(--card-bg)); border-radius: var(--radius);
+      font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; font-weight: 600; color: var(--text-muted, var(--muted)); }
+    .dd-row.armed .dd-row-back { background: var(--accent); color: var(--ink-on, #fff); }
+
+    /* Status chip — the miss/hard/easy grade that drives the drill cadence. */
+    .dd-chip { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600;
+      padding: 2px 7px; border-radius: var(--radius-pill, 999px); border: 1px solid currentColor; }
+    .dd-chip.miss { color: var(--accent); }
+    .dd-chip.hard { color: var(--accent-2, var(--accent)); }
+    .dd-chip.easy { color: var(--accent-3, var(--accent)); }
+    .dd-chip.new  { color: var(--text-faint, var(--muted)); }
+
+    .dd-section { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600;
+      color: var(--text-faint, var(--muted)); margin: 18px 0 10px; }
+    .dd-section:first-child { margin-top: 4px; }
+    .dd-seg { display: flex; gap: 6px; margin-bottom: 14px; }
+    .dd-seg-btn { flex: 1; padding: 8px 6px; font-size: 0.82rem; font-family: var(--font); cursor: pointer;
+      border: 1px solid var(--border); border-radius: var(--radius-pill, 999px); background: transparent; color: var(--text-muted, var(--muted)); }
+    .dd-seg-btn.active { background: var(--ink); color: var(--ink-on); border-color: var(--ink); }
+    .dd-restore { background: none; border: none; font-family: var(--font); font-size: 0.75rem; font-weight: 600;
+      color: var(--accent-3, var(--accent)); cursor: pointer; padding: 2px 0; margin-left: auto; }
+
+    /* Undo bar — archive is reversible for a few seconds. */
+    .undo-bar { position: fixed; left: 16px; right: 16px; bottom: 24px; z-index: 60; display: none;
+      align-items: center; gap: 12px; background: var(--ink); color: var(--ink-on);
+      padding: 12px 16px; border-radius: var(--radius); font-size: 0.88rem; }
+    .undo-bar.show { display: flex; }
+    .undo-bar button { margin-left: auto; background: none; border: none; color: var(--ink-on); font-family: var(--font);
+      font-weight: 600; font-size: 0.88rem; text-decoration: underline; cursor: pointer; padding: 0; }
 
     /* Cluster picker (From my cards tab) */
     .dd-cluster-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; background: var(--card-bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px; cursor: pointer; font-family: var(--font); color: var(--text); }
@@ -1487,7 +1520,11 @@
     <span class="activity-title">Deep Dives</span>
     <button class="btn-settings" id="dd-add-btn" title="Add a deep dive" style="margin-left:auto;font-size:1.4rem;line-height:1">+</button>
   </div>
-  <p class="framing">Concepts you want to understand, not just memorize. Tap one to explain it from memory.</p>
+  <p class="framing">Concepts you want to understand, not just memorize. Tap one to explain it from memory. Swipe a card left to archive it.</p>
+  <div class="dd-seg">
+    <button class="dd-seg-btn active" data-dd-view="shelf">Shelf</button>
+    <button class="dd-seg-btn" data-dd-view="archived">Archived</button>
+  </div>
   <div id="dd-list"></div>
 </div>
 
@@ -1865,6 +1902,7 @@
   <!-- Phase: feedback -->
   <div id="ar-feedback" style="display:none">
     <div id="ar-feedback-prose" style="background:var(--surface);border-radius:var(--radius-md,14px);padding:18px;line-height:1.5;margin-bottom:18px"></div>
+    <div id="ar-feedback-status" class="dd-meta" style="margin:0 0 18px"></div>
     <label class="srs-label">Key points</label>
     <div id="ar-feedback-points" style="margin-top:8px"></div>
     <div id="ar-save-wrap" style="margin-top:20px">
@@ -1883,6 +1921,7 @@
 
 <!-- Toast -->
 <div class="toast" id="toast"></div>
+<div class="undo-bar" id="undo-bar"><span id="undo-msg"></span><button id="undo-btn">Undo</button></div>
 
 <!-- Timer modal -->
 <div id="timer-modal" class="timer-modal hidden">
@@ -2334,6 +2373,30 @@ function showToast(msg, duration = 2500) {
   el.classList.add('show');
   setTimeout(() => el.classList.remove('show'), duration);
 }
+
+// ── Undo bar ──────────────────────────────────
+// A toast you can take back. The action is already committed when this shows —
+// tapping Undo reverses it, letting the bar expire keeps it.
+let undoTimer = null, undoFn = null;
+function showUndo(msg, onUndo, duration = 6000) {
+  const bar = document.getElementById('undo-bar');
+  if (!bar) return;
+  undoFn = onUndo;
+  document.getElementById('undo-msg').textContent = msg;
+  bar.classList.add('show');
+  if (undoTimer) clearTimeout(undoTimer);
+  undoTimer = setTimeout(hideUndo, duration);
+}
+function hideUndo() {
+  if (undoTimer) { clearTimeout(undoTimer); undoTimer = null; }
+  undoFn = null;
+  document.getElementById('undo-bar')?.classList.remove('show');
+}
+document.getElementById('undo-btn')?.addEventListener('click', async () => {
+  const fn = undoFn;
+  hideUndo();
+  if (fn) await fn();
+});
 
 // ── In-app timer ─────────────────────────────
 let activeTimer = null;
@@ -4745,41 +4808,246 @@ function fmtDDDate(iso) {
   catch (e) { return ''; }
 }
 
+// ── Drill cadence ─────────────────────────────────────────
+// A dive carries a miss / hard / easy status, and that status sets how hard it
+// gets drilled. Two inputs decide it: Claude's overall verdict on the
+// explanation, and the fraction of key points it judged hit. We take whichever
+// of the two is harsher, so a confident-sounding answer that actually skipped
+// half the key points still lands as a miss.
+const DD_BUCKETS = ['miss', 'hard', 'easy'];  // ordered harshest → kindest
+// Days an archived dive stays out of sight before it resurfaces, by last status.
+const DD_LEASH = { miss: 14, hard: 30, easy: 90, none: 45 };
+const DD_LEASH_MAX = 365;
+
+function ddDatePlus(days, from = new Date()) {
+  const d = new Date(from); d.setDate(d.getDate() + days); return localDateStr(d);
+}
+function ddDaysUntil(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(localDateStr() + 'T00:00:00');
+  const then  = new Date(dateStr + 'T00:00:00');
+  return Math.round((then - today) / 86400000);
+}
+function ddBucketFromScore(frac) {
+  if (frac === null || frac === undefined || isNaN(frac)) return null;
+  if (frac < 0.5)  return 'miss';
+  if (frac < 0.85) return 'hard';
+  return 'easy';
+}
+// The harsher of Claude's verdict and its own key-point tally.
+function ddEffectiveBucket(aiBucket, frac) {
+  const scored = ddBucketFromScore(frac);
+  const ai = DD_BUCKETS.includes(aiBucket) ? aiBucket : null;
+  if (!ai) return scored || 'hard';
+  if (!scored) return ai;
+  return DD_BUCKETS.indexOf(scored) < DD_BUCKETS.indexOf(ai) ? scored : ai;
+}
+// SM-2-lite, stretched for concepts — a dive is heavier than an atomic card, so
+// even an easy one comes back in a week, not a day.
+function ddSchedule(dive, bucket) {
+  let interval = Number(dive.interval) || 0;
+  let ease = Number(dive.ease_factor) || 2.5;
+  if (bucket === 'miss') {
+    interval = 1; ease = Math.max(1.3, ease - 0.20);
+  } else if (bucket === 'hard') {
+    interval = interval ? Math.max(3, Math.round(interval * 1.2)) : 3; ease = Math.max(1.3, ease - 0.15);
+  } else {
+    interval = interval ? Math.round(interval * ease) : 7; ease = Math.min(2.6, ease + 0.10);
+  }
+  return { interval, ease_factor: ease, next_review: ddDatePlus(interval), last_bucket: bucket };
+}
+// A dive with no next_review has never been drilled — that counts as due.
+function ddIsDue(d) { return d.status !== 'archived' && (!d.next_review || ddDaysUntil(d.next_review) <= 0); }
+// An archived dive whose leash ran out. This is the "bring it back into my
+// vision" path: it re-enters the shelf on its own, without being restored.
+function ddIsResurfaced(d) { return d.status === 'archived' && d.resurface_at && ddDaysUntil(d.resurface_at) <= 0; }
+// How long the current leash was, so an easy re-drill can double it.
+function ddLeashDays(dive) {
+  if (dive.archived_at && dive.resurface_at) {
+    const from = new Date(dive.archived_at);
+    const days = Math.round((new Date(dive.resurface_at + 'T00:00:00') - new Date(localDateStr(from) + 'T00:00:00')) / 86400000);
+    if (days > 0) return days;
+  }
+  return DD_LEASH[dive.last_bucket] || DD_LEASH.none;
+}
+
+// ── Archive / restore ─────────────────────────────────────
+async function ddArchive(dive) {
+  const prev = { status: dive.status || 'active', archived_at: dive.archived_at || null,
+                 resurface_at: dive.resurface_at || null, next_review: dive.next_review || null };
+  const days = DD_LEASH[dive.last_bucket] || DD_LEASH.none;
+  const fields = { status: 'archived', archived_at: new Date().toISOString(),
+                   resurface_at: ddDatePlus(days), next_review: null };
+  Object.assign(dive, fields);
+  try { await ddUpdate(dive.id, fields); }
+  catch (e) { Object.assign(dive, prev); showToast('Archive failed'); loadDeepDives(); return; }
+  updateDeepDiveBadge();
+  loadDeepDives();
+  showUndo('Archived — back in ' + days + ' days', async () => {
+    Object.assign(dive, prev);
+    try { await ddUpdate(dive.id, prev); showToast('Restored'); } catch (e) { showToast('Undo failed'); }
+    updateDeepDiveBadge(); loadDeepDives();
+  });
+}
+async function ddRestore(dive) {
+  const fields = { status: 'active', archived_at: null, resurface_at: null, next_review: localDateStr() };
+  Object.assign(dive, fields);
+  try { await ddUpdate(dive.id, fields); showToast('Back on the shelf'); }
+  catch (e) { showToast('Restore failed'); }
+  updateDeepDiveBadge();
+  loadDeepDives();
+}
+
 // ── Deep Dives library screen ──
+let ddView = 'shelf';   // 'shelf' | 'archived'
+
+function ddChipHtml(d) {
+  const b = DD_BUCKETS.includes(d.last_bucket) ? d.last_bucket : 'new';
+  const label = b === 'new' ? 'not drilled' : b;
+  return '<span class="dd-chip ' + b + '">' + label + '</span>';
+}
+function ddCadenceText(d) {
+  if (d.status === 'archived') {
+    const n = ddDaysUntil(d.resurface_at);
+    if (n === null) return 'archived';
+    return n <= 0 ? 'back in view now' : 'resurfaces in ' + n + 'd';
+  }
+  if (!d.next_review) return 'never drilled';
+  const n = ddDaysUntil(d.next_review);
+  if (n <= 0) return 'due now';
+  if (n === 1) return 'next drill tomorrow';
+  return 'next drill in ' + n + 'd';
+}
+function ddItemHtml(d, opts = {}) {
+  const n = Array.isArray(d.key_points) ? d.key_points.length : 0;
+  const meta = n + ' key point' + (n === 1 ? '' : 's') + ' · ' + ddCadenceText(d);
+  return '<div class="dd-row" data-id="' + d.id + '">'
+    + '<div class="dd-row-back">Archive</div>'
+    + '<div class="dd-item">'
+      + '<div class="dd-title">' + esc(d.title) + '</div>'
+      + (d.summary ? '<div class="dd-summary">' + esc(d.summary) + '</div>' : '')
+      + '<div class="dd-meta">' + ddChipHtml(d) + '<span>' + esc(meta) + '</span>'
+        + (opts.restore ? '<button class="dd-restore" data-dd-restore="1">Restore</button>' : '')
+      + '</div>'
+    + '</div>'
+  + '</div>';
+}
+
 async function loadDeepDives() {
   const list = document.getElementById('dd-list');
   list.innerHTML = '<p class="lul-empty">Loading…</p>';
   let dives;
   try { dives = await ddFetch(); }
   catch (e) { list.innerHTML = '<p class="lul-empty">Failed to load. Check your connection.</p>'; return; }
-  if (!dives || !dives.length) {
-    list.innerHTML = '<div class="lul-empty">No deep dives yet.<br>Tap + to add a topic you want to understand.</div>';
-    return;
+  dives = dives || [];
+  document.querySelectorAll('.dd-seg-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.ddView === ddView));
+
+  const sections = [];      // [{title, dives, opts}]
+  if (ddView === 'archived') {
+    const arch = dives.filter(d => d.status === 'archived')
+                      .sort((a, b) => String(a.resurface_at || '').localeCompare(String(b.resurface_at || '')));
+    if (!arch.length) {
+      list.innerHTML = '<div class="lul-empty">Nothing archived.<br>Swipe a dive left to park it here.</div>';
+      return;
+    }
+    sections.push({ title: 'Archived', dives: arch, opts: { restore: true, swipe: false } });
+  } else {
+    const resurfaced = dives.filter(ddIsResurfaced);
+    const due  = dives.filter(d => d.status !== 'archived' && ddIsDue(d));
+    const rest = dives.filter(d => d.status !== 'archived' && !ddIsDue(d))
+                      .sort((a, b) => String(a.next_review || '').localeCompare(String(b.next_review || '')));
+    if (!resurfaced.length && !due.length && !rest.length) {
+      list.innerHTML = '<div class="lul-empty">No deep dives yet.<br>Tap + to add a topic you want to understand.</div>';
+      return;
+    }
+    // Resurfaced sits on top — that IS the bring-it-back mechanism.
+    if (resurfaced.length) sections.push({ title: 'Back from the archive', dives: resurfaced, opts: { restore: true, swipe: true } });
+    if (due.length)        sections.push({ title: 'Due', dives: due, opts: { swipe: true } });
+    if (rest.length)       sections.push({ title: 'Scheduled', dives: rest, opts: { swipe: true } });
   }
-  list.innerHTML = dives.map(d => {
-    const n = Array.isArray(d.key_points) ? d.key_points.length : 0;
-    const meta = n + ' key point' + (n === 1 ? '' : 's') + (d.last_reviewed_at ? ' · last ' + fmtDDDate(d.last_reviewed_at) : '');
-    return '<div class="dd-item" data-id="' + d.id + '">'
-      + '<div class="dd-title">' + esc(d.title) + '</div>'
-      + (d.summary ? '<div class="dd-summary">' + esc(d.summary) + '</div>' : '')
-      + '<div class="dd-meta">' + esc(meta) + '</div>'
-      + '</div>';
-  }).join('');
-  list.querySelectorAll('.dd-item').forEach((el, i) => {
-    el.addEventListener('click', () => arStartSession(dives[i]));
-    el.addEventListener('contextmenu', e => { e.preventDefault(); ddConfirmDelete(dives[i]); });
-    let lpTimer = null;
-    el.addEventListener('touchstart', () => { lpTimer = setTimeout(() => ddConfirmDelete(dives[i]), 600); }, { passive: true });
-    ['touchend','touchmove','touchcancel'].forEach(ev =>
-      el.addEventListener(ev, () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } }, { passive: true }));
-  });
+
+  list.innerHTML = sections.map(s =>
+    '<div class="dd-section">' + esc(s.title) + '</div>' +
+    s.dives.map(d => ddItemHtml(d, s.opts)).join('')
+  ).join('');
+
+  const byId = {};
+  dives.forEach(d => { byId[d.id] = d; });
+  sections.forEach(s => s.dives.forEach(d => {
+    const row = list.querySelector('.dd-row[data-id="' + d.id + '"]');
+    if (!row) return;
+    ddWireRow(row, byId[d.id], s.opts);
+  }));
+}
+
+// Row interactions: tap = drill, swipe left = archive, long-press = delete.
+function ddWireRow(row, dive, opts = {}) {
+  const card = row.querySelector('.dd-item');
+  const restoreBtn = row.querySelector('[data-dd-restore]');
+  if (restoreBtn) restoreBtn.addEventListener('click', e => { e.stopPropagation(); ddRestore(dive); });
+
+  card.addEventListener('click', () => { if (!row.dataset.swiping) arStartSession(dive); });
+  card.addEventListener('contextmenu', e => { e.preventDefault(); ddConfirmDelete(dive); });
+
+  let startX = 0, startY = 0, dx = 0, horiz = null, lpTimer = null;
+  const reset = () => {
+    card.style.transition = 'transform 0.25s ease';
+    card.style.transform = '';
+    row.classList.remove('armed');
+  };
+  const cancelLp = () => { if (lpTimer) { clearTimeout(lpTimer); lpTimer = null; } };
+
+  card.addEventListener('touchstart', e => {
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    dx = 0; horiz = null;
+    card.style.transition = 'none';
+    delete row.dataset.swiping;
+    lpTimer = setTimeout(() => { lpTimer = null; ddConfirmDelete(dive); }, 600);
+  }, { passive: true });
+
+  card.addEventListener('touchmove', e => {
+    const x = e.touches[0].clientX, y = e.touches[0].clientY;
+    const mx = x - startX, my = y - startY;
+    if (horiz === null) {
+      if (Math.abs(mx) < 8 && Math.abs(my) < 8) return;
+      horiz = Math.abs(mx) > Math.abs(my);   // let vertical drags scroll the page
+    }
+    if (!horiz) { cancelLp(); return; }
+    cancelLp();
+    if (e.cancelable) e.preventDefault();
+    if (!opts.swipe) return;
+    dx = Math.min(0, mx);                    // left only
+    row.dataset.swiping = '1';
+    card.style.transform = 'translateX(' + dx + 'px)';
+    row.classList.toggle('armed', dx < -80);
+  }, { passive: false });
+
+  const end = () => {
+    cancelLp();
+    if (opts.swipe && dx < -80) {
+      card.style.transition = 'transform 0.2s ease';
+      card.style.transform = 'translateX(-110%)';
+      ddArchive(dive);
+    } else {
+      reset();
+    }
+    setTimeout(() => { delete row.dataset.swiping; }, 60);
+  };
+  card.addEventListener('touchend', end);
+  card.addEventListener('touchcancel', () => { cancelLp(); reset(); });
 }
 
 async function ddConfirmDelete(dive) {
-  if (!confirm('Delete "' + dive.title + '"?')) return;
+  if (!confirm('Delete "' + dive.title + '"? Archiving (swipe left) keeps it.')) return;
   try { await ddDelete(dive.id); showToast('Deleted'); loadDeepDives(); updateDeepDiveBadge(); }
   catch (e) { showToast('Delete failed'); }
 }
+
+document.querySelectorAll('.dd-seg-btn').forEach(b =>
+  b.addEventListener('click', () => { ddView = b.dataset.ddView; hideUndo(); loadDeepDives(); }));
+// The undo bar is fixed-position — don't let it follow you off the screen.
+document.addEventListener('screenchange', e => { if (e.detail !== 'deep-dives') hideUndo(); });
 
 // ── Add-dive modal ──
 let ddAddTab = 'topic';
@@ -4899,7 +5167,7 @@ function arStartSession(dive) {
     mode: localStorage.getItem('ar_mode') || 'speak',
     prompt: dive.prompt || ('Explain ' + dive.title + ' from memory.'),
     keyPoints: Array.isArray(dive.key_points) ? dive.key_points : [],
-    verdicts: [], bucket: null,
+    verdicts: [], bucket: null, schedule: null,
   };
   if (arRecording) arStopRecording();
   showScreen('active-recall');
@@ -4946,10 +5214,11 @@ document.getElementById('ar-reveal')?.addEventListener('click', () => {
 document.getElementById('ar-mental-rate')?.addEventListener('click', async e => {
   const b = e.target.closest('[data-ar-rate]'); if (!b) return;
   const rating = parseInt(b.dataset.arRate);
-  arState.bucket = ['miss','hard','easy'][rating];
+  arState.bucket = DD_BUCKETS[rating];
   document.querySelectorAll('#ar-mental-rate .ar-rate-btn').forEach(x => x.disabled = true);
   await arWriteBackMental(rating);
-  await arMarkReviewed();
+  // Mental mode has no AI read of the answer, so the self-rating is the grade.
+  arState.schedule = await ddApplyGrade(arState.bucket, null);
   arShowFeedback(null);
 });
 
@@ -5036,10 +5305,15 @@ async function arGradeAndFinish(answer, btn) {
   btn.textContent = 'Grading…'; btn.disabled = true;
   try {
     const graded = await arGrade(answer);
-    arState.bucket = graded.bucket;
     arState.verdicts = Array.isArray(graded.verdicts) ? graded.verdicts : [];
+    // Claude's evaluation sets the drill cadence: its overall verdict, checked
+    // against how many key points it actually marked hit. Harsher one wins.
+    const total = arState.keyPoints.length;
+    const hits  = arState.verdicts.filter(v => v && v.hit).length;
+    const frac  = total ? hits / total : null;
+    arState.bucket = ddEffectiveBucket(graded.bucket, frac);
     await arWriteBackSurgical(arState.verdicts);
-    await arMarkReviewed();
+    arState.schedule = await ddApplyGrade(arState.bucket, frac);
     arShowFeedback(graded);
   } catch (e) {
     showToast('Grading failed — ' + (e.message || 'try again'));
@@ -5077,6 +5351,19 @@ function arShowFeedback(graded) {
   const prose = document.getElementById('ar-feedback-prose');
   if (graded && graded.feedback) { prose.style.display = ''; prose.textContent = graded.feedback; }
   else { prose.style.display = 'none'; prose.textContent = ''; }
+  // Status + what it bought you. A grade, not a score — still no numbers.
+  const statusEl = document.getElementById('ar-feedback-status');
+  if (statusEl) {
+    const s = arState.schedule;
+    if (s && DD_BUCKETS.includes(s.last_bucket)) {
+      let line;
+      if (s.wasArchived && s.status === 'archived') line = 'still solid — staying archived, back in ' + ddDaysUntil(s.resurface_at) + 'd';
+      else if (s.wasArchived)                       line = 'pulled back onto the shelf — next drill in ' + s.interval + 'd';
+      else line = 'next drill in ' + s.interval + ' day' + (s.interval === 1 ? '' : 's');
+      statusEl.innerHTML = '<span class="dd-chip ' + s.last_bucket + '">' + s.last_bucket + '</span><span>' + esc(line) + '</span>';
+      statusEl.style.display = '';
+    } else { statusEl.innerHTML = ''; statusEl.style.display = 'none'; }
+  }
   const verdictFor = i => (graded && graded.verdicts) ? graded.verdicts.find(v => v.index === i) : null;
   document.getElementById('ar-feedback-points').innerHTML = arState.keyPoints.map((k, i) => {
     const v = verdictFor(i);
@@ -5088,10 +5375,34 @@ function arShowFeedback(graded) {
 document.getElementById('ar-done')?.addEventListener('click', () => showScreen('home'));
 document.getElementById('ar-save-cards')?.addEventListener('click', arExtractTerms);
 
-// Update last_reviewed_at on the dive (fire-and-forget; on-demand shelf, no due dates).
-async function arMarkReviewed() {
-  if (!arState || !arState.dive || !arState.dive.id) return;
-  try { await ddUpdate(arState.dive.id, { last_reviewed_at: new Date().toISOString() }); } catch (e) {}
+// Land the grade on the dive: status (miss/hard/easy), the interval it buys, and
+// what happens to a dive that resurfaced out of the archive.
+async function ddApplyGrade(bucket, hitFrac) {
+  if (!arState || !arState.dive || !arState.dive.id) return null;
+  const dive = arState.dive;
+  const wasArchived = dive.status === 'archived';
+  const fields = ddSchedule(dive, bucket);
+  fields.last_reviewed_at = new Date().toISOString();
+  fields.review_count = (Number(dive.review_count) || 0) + 1;
+  if (hitFrac !== null && hitFrac !== undefined) fields.last_score = hitFrac;
+
+  if (wasArchived) {
+    if (bucket === 'easy') {
+      // Still solid. Back into the archive, leash doubled — spaced retirement.
+      fields.resurface_at = ddDatePlus(Math.min(DD_LEASH_MAX, ddLeashDays(dive) * 2));
+      fields.next_review = null;
+      fields.status = 'archived';
+    } else {
+      // You needed this one. Pull it back into active rotation.
+      fields.status = 'active';
+      fields.archived_at = null;
+      fields.resurface_at = null;
+    }
+  }
+  Object.assign(dive, fields);
+  try { await ddUpdate(dive.id, fields); } catch (e) {}
+  updateDeepDiveBadge();
+  return { ...fields, wasArchived };
 }
 
 // ── Write-back to the flashcard deck (resurface signal only — direct next_review
@@ -5947,15 +6258,25 @@ async function sbCount(query) {
   return 0;
 }
 
-// ── Home pillar badge (deep dives count) ──────────
+// ── Home pillar badge (deep dives) ──────────
+// Shows what's actually asking for you: dives due to be drilled plus anything
+// that just resurfaced out of the archive. Falls back to the shelf size when
+// nothing is calling.
 async function updateDeepDiveBadge() {
   const numEl = document.getElementById('dd-count');
   const subEl = document.getElementById('dd-sub');
   if (!numEl) return;
   try {
-    const n = await sbCount('deep_dives?select=id');
-    numEl.textContent = String(n);
-    if (subEl) subEl.textContent = n === 1 ? 'topic' : 'topics';
+    const dives = await sbFetch('deep_dives?select=id,status,next_review,resurface_at');
+    const calling = (dives || []).filter(d => ddIsDue(d) || ddIsResurfaced(d)).length;
+    if (calling) {
+      numEl.textContent = String(calling);
+      if (subEl) subEl.textContent = 'to drill';
+    } else {
+      const n = (dives || []).filter(d => d.status !== 'archived').length;
+      numEl.textContent = String(n);
+      if (subEl) subEl.textContent = n === 1 ? 'topic' : 'topics';
+    }
   } catch(e) {}
 }
 
