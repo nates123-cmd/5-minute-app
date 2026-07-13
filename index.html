@@ -585,6 +585,29 @@
       padding-top: 16px;
     }
 
+    /* Card action bar (Look it up / Push to Claude / Flashcards / Deep dives) */
+    .card-action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .card-action-bar .card-action {
+      flex: 1 1 calc(50% - 4px);
+      min-width: 120px;
+    }
+    /* Inline "Look it up" expansion rendered in place on the card */
+    .lookup-expand {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--surface-2);
+    }
+    .lookup-expand .lookup-more {
+      font-family: var(--font-sans);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
     /* ── Box breathing ── */
     .breathe-center {
       display: flex; flex-direction: column; align-items: center;
@@ -1387,7 +1410,6 @@
   </div>
 
   <div class="filter-pills">
-    <button class="filter-pill btn-duration" data-bucket="reflection">Reflect</button>
     <button class="filter-pill btn-duration" data-bucket="informational">Informational</button>
     <button class="filter-pill btn-duration" data-bucket="activity">Activity</button>
     <button class="filter-pill btn-duration" data-bucket="random">Random</button>
@@ -1421,32 +1443,6 @@
   <div class="activity-actions">  </div>
 </div>
 
-<!-- STOIC -->
-<div id="screen-stoic" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Stoic Passage</span>
-  </div>
-  <div id="stoic-content"></div>
-  <button class="btn-refresh" id="stoic-refresh">New passage</button>
-  <div class="activity-actions">
-    <button class="btn btn-outline" id="stoic-ink-btn">Reflect on it in Ink</button>
-  </div>
-</div>
-
-<!-- STOIC REMINDER -->
-<div id="screen-stoic-reminder" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Stoic Reminder</span>
-  </div>
-  <div id="stoic-reminder-content"></div>
-  <button class="btn-refresh" id="stoic-reminder-refresh">New reminder</button>
-  <div class="activity-actions">
-    <button class="btn btn-outline" id="stoic-reminder-ink-btn">Reflect on it in Ink</button>
-  </div>
-</div>
-
 <!-- READING -->
 <div id="screen-reading" class="screen">
   <div class="activity-header">
@@ -1460,40 +1456,6 @@
 </div>
 
 <!-- ANKI -->
-
-<!-- MINDFULNESS -->
-<div id="screen-mindfulness" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Mindfulness</span>
-  </div>
-  <p class="framing">5 minutes. Just breathe and notice. No goal. No assessment. Just this.</p>
-  <div class="spacer"></div>
-  <div class="activity-actions">
-    <a class="btn btn-outline" href="wakingup://">Open Waking Up</a>
-    <button class="btn btn-outline timer-action" data-timer="1">Start 1-minute timer</button>
-    <button class="btn btn-primary timer-action" data-timer="5">Start 5-minute timer</button>
-  </div>
-</div>
-
-<!-- BREATHE -->
-<div id="screen-breathe" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home" onclick="stopBoxBreathe()">←</button>
-    <span class="activity-title">Breathe</span>
-  </div>
-  <div class="breathe-center">
-    <div id="box-breathe-ring" class="breathe-ring" onclick="toggleBoxBreathe()">
-      <span id="box-breathe-count"></span>
-    </div>
-    <div id="box-breathe-phase" class="breathe-phase">Tap to begin</div>
-    <p class="breathe-pattern-label">Box breathing · 4-4-4-4</p>
-    <div class="breathe-controls">
-      <button id="box-breathe-toggle" class="btn btn-outline" onclick="toggleBoxBreathe()">Start</button>
-      <button class="btn btn-outline" onclick="stopBoxBreathe()">Reset</button>
-    </div>
-  </div>
-</div>
 
 <!-- SRS REVIEW -->
 <div id="screen-srs-review" class="screen">
@@ -1546,19 +1508,6 @@
   <div id="fun-fact-content"></div>
   <button class="btn-refresh" id="fun-fact-refresh">New fact</button>
   <div class="activity-actions">  </div>
-</div>
-
-<!-- INTROSPECTION -->
-<div id="screen-introspection" class="screen">
-  <div class="activity-header">
-    <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Introspection</span>
-  </div>
-  <div id="introspection-content"></div>
-  <button class="btn-refresh" id="introspection-refresh">New question</button>
-  <div class="activity-actions">
-    <button class="btn btn-outline" id="introspection-ink-btn">Reflect on it in Ink</button>
-  </div>
 </div>
 
 <!-- MENTAL MATH -->
@@ -1757,12 +1706,6 @@
   <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Science Bite</span></div>
   <div id="science-content"></div>
   <button class="btn-refresh" id="science-refresh">New bite</button>
-  <div class="activity-actions">  </div>
-</div>
-<div id="screen-psychology" class="screen">
-  <div class="activity-header"><button class="btn-back" data-back="home">←</button><span class="activity-title">Psychology</span></div>
-  <div id="psychology-content"></div>
-  <button class="btn-refresh" id="psychology-refresh">New insight</button>
   <div class="activity-actions">  </div>
 </div>
 <div id="screen-weekend" class="screen">
@@ -2075,18 +2018,9 @@
 'use strict';
 
 let currentActivity  = null;
-let stoicData        = null;
 let selectedDuration = '5min';
 const searchTerms    = {};
 const ankiData       = {};
-
-async function openInInk(text) {
-  if (!text) return;
-  try { await navigator.clipboard.writeText(text); } catch(e) {}
-  showToast('Opening Ink');
-  const url = 'https://nates123-cmd.github.io/Ink/?screen=capture&text=' + encodeURIComponent(text);
-  setTimeout(() => { window.open(url, '_blank', 'noopener'); }, 400);
-}
 
 // ── Persistent storage helpers ────────────────
 function getDismissed(slug) {
@@ -2214,49 +2148,55 @@ document.addEventListener('click', async e => {
 // ── Activity registry ─────────────────────────
 // Single source of truth for the home grid. Array order = on-screen order.
 // quiz:true entries route via startQuiz() and use data-quiz (not data-activity).
+// Card model (Curiosity repositioning):
+//   form  — 'standalone' (self-contained) | 'serialized' (part of a series). Only
+//           Leadership is serialized, and it's deferred, so everything here is standalone.
+//   door  — true if the card opens a thread worth pulling on (bias the deck toward these);
+//           false for closed one-offs. Used for grid ordering + Random's weighted draw.
+//   actions — which of the four card actions this TYPE offers (capability on the type,
+//           not per instance): 'lookup' | 'claude' | 'flashcards' | 'deepdive'. [] = no bar.
+const _A4 = ['lookup','claude','flashcards','deepdive']; // the full set (fun-fact-style)
 const ACTIVITY_REGISTRY = [
-  { slug:'history',              name:'History Rabbit Hole',  desc:'Dive into something genuinely fascinating' },
-  { slug:'cooking',              name:'Cooking',              desc:'Learn a technique that changes how you cook' },
-  { slug:'stoic',                name:'Stoic Passage',        desc:'A thought that might stick with you' },
-  { slug:'stoic-reminder',       name:'Stoic Reminder',       desc:'A gut-check from the fundamentals.' },
-  { slug:'reading',              name:'One-Page Read',        desc:'Open your book. Just one page.' },
-  { slug:'mindfulness',          name:'Mindfulness',          desc:'5 minutes. Just breathe and notice.' },
-  { slug:'breathe',              name:'Breathe',              desc:"Just breathe. That's it." },
-  { slug:'fun-fact',             name:'Fun Fact',             desc:'Something that makes you say "wait, really?"' },
-  { slug:'introspection',        name:'Introspection',        desc:'One question that cuts through the noise.' },
-  { slug:'mental-math',          name:'Mental Math',          desc:'A problem worth the focus.' },
-  { slug:'new-word',             name:'New Word',             desc:'An obscure word that earns its place.' },
-  { slug:'new-term',             name:'New Term',             desc:'A concept from any field worth knowing.' },
-  { slug:'finance-term',         name:'Finance Term',         desc:'Understand money and markets better.' },
-  { slug:'stats-concept',        name:'Stats Concept',        desc:'A statistical idea that changes how you read the world.' },
-  { slug:'geography-fact',       name:'Geography Fact',       desc:'A place that makes you rethink the map.' },
-  { slug:'logical-fallacy',      name:'Logical Fallacy',      desc:'Spot bad arguments before they land.' },
-  { slug:'on-this-day',          name:'On This Day',          desc:'Something that happened today in history.' },
-  { slug:'thought-experiment',   name:'Thought Experiment',   desc:'A question with no easy answer.' },
-  { slug:'etymology',            name:'Etymology',            desc:'Where a word actually came from.' },
-  { slug:'cognitive-bias',       name:'Cognitive Bias',       desc:'How your brain tricks you — and how to catch it.' },
-  { slug:'health-insight',       name:'Health Insight',       desc:'One evidence-based tip on sleep, nutrition, or movement.' },
-  { slug:'productivity-insight', name:'Productivity Insight', desc:'An evidence-based idea to work smarter.' },
-  { slug:'brain-teaser',         name:'Brain Teaser',         desc:'Fermi estimates, logic puzzles, lateral thinking.' },
-  { slug:'flower',               name:'Flower of the Day',    desc:'A flower, its meaning, and how to keep it alive.' },
-  { slug:'beautiful-place',      name:'Beautiful Place',      desc:'Somewhere worth knowing about.' },
-  { slug:'color',                name:'Color of the Day',     desc:'A shade, its psychology, and a palette to pair it with.' },
-  { slug:'design',               name:'Architecture & Design',desc:'The built world, made to feel alive.' },
-  { slug:'science',              name:'Science Bite',         desc:'One surprising, beautiful scientific finding.' },
-  { slug:'psychology',           name:'Psychology',           desc:'A relationship or mind insight worth trying.' },
-  { slug:'weekend',              name:'This Weekend',         desc:'One good way to spend a weekend.' },
-  { slug:'recipe',               name:'Recipe Spark',         desc:'A simple recipe — 2 servings, under 30 min.' },
-  { slug:'flavor',               name:'Flavor Pairing',       desc:'An unexpected pairing and the science of why.' },
-  { slug:'room',                 name:'Room Refresh',         desc:'One specific way to refresh a space.' },
-  { slug:'good-news',            name:'Good News',            desc:'A genuinely uplifting real-world development.' },
-  { slug:'pairing',              name:'Unexpected Pairing',   desc:"Two things that shouldn't work together but do." },
-  { slug:'weather',              name:'Weather',              desc:'Your forecast, with a little atmospheric science.' },
-  { slug:'interior',             name:'Interior Spotlight',   desc:'A named design movement, with a real example.' },
+  { slug:'history',              name:'History Rabbit Hole',  desc:'Dive into something genuinely fascinating', form:'standalone', door:true,  actions:_A4 },
+  { slug:'cooking',              name:'Cooking',              desc:'Learn a technique that changes how you cook', form:'standalone', door:true,  actions:_A4 },
+  { slug:'reading',              name:'One-Page Read',        desc:'Open your book. Just one page.',            form:'standalone', door:false, actions:[] },
+  { slug:'fun-fact',             name:'Fun Fact',             desc:'Something that makes you say "wait, really?"', form:'standalone', door:true,  actions:_A4 },
+  { slug:'mental-math',          name:'Mental Math',          desc:'A problem worth the focus.',                form:'standalone', door:false, actions:[] },
+  { slug:'new-word',             name:'New Word',             desc:'An obscure word that earns its place.',     form:'standalone', door:false, actions:_A4 },
+  { slug:'new-term',             name:'New Term',             desc:'A concept from any field worth knowing.',   form:'standalone', door:true,  actions:_A4 },
+  { slug:'finance-term',         name:'Finance Term',         desc:'Understand money and markets better.',      form:'standalone', door:true,  actions:_A4 },
+  { slug:'stats-concept',        name:'Stats Concept',        desc:'A statistical idea that changes how you read the world.', form:'standalone', door:true, actions:_A4 },
+  { slug:'geography-fact',       name:'Geography Fact',       desc:'A place that makes you rethink the map.',    form:'standalone', door:true,  actions:_A4 },
+  { slug:'logical-fallacy',      name:'Logical Fallacy',      desc:'Spot bad arguments before they land.',      form:'standalone', door:false, actions:_A4 },
+  { slug:'on-this-day',          name:'On This Day',          desc:'Something that happened today in history.',  form:'standalone', door:true,  actions:_A4 },
+  { slug:'thought-experiment',   name:'Thought Experiment',   desc:'A question with no easy answer.',            form:'standalone', door:true,  actions:_A4 },
+  { slug:'etymology',            name:'Etymology',            desc:'Where a word actually came from.',           form:'standalone', door:true,  actions:_A4 },
+  { slug:'cognitive-bias',       name:'Cognitive Bias',       desc:'How your brain tricks you — and how to catch it.', form:'standalone', door:false, actions:_A4 },
+  { slug:'health-insight',       name:'Health Insight',       desc:'One evidence-based tip on sleep, nutrition, or movement.', form:'standalone', door:false, actions:_A4 },
+  { slug:'productivity-insight', name:'Productivity Insight', desc:'An evidence-based idea to work smarter.',    form:'standalone', door:false, actions:_A4 },
+  { slug:'brain-teaser',         name:'Brain Teaser',         desc:'Fermi estimates, logic puzzles, lateral thinking.', form:'standalone', door:false, actions:[] },
+  { slug:'flower',               name:'Flower of the Day',    desc:'A flower, its meaning, and how to keep it alive.', form:'standalone', door:false, actions:_A4 },
+  { slug:'beautiful-place',      name:'Beautiful Place',      desc:'Somewhere worth knowing about.',             form:'standalone', door:true,  actions:_A4 },
+  { slug:'color',                name:'Color of the Day',     desc:'A shade, its psychology, and a palette to pair it with.', form:'standalone', door:false, actions:['lookup','claude','deepdive'] },
+  { slug:'design',               name:'Architecture & Design',desc:'The built world, made to feel alive.',       form:'standalone', door:true,  actions:_A4 },
+  { slug:'science',              name:'Science Bite',         desc:'One surprising, beautiful scientific finding.', form:'standalone', door:true, actions:_A4 },
+  { slug:'weekend',              name:'This Weekend',         desc:'One good way to spend a weekend.',           form:'standalone', door:false, actions:['lookup','claude'] },
+  { slug:'recipe',               name:'Recipe Spark',         desc:'A simple recipe — 2 servings, under 30 min.', form:'standalone', door:false, actions:['lookup','claude','deepdive'] },
+  { slug:'flavor',               name:'Flavor Pairing',       desc:'An unexpected pairing and the science of why.', form:'standalone', door:true, actions:_A4 },
+  { slug:'room',                 name:'Room Refresh',         desc:'One specific way to refresh a space.',       form:'standalone', door:false, actions:['lookup','claude'] },
+  { slug:'good-news',            name:'Good News',            desc:'A genuinely uplifting real-world development.', form:'standalone', door:false, actions:['lookup','claude','deepdive'] },
+  { slug:'pairing',              name:'Unexpected Pairing',   desc:"Two things that shouldn't work together but do.", form:'standalone', door:true, actions:_A4 },
+  { slug:'weather',              name:'Weather',              desc:'Your forecast, with a little atmospheric science.', form:'standalone', door:false, actions:['lookup','claude'] },
+  { slug:'interior',             name:'Interior Spotlight',   desc:'A named design movement, with a real example.', form:'standalone', door:true, actions:_A4 },
   { slug:'history',   quiz:true, name:'History Quiz',         desc:'Gets harder as you improve. Stop when you want.' },
   { slug:'geography', quiz:true, name:'Geography Quiz',       desc:"Capitals, borders, and places you've never heard of." },
   { slug:'trivia',    quiz:true, name:'Trivia Quiz',          desc:'Mix of science, culture, and random knowledge.' },
   { slug:'cooking',   quiz:true, name:'Cooking Quiz',         desc:'Techniques, ingredients, and culinary facts.' },
 ];
+
+// Door lookup for ordering + Random weighting. Quizzes are treated as non-doors.
+const CARD_DOOR = {};
+ACTIVITY_REGISTRY.forEach(a => { if (!a.quiz) CARD_DOOR[a.slug] = !!a.door; });
 
 // Stable key for hide/show + bucket lookups. Quiz slugs collide with activity
 // slugs (history/cooking), so quiz entries are namespaced 'quiz-<slug>'.
@@ -2275,8 +2215,13 @@ function renderActivityGrid() {
   const grid = document.getElementById('activity-grid');
   if (!grid) return;
   const hidden = getHiddenActivities();
+  // Bias the deck toward doors: door cards float to the top, quizzes sink to the
+  // bottom, original order preserved within each rank (Array.sort is stable).
+  const rank = a => a.quiz ? -1 : (a.door ? 1 : 0);
   grid.innerHTML = ACTIVITY_REGISTRY
     .filter(a => !hidden.has(regKey(a)))
+    .slice()
+    .sort((a, b) => rank(b) - rank(a))
     .map(a => {
       const attr = a.quiz ? 'data-quiz="' + a.slug + '"' : 'data-activity="' + a.slug + '"';
       return '<div class="activity-card" ' + attr + '><h3>' + esc(a.name) + '</h3><p>' + esc(a.desc) + '</p></div>';
@@ -2299,26 +2244,33 @@ function wireActivityCards() {
 }
 
 const DURATION_ACTIVITIES = {
-  '1min': ['fun-fact','stoic','stoic-reminder','introspection','mental-math','new-word','new-term',
+  '1min': ['fun-fact','mental-math','new-word','new-term',
            'finance-term','stats-concept','geography-fact','logical-fallacy','on-this-day',
-           'thought-experiment','etymology','cognitive-bias','mindfulness','breathe','brain-teaser','health-insight'],
-  '5min': ['history','cooking','stoic','reading','mindfulness','breathe',
-           'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
+           'thought-experiment','etymology','cognitive-bias','brain-teaser','health-insight'],
+  '5min': ['history','cooking','reading',
+           'fun-fact','mental-math','new-word','new-term','finance-term','stats-concept',
            'thought-experiment','cognitive-bias','brain-teaser','health-insight',
-           'flower','beautiful-place','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'],
-  'reflection':   ['stoic','stoic-reminder','mindfulness','breathe','introspection','psychology'],
+           'flower','beautiful-place','color','design','science','weekend','recipe','flavor','room','good-news','pairing','weather','interior'],
   'informational':['history','cooking','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment','health-insight','productivity-insight',
                    'flower','beautiful-place','color','design','science','good-news','pairing','weather','interior'],
   'activity':     ['mental-math','brain-teaser','reading','weekend','recipe','flavor','room','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
-  'random':       ['history','cooking','stoic','stoic-reminder','reading','mindfulness','breathe',
-                   'fun-fact','introspection','mental-math','new-word','new-term','finance-term','stats-concept',
+  'random':       ['history','cooking','reading',
+                   'fun-fact','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight',
-                   'flower','beautiful-place','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior',
+                   'flower','beautiful-place','color','design','science','weekend','recipe','flavor','room','good-news','pairing','weather','interior',
                    'quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
 };
+
+// Door-weighted pick: door cards appear twice in the draw pool, so Random leans
+// toward threads worth pulling without ever excluding the closed one-offs.
+function weightedActivityPick(list) {
+  const pool = [];
+  list.forEach(s => { pool.push(s); if (CARD_DOOR[s]) pool.push(s); });
+  return pool[Math.floor(Math.random() * pool.length)];
+}
 
 // ── Routing ──────────────────────────────────
 function showScreen(id) {
@@ -2452,9 +2404,7 @@ function navigateToActivity(a, skipLoad = false) {
   if (!skipLoad) {
     if (a === 'history')           loadHistory();
     if (a === 'cooking')           loadCooking();
-    if (a === 'stoic')             loadStoic();
     if (a === 'fun-fact')          loadFunFact();
-    if (a === 'introspection')     loadIntrospection();
     if (a === 'mental-math')       loadMentalMath();
     if (a === 'new-word')          loadNewWord();
     if (a === 'new-term')          loadNewTerm();
@@ -2474,7 +2424,6 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'color')             loadColor();
     if (a === 'design')            loadDesign();
     if (a === 'science')           loadScience();
-    if (a === 'psychology')        loadPsychology();
     if (a === 'weekend')           loadWeekend();
     if (a === 'recipe')            loadRecipe();
     if (a === 'flavor')            loadFlavor();
@@ -2483,7 +2432,6 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'pairing')           loadPairing();
     if (a === 'interior')          loadInterior();
     if (a === 'weather')           loadWeather();
-    if (a === 'stoic-reminder')    loadStoicReminder();
     if (a === 'srs-review')        loadSrsReview();
     if (a === 'deep-dives')        loadDeepDives();
     if (a === 'anki-input')        resetAnkiInput();
@@ -2506,7 +2454,9 @@ document.querySelectorAll('.btn-duration').forEach(btn => {
     const hidden = getHiddenActivities();
     const list = (DURATION_ACTIVITIES[selectedDuration] || []).filter(s => !hidden.has(s));
     if (!list.length) { showToast('Everything in this filter is turned off — enable some in Activities.'); return; }
-    navigateToActivity(list[Math.floor(Math.random() * list.length)]);
+    // Random is the surprise door: bias its draw toward door cards.
+    const pick = bucket === 'random' ? weightedActivityPick(list) : list[Math.floor(Math.random() * list.length)];
+    navigateToActivity(pick);
   });
 });
 
@@ -2755,59 +2705,6 @@ function fallbackCooking() {
 
 document.getElementById('cooking-refresh').addEventListener('click', loadCooking);
 
-// ── Stoic ─────────────────────────────────────
-async function loadStoic() {
-  const container = document.getElementById('stoic-content');
-  container.innerHTML =
-    '<div class="skeleton" style="height:12px;width:120px;margin-bottom:12px"></div>' +
-    '<div class="ai-card"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton" style="width:60%"></div></div>' +
-    '<div style="margin-top:12px"><div class="skeleton" style="height:12px"></div><div class="skeleton" style="height:12px;width:80%"></div></div>';
-  try {
-    const seen = getSeenForExclusion('stoic');
-    const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join('; ') + '.' : '';
-    const liked    = getLiked('stoic').slice(-8);
-    const disliked = getDisliked('stoic').slice(-8);
-    const ratingCtx = (liked.length ? ' More like these authors/themes: ' + liked.join(', ') + '.' : '') +
-                      (disliked.length ? ' Avoid similar to: ' + disliked.join(', ') + '.' : '');
-    const seed = Math.random().toString(36).slice(2, 7);
-    stoicData = await callClaude(
-      'Give me a Stoic passage from Marcus Aurelius, Epictetus, or Seneca. Choose something genuinely thought-provoking, not the most commonly quoted ones. Pick a different passage every time (seed: ' + seed + ').' + exclude + ratingCtx + ' Return JSON: {author, passage, explanation}'
-    );
-    renderStoic(stoicData);
-  } catch(e) {
-    stoicData = {
-      author: 'Marcus Aurelius',
-      passage: 'The impediment to action advances action. What stands in the way becomes the way.',
-      explanation: 'Obstacles aren\'t detours from your path — they are the path. The resistance you\'re experiencing is the exact material from which growth is made. Marcus used this idea daily as emperor to reframe every setback as the work itself.',
-    };
-    renderStoic(stoicData);
-  }
-}
-
-function renderStoic(d) {
-  const container = document.getElementById('stoic-content');
-  const key = d.author + ' — ' + d.passage.slice(0, 60);
-  addShown('stoic', key);
-  searchTerms['stoic'] = key;
-  container.innerHTML =
-    '<div class="ai-card">' +
-      '<div class="stoic-author">' + esc(d.author) + '</div>' +
-      '<blockquote>' + esc(d.passage) + '</blockquote>' +
-      '<p class="stoic-explanation">' + esc(d.explanation) + '</p>' +
-    '</div>';
-  const card = container.querySelector('.ai-card');
-  card.insertAdjacentHTML('beforeend', cardFooter('stoic', key, ''));
-  addSwipeListener(card, 'stoic', key, loadStoic);
-  proposeReadCandidates(container, d.passage + '\n\n' + d.explanation, 'stoic');
-}
-
-document.getElementById('stoic-refresh').addEventListener('click', loadStoic);
-
-document.getElementById('stoic-ink-btn').addEventListener('click', async () => {
-  if (!stoicData) return;
-  openInInk('"' + stoicData.passage + '"\n— ' + stoicData.author + '\n\n' + stoicData.explanation);
-});
-
 // ── Shared loader helper ─────────────────────
 function skel() {
   return '<div class="ai-single"><div class="skeleton" style="width:60%;margin-bottom:12px"></div><div class="skeleton"></div><div class="skeleton" style="width:80%"></div></div>';
@@ -2854,23 +2751,6 @@ const loadFunFact = makeLoader(
   { fact: 'A day on Venus is longer than a year on Venus.', context: 'Venus rotates so slowly that it completes an orbit around the Sun before it finishes one full spin on its own axis — making its day (243 Earth days) longer than its year (225 Earth days).' }
 );
 document.getElementById('fun-fact-refresh').addEventListener('click', loadFunFact);
-
-// ── Introspection ─────────────────────────────
-let introspectionData = null;
-const loadIntrospection = makeLoader(
-  'introspection',
-  (ex) => 'Give me a single introspective question that cuts through surface thinking and gets at something real. Not therapy-speak.' + ex + ' Return JSON: {question, prompt}',
-  (d) => {
-    introspectionData = d;
-    return '<div class="ai-single"><div class="main-text">' + esc(d.question) + '</div><div class="sub-text">' + esc(d.prompt) + '</div></div>';
-  },
-  { question: 'What would you do differently if no one would ever find out?', prompt: 'Write for 60 seconds without stopping. Don\'t edit.' }
-);
-document.getElementById('introspection-refresh').addEventListener('click', loadIntrospection);
-document.getElementById('introspection-ink-btn').addEventListener('click', async () => {
-  if (!introspectionData) return;
-  openInInk(introspectionData.question + '\n\n' + introspectionData.prompt);
-});
 
 // ── Mental Math ───────────────────────────────
 let mathDifficulty = 'easy';
@@ -3064,31 +2944,6 @@ const loadCognitiveBias = makeLoader(
   { name: 'Sunk Cost Fallacy', definition: 'Continuing an endeavour because of past investment (time, money, effort) rather than future value.', example: 'Finishing a bad movie because you\'ve already watched an hour. Or staying in a bad job because you\'ve already given it 3 years.', antidote: 'Ask: "If I were starting fresh today, would I choose this?" If no, walk away.' }
 );
 document.getElementById('cognitive-bias-refresh').addEventListener('click', loadCognitiveBias);
-
-// ── Stoic Reminder ────────────────────────────
-let stoicReminderData = null;
-const seenStoicReminders = [];
-
-const loadStoicReminder = makeLoader(
-  'stoic-reminder',
-  (ex) => 'Give me a short stoic gut-check reminder — the kind that reorients you toward virtue and away from anxiety. Draw from core stoic principles: dichotomy of control, the sage ideal, memento mori, amor fati, present focus. Examples of the tone: "What would the idealized sage do right now?", "Is this in your control — or are you borrowing trouble?", "What virtue does this moment call for?" Make it punchy and direct.' + ex + ' Return JSON: {reminder, principle, context}',
-  (d) => {
-    stoicReminderData = d;
-    return '<div class="ai-single">' +
-      '<div class="tag">' + esc(d.principle) + '</div>' +
-      '<div class="main-text" style="font-size:1.2rem;line-height:1.5;margin-bottom:12px">' + esc(d.reminder) + '</div>' +
-      '<div class="sub-text">' + esc(d.context) + '</div>' +
-    '</div>';
-  },
-  { reminder: 'What would the idealized sage do right now?', principle: 'The Sage Ideal', context: 'The Stoics used the figure of the sage — a person of perfect wisdom and virtue — as a compass. Not to be perfect, but to have a direction.' }
-);
-
-document.getElementById('stoic-reminder-refresh').addEventListener('click', loadStoicReminder);
-
-document.getElementById('stoic-reminder-ink-btn').addEventListener('click', async () => {
-  if (!stoicReminderData) return;
-  openInInk(stoicReminderData.reminder + '\n\n' + stoicReminderData.context);
-});
 
 // ── Anki Input screen ─────────────────────────
 function resetAnkiInput() {
@@ -3430,19 +3285,6 @@ const loadScience = makeLoader('science',
 );
 document.getElementById('science-refresh').addEventListener('click', loadScience);
 
-// ── Psychology ──
-const loadPsychology = makeLoader('psychology',
-  (ex) => 'You are a warm, knowledgeable psychology educator. Share one psychology insight. Rotate between Gottman relationship research, therapeutic or attachment concepts, pop psychology, and gentle reflective prompts. Shape: {"type":"gottman|therapeutic|pop_psych|reflection","concept":"...","explanation":"...","try_this":"..."} Keep it accessible, specific, and genuinely useful — not clinical or generic.' + ex,
-  (d) => { ankiData['psychology'] = d; return '<div class="ai-single">' +
-    '<div class="am-tag">Psychology · ' + esc((d.type||'').replace(/_/g, ' ')) + '</div>' +
-    '<div class="word-title">' + esc(d.concept||'') + '</div>' +
-    '<div class="main-text">' + esc(d.explanation||'') + '</div>' +
-    '<div class="am-field"><span class="am-label">Try this</span>' + esc(d.try_this||'') + '</div>' +
-  '</div>'; },
-  { type: 'gottman', concept: 'The Four Horsemen', explanation: 'Gottman\'s research identified four communication patterns that reliably predict relationship breakdown: criticism, contempt, defensiveness, and stonewalling. Contempt — treating a partner as beneath you — is the single strongest predictor of divorce.', try_this: 'Notice if any of the four show up in a conversation this week. Just naming the pattern creates distance from it.' }
-);
-document.getElementById('psychology-refresh').addEventListener('click', loadPsychology);
-
 // ── This Weekend ──
 const loadWeekend = makeLoader('weekend',
   (ex) => { const city = localStorage.getItem('city') || '';
@@ -3602,88 +3444,182 @@ async function loadWeather() {
 }
 document.getElementById('weather-refresh').addEventListener('click', loadWeather);
 
-const INFORMATIONAL_SCREENS = ['history','cooking','fun-fact','new-word','new-term',
-  'finance-term','stats-concept','geography-fact','logical-fallacy','cognitive-bias','etymology',
-  'on-this-day','thought-experiment','health-insight','productivity-insight',
-  'flower','beautiful-place','color','design','science','psychology','weekend','recipe','flavor','room','good-news','pairing','weather','interior'];
-
+// Content-element id per card screen (most are '<slug>-content'; a couple differ).
 const INFORMATIONAL_CONTENT_IDS = {
   'history': 'history-cards', 'cooking': 'cooking-cards',
-  'fun-fact': 'fun-fact-content', 'new-word': 'new-word-content',
-  'new-term': 'new-term-content', 'finance-term': 'finance-term-content',
-  'stats-concept': 'stats-concept-content',
-  'geography-fact': 'geography-fact-content', 'logical-fallacy': 'logical-fallacy-content',
-  'cognitive-bias': 'cognitive-bias-content', 'etymology': 'etymology-content',
-  'on-this-day': 'on-this-day-content', 'thought-experiment': 'thought-experiment-content',
-  'health-insight': 'health-insight-content',
-  'productivity-insight': 'productivity-insight-content',
-  'flower': 'flower-content', 'beautiful-place': 'beautiful-place-content',
-  'color': 'color-content', 'design': 'design-content',
-  'science': 'science-content', 'psychology': 'psychology-content',
-  'weekend': 'weekend-content', 'recipe': 'recipe-content', 'flavor': 'flavor-content',
-  'room': 'room-content', 'good-news': 'good-news-content', 'pairing': 'pairing-content',
-  'weather': 'weather-content', 'interior': 'interior-content',
 };
 
-INFORMATIONAL_SCREENS.forEach(id => {
-  const actions = document.querySelector('#screen-' + id + ' .activity-actions');
-  if (!actions) return;
+// ══ Card action bar ══════════════════════════════════════════════════════════
+// The four card actions, arranged now↔later × light↔heavy. Which of the four a
+// card TYPE offers is declared as `actions` on its ACTIVITY_REGISTRY entry — the
+// capability lives on the type, not the instance. This one declarative bar
+// replaces the old scattered Google-it / Ask-Claude / Look-Up-Later / Remember-It
+// buttons.
+const CARD_ACTION_LABELS = {
+  lookup:     'Look it up',     // now,   light — inline Claude expansion, cached on the card
+  claude:     'Push to Claude', // now,   heavy — seeded deep link to a full conversation
+  flashcards: 'Flashcards',     // later, light — push an atomic recall item to the flashcard surface
+  deepdive:   'Deep dives',     // later, heavy — enrich-ahead enqueue into the deep-dive surface
+};
 
-  function getContentText() {
-    const el = document.getElementById(INFORMATIONAL_CONTENT_IDS[id]);
-    return el ? el.innerText.trim() : '';
+// Deterministic front/back for the Flashcards action, keyed by card type. Types
+// without an entry fall back to a generic condense of the visible card content.
+const FLASHCARD_FIELDS = {
+  'new-word':       { kind:'vocabulary word',   front:d=>d.word, back:d=>d.definition + (d.example ? '\n\nExample: ' + d.example : '') },
+  'new-term':       { kind:'concept or term',   front:d=>d.term + (d.field ? ' (' + d.field + ')' : ''), back:d=>d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') },
+  'finance-term':   { kind:'finance term',      front:d=>d.term, back:d=>d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : '') },
+  'stats-concept':  { kind:'statistics concept',front:d=>d.concept, back:d=>d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : '') },
+  'etymology':      { kind:'word etymology',    front:d=>d.word, back:d=>d.origin + (d.journey ? '\n\n' + d.journey : '') },
+  'cognitive-bias': { kind:'cognitive bias',    front:d=>d.name, back:d=>d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : '') },
+  'logical-fallacy':{ kind:'logical fallacy',   front:d=>d.name, back:d=>d.definition + (d.example ? '\n\nExample: ' + d.example : '') },
+  'fun-fact':       { kind:'fun fact',          front:d=>d.fact, back:d=>d.context || d.explanation || '' },
+  'on-this-day':    { kind:'historical event',  front:d=>String(d.year) + ': ' + d.event, back:d=>d.context || '' },
+  'geography-fact': { kind:'geography fact',     front:d=>d.location, back:d=>d.fact + (d.context ? '\n\n' + d.context : '') },
+  'history':        { kind:'historical topic',   front:d=>d.title, back:d=>d.hook || d.summary || '' },
+  'thought-experiment': { kind:'thought experiment', front:d=>d.name, back:d=>d.setup + (d.question ? '\n\nQuestion: ' + d.question : '') },
+  'health-insight': { kind:'health insight',     front:d=>d.topic, back:d=>(d.insight || '') + (d.tryThis ? '\n\nTry: ' + d.tryThis : '') },
+  'flower':         { kind:'flower',             front:d=>d.name, back:d=>'Meaning: ' + (d.meaning||'') + (d.fun_fact ? '\n\nFun fact: ' + d.fun_fact : '') },
+  'beautiful-place':{ kind:'place',              front:d=>d.title, back:d=>(d.description ? d.description + '\n\n' : '') + (d.extract||'') },
+  'science':        { kind:'science fact',       front:d=>d.headline, back:d=>(d.explanation||'') + (d.why_it_matters ? '\n\nWhy it matters: ' + d.why_it_matters : '') },
+  'design':         { kind:'design fact',        front:d=>d.title, back:d=>(d.content||'') + (d.example ? '\n\nExample: ' + d.example : '') },
+  'pairing':        { kind:'unexpected pairing', front:d=>(d.item_a||'') + ' × ' + (d.item_b||''), back:d=>(d.why_it_works||'') + (d.try_it ? '\n\nTry: ' + d.try_it : '') },
+  'flavor':         { kind:'flavor pairing',     front:d=>d.pairing, back:d=>(d.science_explanation||'') + (d.how_to_use ? '\n\nTry: ' + d.how_to_use : '') },
+  'interior':       { kind:'design movement',    front:d=>d.style_name, back:d=>(d.description||'') + (d.key_elements ? '\n\nKey elements: ' + d.key_elements : '') + (d.famous_example ? '\n\nExample: ' + d.famous_example : '') },
+};
+
+function cardContentEl(slug) {
+  return document.getElementById(INFORMATIONAL_CONTENT_IDS[slug] || (slug + '-content'));
+}
+function cardContentText(slug) {
+  const el = cardContentEl(slug);
+  return el ? el.innerText.trim() : '';
+}
+function cardTopic(slug) {
+  return (searchTerms[slug] || cardContentText(slug).split('\n')[0] || '').trim();
+}
+
+// Look it up (now, light): expand the card in place with a paragraph or two, and
+// cache the result on the card so reopening the same item never regenerates.
+// Cache lives in localStorage keyed by slug+topic (a "sane cache location").
+async function doLookItUp(slug, btn) {
+  const container = cardContentEl(slug);
+  if (!container) return;
+  const topic = cardTopic(slug);
+  if (!topic) { showToast('Load a card first'); return; }
+  const card = container.querySelector('.ai-single, .ai-card') || container;
+  let region = card.querySelector('.lookup-expand');
+  if (region && region.dataset.topic === topic) { region.hidden = !region.hidden; return; } // toggle
+  if (!region) {
+    region = document.createElement('div');
+    region.className = 'lookup-expand';
+    const foot = card.querySelector('.card-actions');
+    card.insertBefore(region, foot || null);
   }
+  region.dataset.topic = topic;
+  region.hidden = false;
+  const cacheKey = 'break_lookup::' + slug + '::' + topic;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) { region.innerHTML = cached; return; }
+  region.innerHTML = '<div class="skeleton"></div><div class="skeleton" style="width:80%"></div>';
+  btn.disabled = true;
+  try {
+    const content = cardContentText(slug);
+    const d = await callClaude(
+      'A curious person just saw this in a break app and tapped "tell me more". Expand with one or two genuinely interesting paragraphs that open a thread worth pulling — context, a surprising angle, or where it leads. Do not just restate what they saw. Subject: "' + topic + '".\n\nWhat they saw:\n"' + content + '"\n\nReturn JSON: {more}'
+    );
+    const html = '<div class="lookup-more">' + esc(d.more || '').replace(/\n+/g, '<br><br>') + '</div>';
+    region.innerHTML = html;
+    try { localStorage.setItem(cacheKey, html); } catch(e) {}
+  } catch(e) {
+    region.innerHTML = '<div class="lookup-more" style="color:var(--text-muted)">Couldn\'t expand — ' + esc(e.message || 'try again') + '</div>';
+  }
+  btn.disabled = false;
+}
 
-  const googleBtn = document.createElement('a');
-  googleBtn.className = 'btn btn-outline';
-  googleBtn.textContent = 'Google it';
-  googleBtn.target = '_blank';
-  googleBtn.rel = 'noopener';
-  googleBtn.addEventListener('click', () => {
-    const q = searchTerms[id] || getContentText().split('\n')[0];
-    googleBtn.href = 'https://www.google.com/search?q=' + encodeURIComponent(q);
+// Push to Claude (now, heavy): escalate to a full conversation, seeding the card
+// content as the opening prompt via a deep link.
+function doPushToClaude(slug) {
+  const content = cardContentText(slug);
+  if (!content) { showToast('Load a card first'); return; }
+  const seed = 'I just came across this in my break app and want to go deeper:\n\n' + content
+    + '\n\nExplain it in more depth and point me to the most interesting threads to pull on.';
+  try { navigator.clipboard.writeText(seed); } catch(e) {}
+  window.open('https://claude.ai/new?q=' + encodeURIComponent(seed), '_blank', 'noopener');
+}
+
+// Flashcards (later, light): push an atomic recall item to the existing flashcard
+// surface via the shared Remember-It preview + srsCreate.
+async function doFlashcards(slug, btn) {
+  const fields = FLASHCARD_FIELDS[slug];
+  const d = ankiData[slug];
+  let source;
+  if (fields && d) {
+    source = { slug, kind: fields.kind, rawFront: fields.front(d), rawBack: fields.back(d) || '' };
+  } else {
+    const topic = cardTopic(slug);
+    if (!topic) { showToast('Load a card first'); return; }
+    source = { slug, kind: 'general fact', rawFront: topic, rawBack: cardContentText(slug) };
+  }
+  if (!source.rawFront) { showToast('Load a card first'); return; }
+  const orig = btn.textContent;
+  btn.textContent = 'Generating…';
+  btn.disabled = true;
+  try {
+    const card = await generateRememberCard(source, Math.floor(Math.random() * 900) + 100);
+    openRememberPreview(source, card);
+  } catch(e) {
+    openRememberPreview(source, null);
+    showToast('Couldn\'t condense — edit and save');
+  }
+  btn.textContent = orig;
+  btn.disabled = false;
+}
+
+// Deep dives (later, heavy): enqueue topic + source-card context into the
+// deep-dive surface using its enrich-ahead pattern (ddFromLul generates ahead so
+// the expanded read is waiting next time Break opens).
+function doDeepDive(slug, btn) {
+  const topic = cardTopic(slug);
+  if (!topic) { showToast('Load a card first'); return; }
+  const content = cardContentText(slug);
+  if (btn.dataset.busy === '1') return;
+  btn.dataset.busy = '1';
+  showToast('Deep dive queued — it\'ll be ready next time');
+  ddFromLul(topic, content)
+    .catch(err => showToast('Deep dive failed: ' + (err.message || 'unknown')))
+    .finally(() => { setTimeout(() => { btn.dataset.busy = ''; }, 1200); });
+}
+
+const CARD_ACTION_HANDLERS = {
+  lookup:     (slug, btn) => doLookItUp(slug, btn),
+  claude:     (slug)      => doPushToClaude(slug),
+  flashcards: (slug, btn) => doFlashcards(slug, btn),
+  deepdive:   (slug, btn) => doDeepDive(slug, btn),
+};
+
+function wireCardActions(slug) {
+  const screen = document.getElementById('screen-' + slug);
+  if (!screen) return;
+  const actions = screen.querySelector('.activity-actions');
+  if (!actions) return;
+  if (actions.querySelector('.card-action-bar')) return; // idempotent
+  const entry = ACTIVITY_REGISTRY.find(a => a.slug === slug && !a.quiz);
+  const list = (entry && entry.actions) || [];
+  if (!list.length) return;
+  const bar = document.createElement('div');
+  bar.className = 'card-action-bar';
+  list.forEach(tok => {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-outline card-action';
+    btn.dataset.action = tok;
+    btn.textContent = CARD_ACTION_LABELS[tok] || tok;
+    btn.addEventListener('click', () => CARD_ACTION_HANDLERS[tok] && CARD_ACTION_HANDLERS[tok](slug, btn));
+    bar.appendChild(btn);
   });
+  actions.insertBefore(bar, actions.firstChild);
+}
 
-  const claudeBtn = document.createElement('button');
-  claudeBtn.className = 'btn btn-outline';
-  claudeBtn.textContent = 'Ask Claude';
-  claudeBtn.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText(getContentText()); } catch(e) {}
-    showToast('Copied — opening Claude');
-    setTimeout(() => { window.location.href = 'claude://'; }, 600);
-  });
-
-  // Look Up Later — send the current card's subject to the LUL queue
-  const lulBtn = document.createElement('button');
-  lulBtn.className = 'btn btn-outline';
-  lulBtn.textContent = 'Look Up Later';
-  lulBtn.addEventListener('click', async () => {
-    if (lulBtn.dataset.busy === '1') return;
-    const question = (searchTerms[id] || getContentText().split('\n')[0] || '').trim();
-    if (!question) { showToast('Load a card first'); return; }
-    lulBtn.dataset.busy = '1';
-    const orig = lulBtn.textContent;
-    lulBtn.textContent = 'Saving…';
-    lulBtn.disabled = true;
-    try {
-      const rows = await lulCreate(question);
-      const newId = Array.isArray(rows) ? rows[0]?.id : rows?.id;
-      showToast('Saved to Look Up Later');
-      updateLulBadge();
-      if (newId) lulResearch(newId, question); // background research
-    } catch(err) {
-      showToast('Save failed: ' + (err.message || 'unknown'));
-    }
-    lulBtn.textContent = orig;
-    lulBtn.disabled = false;
-    setTimeout(() => { lulBtn.dataset.busy = ''; }, 1200);
-  });
-
-  actions.insertBefore(googleBtn, actions.firstChild);
-  actions.insertBefore(claudeBtn, googleBtn.nextSibling);
-  actions.insertBefore(lulBtn, claudeBtn.nextSibling);
-  // TODO: Course integration — see Patch v7 #12 (design spec'd, not built)
-});
+[...new Set(ACTIVITY_REGISTRY.filter(a => !a.quiz).map(a => a.slug))].forEach(wireCardActions);
 
 // ── "New activity" button ─────────────────────
 // Derived from ACTIVITY_REGISTRY so every activity screen gets the button
@@ -3709,62 +3645,15 @@ ACTIVITY_SCREENS.forEach(id => {
 
 // ── Card replay (saved → original screen) ─────
 const LOADERS = {
-  'history': () => loadHistory(), 'cooking': () => loadCooking(), 'stoic': () => loadStoic(),
-  'fun-fact': () => loadFunFact(), 'introspection': () => loadIntrospection(),
+  'history': () => loadHistory(), 'cooking': () => loadCooking(),
+  'fun-fact': () => loadFunFact(),
   'mental-math': () => loadMentalMath(), 'new-word': () => loadNewWord(), 'new-term': () => loadNewTerm(),
   'finance-term': () => loadFinanceTerm(), 'stats-concept': () => loadStatsConcept(), 'geography-fact': () => loadGeographyFact(),
   'logical-fallacy': () => loadLogicalFallacy(), 'on-this-day': () => loadOnThisDay(),
   'thought-experiment': () => loadThoughtExperiment(), 'etymology': () => loadEtymology(),
   'cognitive-bias': () => loadCognitiveBias(), 'brain-teaser': () => loadBrainTeaser(),
-  'stoic-reminder': () => loadStoicReminder(),
   'beautiful-place': () => loadBeautifulPlace(),
 };
-
-// ── Box breathing ─────────────────────────────
-let boxBreathInterval = null, boxBreathPhase = 0, boxBreathRunning = false;
-const BOX_PHASES    = ['Inhale', 'Hold', 'Exhale', 'Hold'];
-const BOX_DURATIONS = [4, 4, 4, 4];
-
-function toggleBoxBreathe() { boxBreathRunning ? stopBoxBreathe() : startBoxBreathe(); }
-
-function startBoxBreathe() {
-  boxBreathRunning = true; boxBreathPhase = 0;
-  document.getElementById('box-breathe-toggle').textContent = 'Pause';
-  runBoxPhase();
-}
-
-function stopBoxBreathe() {
-  boxBreathRunning = false;
-  if (boxBreathInterval) { clearInterval(boxBreathInterval); boxBreathInterval = null; }
-  const ring = document.getElementById('box-breathe-ring');
-  if (!ring) return;
-  ring.style.transition = 'transform 0.5s ease';
-  ring.classList.remove('expand');
-  document.getElementById('box-breathe-phase').textContent = 'Tap to begin';
-  document.getElementById('box-breathe-count').textContent = '';
-  const tog = document.getElementById('box-breathe-toggle');
-  if (tog) tog.textContent = 'Start';
-}
-
-function runBoxPhase() {
-  if (!boxBreathRunning) return;
-  const phase    = BOX_PHASES[boxBreathPhase % 4];
-  const duration = BOX_DURATIONS[boxBreathPhase % 4];
-  const ring     = document.getElementById('box-breathe-ring');
-  document.getElementById('box-breathe-phase').textContent = phase;
-  if (phase === 'Inhale') { ring.style.transition = `transform ${duration}s ease-in-out`; ring.classList.add('expand'); }
-  else if (phase === 'Exhale') { ring.style.transition = `transform ${duration}s ease-in-out`; ring.classList.remove('expand'); }
-  let remaining = duration;
-  document.getElementById('box-breathe-count').textContent = remaining;
-  boxBreathInterval = setInterval(() => {
-    remaining--;
-    document.getElementById('box-breathe-count').textContent = remaining > 0 ? remaining : '';
-    if (remaining <= 0) {
-      clearInterval(boxBreathInterval); boxBreathInterval = null;
-      boxBreathPhase++; runBoxPhase();
-    }
-  }, 1000);
-}
 
 // ── App icon ──────────────────────────────────
 (function generateIcon() {
@@ -4610,33 +4499,6 @@ function openRememberPreview(source, card) {
   document.getElementById('srs-preview-modal').classList.remove('hidden');
 }
 
-function injectRememberIt(slug, getSource) {
-  const screen = document.getElementById('screen-' + slug);
-  if (!screen) return;
-  const actions = screen.querySelector('.activity-actions');
-  if (!actions) return;
-  if (actions.querySelector('.btn-remember-it')) return; // already injected
-  const btn = document.createElement('button');
-  btn.className = 'btn btn-outline btn-remember-it';
-  btn.textContent = 'Remember It';
-  btn.addEventListener('click', async () => {
-    const source = getSource();
-    if (!source) { showToast('Load a card first'); return; }
-    btn.textContent = 'Generating…';
-    btn.disabled = true;
-    try {
-      const card = await generateRememberCard(source, Math.floor(Math.random() * 900) + 100);
-      openRememberPreview(source, card);
-    } catch(e) {
-      openRememberPreview(source, null);
-      showToast('Couldn\'t condense — edit and save');
-    }
-    btn.textContent = 'Remember It';
-    btn.disabled = false;
-  });
-  actions.insertBefore(btn, actions.firstChild);
-}
-
 function closeRememberPreview() {
   document.getElementById('srs-preview-modal').classList.add('hidden');
   document.getElementById('srs-preview-regenerate').style.display = 'none';
@@ -5457,41 +5319,8 @@ async function arExtractTerms() {
   }
 }
 
-// Wire up "Remember It" for each activity using ankiData
-function wireRememberIt(slug, frontFn, backFn, kind) {
-  injectRememberIt(slug, () => {
-    const d = ankiData[slug];
-    if (!d) return null;
-    const front = frontFn(d);
-    const back  = backFn(d);
-    if (!front) return null;
-    return { slug, kind: kind || 'general fact', rawFront: front, rawBack: back || '' };
-  });
-}
-
-// Wire "Remember It" buttons on activity screens
-wireRememberIt('new-word',       d => d.word, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''), 'vocabulary word');
-wireRememberIt('new-term',       d => d.term + (d.field ? ' (' + d.field + ')' : ''), d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : ''), 'concept or term');
-wireRememberIt('finance-term',   d => d.term, d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : ''), 'finance term');
-wireRememberIt('stats-concept',  d => d.concept, d => d.definition + (d.whyItMatters ? '\n\n' + d.whyItMatters : '') + (d.example ? '\n\n' + d.example : ''), 'statistics concept');
-wireRememberIt('etymology',      d => d.word, d => d.origin + (d.journey ? '\n\n' + d.journey : ''), 'word etymology');
-wireRememberIt('cognitive-bias', d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : '') + (d.antidote ? '\n\nAntidote: ' + d.antidote : ''), 'cognitive bias');
-wireRememberIt('logical-fallacy',d => d.name, d => d.definition + (d.example ? '\n\nExample: ' + d.example : ''), 'logical fallacy');
-wireRememberIt('fun-fact',       d => d.fact, d => d.context || d.explanation || '', 'fun fact');
-wireRememberIt('on-this-day',    d => String(d.year) + ': ' + d.event, d => d.context || '', 'historical event');
-wireRememberIt('geography-fact', d => d.location, d => d.fact + (d.context ? '\n\n' + d.context : ''), 'geography fact');
-wireRememberIt('history',        d => d.title, d => d.hook || d.summary || '', 'historical topic');
-wireRememberIt('thought-experiment', d => d.name, d => d.setup + (d.question ? '\n\nQuestion: ' + d.question : ''), 'thought experiment');
-wireRememberIt('health-insight',    d => d.topic, d => (d.insight || '') + (d.tryThis ? '\n\nTry: ' + d.tryThis : ''), 'health insight');
-wireRememberIt('flower',     d => d.name, d => 'Meaning: ' + (d.meaning||'') + (d.fun_fact ? '\n\nFun fact: ' + d.fun_fact : ''), 'flower');
-wireRememberIt('beautiful-place', d => d.title, d => (d.description ? d.description + '\n\n' : '') + (d.extract||''), 'place');
-wireRememberIt('science',    d => d.headline, d => (d.explanation||'') + (d.why_it_matters ? '\n\nWhy it matters: ' + d.why_it_matters : ''), 'science fact');
-wireRememberIt('design',     d => d.title, d => (d.content||'') + (d.example ? '\n\nExample: ' + d.example : ''), 'design fact');
-wireRememberIt('psychology', d => d.concept, d => (d.explanation||'') + (d.try_this ? '\n\nTry this: ' + d.try_this : ''), 'psychology concept');
-wireRememberIt('good-news',  d => d.headline, d => (d.summary||'') + (d.why_it_matters ? '\n\nWhy it matters: ' + d.why_it_matters : ''), 'good news');
-wireRememberIt('pairing',    d => (d.item_a||'') + ' × ' + (d.item_b||''), d => (d.why_it_works||'') + (d.try_it ? '\n\nTry: ' + d.try_it : ''), 'unexpected pairing');
-wireRememberIt('flavor',     d => d.pairing, d => (d.science_explanation||'') + (d.how_to_use ? '\n\nTry: ' + d.how_to_use : ''), 'flavor pairing');
-wireRememberIt('interior',   d => d.style_name, d => (d.description||'') + (d.key_elements ? '\n\nKey elements: ' + d.key_elements : '') + (d.famous_example ? '\n\nExample: ' + d.famous_example : ''), 'design movement');
+// "Remember It" per-type front/back wiring now lives in FLASHCARD_FIELDS, driven
+// by the consolidated card action bar (the 'flashcards' action).
 
 // ── Look Up Later ────────────────────────────────────────
 async function lulFetch() { return sbFetch('look_up_later?status=eq.pending&order=created_at.asc'); }
