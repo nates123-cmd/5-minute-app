@@ -1510,6 +1510,17 @@
   <div class="activity-actions">  </div>
 </div>
 
+<!-- NEXT DEEP DIVE (suggestion) -->
+<div id="screen-deep-dive-suggestion" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Next Deep Dive</span>
+  </div>
+  <div id="deep-dive-suggestion-content"></div>
+  <button class="btn-refresh" id="deep-dive-suggestion-refresh">Another idea</button>
+  <div class="activity-actions">  </div>
+</div>
+
 <!-- MENTAL MATH -->
 <div id="screen-mental-math" class="screen">
   <div class="activity-header">
@@ -2180,6 +2191,7 @@ const ACTIVITY_REGISTRY = [
   { slug:'cooking',              name:'Cooking',              desc:'Learn a technique that changes how you cook', form:'standalone', door:true,  actions:_A4 },
   { slug:'reading',              name:'One-Page Read',        desc:'Open your book. Just one page.',            form:'standalone', door:false, actions:[] },
   { slug:'fun-fact',             name:'Fun Fact',             desc:'Something that makes you say "wait, really?"', form:'standalone', door:true,  actions:_A4 },
+  { slug:'deep-dive-suggestion', name:'Next Deep Dive',       desc:'A topic to explore next, drawn from what you\'ve been learning.', form:'standalone', door:true, actions:[] },
   { slug:'mental-math',          name:'Mental Math',          desc:'A problem worth the focus.',                form:'standalone', door:false, actions:[] },
   { slug:'new-word',             name:'New Word',             desc:'An obscure word that earns its place.',     form:'standalone', door:false, actions:_A4 },
   { slug:'new-term',             name:'New Term',             desc:'A concept from any field worth knowing.',   form:'standalone', door:true,  actions:_A4 },
@@ -2266,16 +2278,16 @@ const DURATION_ACTIVITIES = {
   '1min': ['fun-fact','mental-math','new-word','new-term',
            'finance-term','stats-concept','geography-fact','logical-fallacy','on-this-day',
            'thought-experiment','etymology','cognitive-bias','brain-teaser','health-insight'],
-  '5min': ['history','cooking','reading',
+  '5min': ['history','cooking','reading','deep-dive-suggestion',
            'fun-fact','mental-math','new-word','new-term','finance-term','stats-concept',
            'thought-experiment','cognitive-bias','brain-teaser','health-insight',
            'flower','beautiful-place','color','design','science','weekend','recipe','flavor','room','good-news','pairing','weather','interior'],
-  'informational':['history','cooking','fun-fact','new-word','new-term','finance-term','stats-concept',
+  'informational':['history','cooking','deep-dive-suggestion','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment','health-insight','productivity-insight',
                    'flower','beautiful-place','color','design','science','good-news','pairing','weather','interior'],
   'activity':     ['mental-math','brain-teaser','reading','weekend','recipe','flavor','room','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
-  'random':       ['history','cooking','reading',
+  'random':       ['history','cooking','reading','deep-dive-suggestion',
                    'fun-fact','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight',
@@ -2424,6 +2436,7 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'history')           loadHistory();
     if (a === 'cooking')           loadCooking();
     if (a === 'fun-fact')          loadFunFact();
+    if (a === 'deep-dive-suggestion') loadDeepDiveSuggestion();
     if (a === 'mental-math')       loadMentalMath();
     if (a === 'new-word')          loadNewWord();
     if (a === 'new-term')          loadNewTerm();
@@ -2770,6 +2783,83 @@ const loadFunFact = makeLoader(
   { fact: 'A day on Venus is longer than a year on Venus.', context: 'Venus rotates so slowly that it completes an orbit around the Sun before it finishes one full spin on its own axis — making its day (243 Earth days) longer than its year (225 Earth days).' }
 );
 document.getElementById('fun-fact-refresh').addEventListener('click', loadFunFact);
+
+// ── Next Deep Dive ────────────────────────────
+// Suggests the next topic to deep-dive, drawn from your past dives + flashcards,
+// with a deliberate dose of serendipity. Custom loader (not makeLoader) because it
+// fetches your learning history from Supabase before prompting.
+async function loadDeepDiveSuggestion() {
+  const container = document.getElementById('deep-dive-suggestion-content');
+  container.innerHTML = skel();
+  if (!hasSession()) {
+    container.innerHTML = '<div class="ai-single"><div class="main-text">Sign in for a suggestion</div>'
+      + '<div class="sub-text">Ideas are drawn from your deep dives and flashcards.</div></div>';
+    return;
+  }
+  try {
+    let dives = [], cards = [];
+    try { dives = await ddFetch(); } catch (e) {}
+    try { cards = await sbFetch('flashcards?context=eq.fun&order=created_at.desc&limit=40'); } catch (e) {}
+    const diveTitles = (dives || []).map(d => d.title).filter(Boolean).slice(0, 20);
+    const cardFronts = (cards || []).map(c => c.front).filter(Boolean).slice(0, 25);
+    const historyBlock = (diveTitles.length ? 'Deep dives they have done:\n- ' + diveTitles.join('\n- ') + '\n\n' : '')
+      + (cardFronts.length ? 'Flashcards they are studying:\n- ' + cardFronts.join('\n- ') + '\n\n' : '');
+    const seen = getSeenForExclusion('deep-dive-suggestion');
+    const exclude = seen.length ? ' Do NOT suggest any of these already-seen topics: ' + seen.join('; ') + '.' : '';
+    const seed = Math.random().toString(36).slice(2, 7);
+    const d = await callClaude(
+      'You suggest the next thing a curious person should deep-dive into — a topic they will try to explain from memory.\n\n'
+      + (historyBlock || 'They are just getting started — no history yet.\n\n')
+      + 'Suggest ONE specific, substantive topic worth five-plus minutes of real thought. '
+      + 'Blend two instincts: mostly build on the threads above (go deeper on one, or connect two of their interests), '
+      + 'but about a third of the time make a genuine leap into a different domain they clearly have NOT touched, for serendipity. '
+      + 'Keep it concrete and explainable — a real concept, not a vague area.'
+      + exclude + ' (seed: ' + seed + ')\n\n'
+      + 'Return JSON: {title, why, kind} — "why" is one sentence on why it is worth their time or how it connects to what they know; '
+      + '"kind" is "thread" if it builds on their history or "serendipity" if it is a fresh leap.'
+    );
+    addShown('deep-dive-suggestion', d.title || '');
+    searchTerms['deep-dive-suggestion'] = d.title || '';
+    container.innerHTML = renderDeepDiveSuggestion(d);
+    const startBtn = container.querySelector('#dds-start');
+    if (startBtn) startBtn.addEventListener('click', () => ddStartSuggested(d.title, startBtn));
+  } catch (e) {
+    showToast('⚠️ ' + (e.message || 'Could not suggest'), 4000);
+    container.innerHTML = renderDeepDiveSuggestion({
+      title: 'The Antikythera mechanism',
+      why: 'A 2,000-year-old geared analog computer that rewrites what we thought ancient engineering could do — a perfect rabbit hole.',
+      kind: 'serendipity',
+    });
+    const startBtn = container.querySelector('#dds-start');
+    if (startBtn) startBtn.addEventListener('click', () => ddStartSuggested('The Antikythera mechanism', startBtn));
+  }
+}
+function renderDeepDiveSuggestion(d) {
+  const tag = d.kind === 'thread' ? 'Builds on your threads' : (d.kind === 'serendipity' ? 'Something new' : '');
+  return '<div class="ai-single">'
+    + (tag ? '<div class="sub-text" style="text-transform:uppercase;letter-spacing:0.05em;font-size:0.68rem;margin-bottom:8px">' + esc(tag) + '</div>' : '')
+    + '<div class="main-text">' + esc(d.title || '') + '</div>'
+    + '<div class="sub-text">' + esc(d.why || '') + '</div>'
+    + '<button class="btn btn-primary" id="dds-start" style="width:100%;margin-top:16px">Start this deep dive</button>'
+    + '</div>';
+}
+async function ddStartSuggested(title, btn) {
+  if (!hasSession()) { showToast('Sign in to use AI'); return; }
+  const label = btn ? btn.textContent : '';
+  if (btn) { btn.textContent = 'Building…'; btn.disabled = true; }
+  try {
+    const dive = await ddGenerateTopic(title);
+    if (!dive.key_points || !dive.key_points.length) throw new Error('could not build that dive');
+    const rows = await ddCreate({ title: dive.title, prompt: dive.prompt, summary: dive.summary, key_points: dive.key_points, source: 'suggested' });
+    updateDeepDiveBadge();
+    const saved = Array.isArray(rows) ? rows[0] : rows;
+    arStartSession(saved && saved.id ? saved : dive);
+  } catch (e) {
+    showToast('Could not start — ' + (e.message || 'try again'));
+    if (btn) { btn.textContent = label; btn.disabled = false; }
+  }
+}
+document.getElementById('deep-dive-suggestion-refresh')?.addEventListener('click', loadDeepDiveSuggestion);
 
 // ── Mental Math ───────────────────────────────
 let mathDifficulty = 'easy';
