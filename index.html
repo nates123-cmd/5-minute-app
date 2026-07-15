@@ -5092,6 +5092,10 @@ document.getElementById('ar-revise-toggle')?.addEventListener('click', () => {
 });
 async function ddReviseKeyPoints(instruction) {
   const current = arState.keyPoints.map((k, i) => (i + 1) + '. ' + k.text).join('\n');
+  // Card-sourced dives carry a cardId per point (the miss-resurfacing trace). If
+  // any exist, ask Claude which originals each revised point derives from so we
+  // can re-attach the cardId in JS — the model never sees the ids themselves.
+  const hasLinks = arState.keyPoints.some(k => k && k.cardId);
   const out = await callClaudeAR(
     'A user is studying a concept and wants to reshape which key points their from-memory explanation is graded on.\n\n'
     + 'Concept: "' + arState.dive.title + '"\n'
@@ -5101,11 +5105,24 @@ async function ddReviseKeyPoints(instruction) {
     + instruction + '"\n\n'
     + 'Rewrite the key points to honor the request. Keep 3 to 6 concise, checkable points a strong explanation '
     + 'must hit. Do NOT reveal the answers themselves — each point names what must be covered, not the fact.\n\n'
-    + 'Return JSON only: {"keyPoints":[{"text":"..."}]}'
+    + (hasLinks
+        ? 'For EACH revised key point also return "from": an array of the 1-based numbers of the current key '
+          + 'points it derives from (a reworded or merged point lists its sources; a brand-new point lists []).\n\n'
+          + 'Return JSON only: {"keyPoints":[{"text":"...","from":[1]}]}'
+        : 'Return JSON only: {"keyPoints":[{"text":"..."}]}')
   );
-  const kp = Array.isArray(out.keyPoints) ? out.keyPoints.filter(k => k && k.text) : [];
-  if (!kp.length) throw new Error('no key points returned');
-  return kp;
+  const raw = Array.isArray(out.keyPoints) ? out.keyPoints.filter(k => k && k.text) : [];
+  if (!raw.length) throw new Error('no key points returned');
+  return raw.map(k => {
+    const point = { text: k.text };
+    if (hasLinks && Array.isArray(k.from)) {
+      for (const n of k.from) {
+        const orig = arState.keyPoints[Number(n) - 1];
+        if (orig && orig.cardId) { point.cardId = orig.cardId; break; }
+      }
+    }
+    return point;
+  });
 }
 document.getElementById('ar-revise-submit')?.addEventListener('click', async () => {
   const input = document.getElementById('ar-revise-input');
