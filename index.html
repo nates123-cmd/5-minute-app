@@ -1851,6 +1851,16 @@
     <div id="ar-save-wrap" style="margin-top:20px">
       <button class="btn btn-outline" id="ar-save-cards" style="width:100%">Pull terms into flashcards</button>
     </div>
+    <div id="ar-followup-wrap" style="margin-top:12px">
+      <button class="btn btn-outline" id="ar-followup-toggle" style="width:100%">Ask a follow-up</button>
+      <div id="ar-followup-panel" style="display:none;margin-top:12px">
+        <div id="ar-followup-thread" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <textarea id="ar-followup-input" class="anki-textarea" rows="1" placeholder="Ask about this concept…" style="flex:1;margin:0;min-height:44px;resize:none"></textarea>
+          <button class="btn btn-primary" id="ar-followup-send" style="width:auto;padding:0 18px;flex-shrink:0">Send</button>
+        </div>
+      </div>
+    </div>
     <button class="btn btn-primary" id="ar-done" style="width:100%;margin-top:12px">Done</button>
   </div>
 </div>
@@ -5198,6 +5208,88 @@ async function arGrade(answer) {
   );
 }
 
+// ── Follow-up chat ──
+// A real multi-turn Q&A on the just-graded concept. Plain prose (not JSON),
+// grounded in this dive's title/summary/key points so it stays on-topic.
+// Spends API credits — small: short answers, capped tokens.
+let arChatHistory = [];
+async function callClaudeARChat(history) {
+  if (!hasSession()) throw new Error('Sign in to use AI');
+  const kp = arState.keyPoints.map((k, i) => (i + 1) + '. ' + k.text).join('\n');
+  const sys = 'You are a sharp, encouraging study coach. The user just tried to explain a concept from '
+    + 'memory and is now asking follow-up questions to understand it better. Answer clearly and concisely '
+    + '(a short paragraph or two, plain prose — no markdown headers, no bullet dumps unless truly needed). '
+    + 'Stay grounded in the concept below; if they drift off-topic, answer briefly and steer back.\n\n'
+    + 'Concept: ' + arState.dive.title + '\n'
+    + (arState.dive.summary ? 'Summary: ' + arState.dive.summary + '\n' : '')
+    + 'Key points of a strong explanation:\n' + kp;
+  const res = await fetch(SB_URL + '/functions/v1/claude', {
+    method: 'POST',
+    headers: await claudeHeaders(),
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 700,
+      system: sys,
+      messages: history,
+    }),
+  });
+  if (!res.ok) throw new Error('Claude proxy ' + res.status);
+  const data = await res.json();
+  return (typeof data.text === 'string' ? data.text : (data.content?.[0]?.text || '')).trim();
+}
+function arChatBubble(role, text) {
+  const mine = role === 'user';
+  return '<div style="align-self:' + (mine ? 'flex-end' : 'flex-start') + ';max-width:85%;'
+    + 'background:' + (mine ? 'var(--surface-2)' : 'var(--surface)') + ';'
+    + 'border-radius:var(--radius-md,14px);padding:11px 14px;line-height:1.5;white-space:pre-wrap">'
+    + esc(text) + '</div>';
+}
+function arRenderChat() {
+  const thread = document.getElementById('ar-followup-thread');
+  if (!thread) return;
+  thread.innerHTML = arChatHistory.map(m => arChatBubble(m.role, m.content)).join('');
+  thread.scrollTop = thread.scrollHeight;
+}
+document.getElementById('ar-followup-toggle')?.addEventListener('click', () => {
+  const panel = document.getElementById('ar-followup-panel');
+  const btn = document.getElementById('ar-followup-toggle');
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : '';
+  btn.textContent = open ? 'Ask a follow-up' : 'Hide follow-up';
+  if (!open) document.getElementById('ar-followup-input')?.focus();
+});
+async function arSendFollowup() {
+  const input = document.getElementById('ar-followup-input');
+  const send = document.getElementById('ar-followup-send');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  arChatHistory.push({ role: 'user', content: q });
+  arRenderChat();
+  const thread = document.getElementById('ar-followup-thread');
+  const typing = document.createElement('div');
+  typing.style.cssText = 'align-self:flex-start;color:var(--text-faint);font-size:0.9rem;padding:4px 2px';
+  typing.textContent = 'Thinking…';
+  thread.appendChild(typing); thread.scrollTop = thread.scrollHeight;
+  send.disabled = true; input.disabled = true;
+  try {
+    const reply = await callClaudeARChat(arChatHistory);
+    arChatHistory.push({ role: 'assistant', content: reply || '(no answer)' });
+    arRenderChat();
+  } catch (e) {
+    typing.remove();
+    arChatHistory.pop(); // drop the unanswered question so retry is clean
+    input.value = q;
+    showToast('Follow-up failed — ' + (e.message || 'try again'));
+    arRenderChat();
+  }
+  send.disabled = false; input.disabled = false; input.focus();
+}
+document.getElementById('ar-followup-send')?.addEventListener('click', arSendFollowup);
+document.getElementById('ar-followup-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); arSendFollowup(); }
+});
+
 // ── Feedback ──
 function arTagHtml(hit) {
   const color = hit ? 'var(--accent-3)' : 'var(--accent)';
@@ -5233,6 +5325,16 @@ function arShowFeedback(graded) {
   }).join('');
   const saveBtn = document.getElementById('ar-save-cards');
   saveBtn.style.display = ''; saveBtn.disabled = false; saveBtn.textContent = 'Pull terms into flashcards';
+  // Fresh grade → fresh follow-up thread, collapsed.
+  arChatHistory = [];
+  const fPanel = document.getElementById('ar-followup-panel');
+  const fToggle = document.getElementById('ar-followup-toggle');
+  const fThread = document.getElementById('ar-followup-thread');
+  const fInput = document.getElementById('ar-followup-input');
+  if (fPanel) fPanel.style.display = 'none';
+  if (fToggle) fToggle.textContent = 'Ask a follow-up';
+  if (fThread) fThread.innerHTML = '';
+  if (fInput) fInput.value = '';
 }
 document.getElementById('ar-done')?.addEventListener('click', () => showScreen('home'));
 document.getElementById('ar-save-cards')?.addEventListener('click', arExtractTerms);
