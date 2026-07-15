@@ -1798,6 +1798,15 @@
     </div>
     <p class="framing" id="ar-mode-hint" style="font-size:0.82rem;margin-top:8px"></p>
     <button class="btn btn-primary" id="ar-begin" style="width:100%;margin-top:18px">Begin</button>
+    <div id="ar-revise-wrap" style="margin-top:12px">
+      <button class="btn btn-outline" id="ar-revise-toggle" style="width:100%">Revise key points</button>
+      <div id="ar-revise-panel" style="display:none;margin-top:12px">
+        <label class="srs-label">What this will test</label>
+        <div id="ar-revise-current" style="margin:8px 0 12px"></div>
+        <textarea id="ar-revise-input" class="anki-textarea" rows="3" placeholder="e.g. Skip exactly which ships were lost — I want total casualties, the Argentine leader, and what it was like for civilians"></textarea>
+        <button class="btn btn-primary" id="ar-revise-submit" style="width:100%;margin-top:10px">Revise with AI</button>
+      </div>
+    </div>
   </div>
 
   <!-- Phase: loading -->
@@ -5044,6 +5053,13 @@ function arStartSession(dive) {
   if (arRecording) arStopRecording();
   showScreen('active-recall');
   document.getElementById('ar-dive-title').textContent = dive.title;
+  // Reset the revise-key-points panel for this dive.
+  const rPanel = document.getElementById('ar-revise-panel');
+  const rToggle = document.getElementById('ar-revise-toggle');
+  const rInput = document.getElementById('ar-revise-input');
+  if (rPanel) rPanel.style.display = 'none';
+  if (rToggle) rToggle.textContent = 'Revise key points';
+  if (rInput) rInput.value = '';
   arSetMode(arState.mode);
   arPhase('setup');
 }
@@ -5055,6 +5071,61 @@ document.getElementById('ar-mode-toggle')?.addEventListener('click', e => {
 document.getElementById('ar-begin')?.addEventListener('click', () => {
   if (!arState || !arState.keyPoints.length) { showToast('This dive has no content yet'); return; }
   arRenderAnswer();
+});
+
+// ── Revise key points (natural-language, persists to the dive) ──
+function arRenderReviseCurrent() {
+  const box = document.getElementById('ar-revise-current');
+  if (!box) return;
+  const pts = (arState && arState.keyPoints) || [];
+  box.innerHTML = pts.length
+    ? pts.map(k => arPointHtml(k.text, null)).join('')
+    : '<p class="framing" style="font-size:0.85rem">No key points yet.</p>';
+}
+document.getElementById('ar-revise-toggle')?.addEventListener('click', () => {
+  const panel = document.getElementById('ar-revise-panel');
+  const btn = document.getElementById('ar-revise-toggle');
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : '';
+  btn.textContent = open ? 'Revise key points' : 'Hide revise';
+  if (!open) { arRenderReviseCurrent(); document.getElementById('ar-revise-input')?.focus(); }
+});
+async function ddReviseKeyPoints(instruction) {
+  const current = arState.keyPoints.map((k, i) => (i + 1) + '. ' + k.text).join('\n');
+  const out = await callClaudeAR(
+    'A user is studying a concept and wants to reshape which key points their from-memory explanation is graded on.\n\n'
+    + 'Concept: "' + arState.dive.title + '"\n'
+    + (arState.dive.summary ? 'Summary: ' + arState.dive.summary + '\n' : '')
+    + '\nCurrent key points:\n' + current + '\n\n'
+    + "The user's revision request (plain language — they may add, drop, reword, or reprioritize):\n\""
+    + instruction + '"\n\n'
+    + 'Rewrite the key points to honor the request. Keep 3 to 6 concise, checkable points a strong explanation '
+    + 'must hit. Do NOT reveal the answers themselves — each point names what must be covered, not the fact.\n\n'
+    + 'Return JSON only: {"keyPoints":[{"text":"..."}]}'
+  );
+  const kp = Array.isArray(out.keyPoints) ? out.keyPoints.filter(k => k && k.text) : [];
+  if (!kp.length) throw new Error('no key points returned');
+  return kp;
+}
+document.getElementById('ar-revise-submit')?.addEventListener('click', async () => {
+  const input = document.getElementById('ar-revise-input');
+  const btn = document.getElementById('ar-revise-submit');
+  const instruction = input.value.trim();
+  if (!instruction) { showToast('Say how you want them changed'); return; }
+  const label = btn.textContent;
+  btn.textContent = 'Revising…'; btn.disabled = true; input.disabled = true;
+  try {
+    const kp = await ddReviseKeyPoints(instruction);
+    arState.keyPoints = kp;
+    arState.dive.key_points = kp;
+    if (arState.dive.id) { try { await ddUpdate(arState.dive.id, { key_points: kp }); } catch (e) {} }
+    arRenderReviseCurrent();
+    input.value = '';
+    showToast('Key points revised');
+  } catch (e) {
+    showToast('Revise failed — ' + (e.message || 'try again'));
+  }
+  btn.textContent = label; btn.disabled = false; input.disabled = false;
 });
 
 function arRenderAnswer() {
