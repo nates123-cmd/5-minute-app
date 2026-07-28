@@ -702,6 +702,18 @@
     .dd-cluster-name { font-weight: 600; font-size: 0.92rem; }
     .dd-cluster-meta { font-size: 0.75rem; color: var(--text-muted, var(--muted)); white-space: nowrap; }
 
+    /* Per-point marks + standing guidance (steering a dive) */
+    .ar-mark-row { border-bottom: 1px solid var(--border); padding: 10px 0; }
+    .ar-mark-text { font-size: 0.9rem; line-height: 1.45; }
+    .ar-mark-text.dim { color: var(--text-muted, var(--muted)); }
+    .ar-mark-star { color: var(--accent); margin-left: 6px; }
+    .ar-mark-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+    .ar-mark-chip { background: transparent; border: 1px solid var(--border); border-radius: 7px; padding: 3px 9px; font-size: 0.72rem; font-family: var(--font); font-weight: 600; color: var(--text-muted, var(--muted)); cursor: pointer; }
+    .ar-mark-chip.on { color: var(--accent); border-color: var(--accent); }
+    .ar-mark-chip[data-act="drop"] { margin-left: auto; }
+    .ar-mark-note { width: 100%; margin-top: 8px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; font-family: var(--font); font-size: 0.82rem; color: var(--text); }
+    .ar-guidance-pill { background: transparent; border: 1px solid var(--accent); border-radius: 7px; padding: 3px 10px; font-size: 0.72rem; font-family: var(--font); font-weight: 600; color: var(--accent); cursor: pointer; }
+
     /* ── State line (home) ───────────────────── */
     .state-line { display: block; width: 100%; text-align: left; background: transparent; border: none; border-left: 3px solid var(--accent-3, var(--accent)); padding: 4px 0 4px 12px; margin: 4px 0 14px; font-size: 0.9rem; line-height: 1.5; color: var(--text-muted, var(--text)); font-family: var(--font); cursor: pointer; }
     .state-line[hidden] { display: none; }
@@ -2186,6 +2198,7 @@
   <!-- Phase: setup -->
   <div id="ar-setup">
     <div id="ar-dive-title" style="font-family:var(--font-serif);font-size:1.3rem;line-height:1.3;margin:4px 0 6px"></div>
+    <div id="ar-guidance-badge" style="display:none;margin:0 0 8px"></div>
     <p class="framing">Explain this from memory. Pick how you want to answer.</p>
     <label class="srs-label" style="margin-top:12px">Mode</label>
     <div class="srs-half-toggle" id="ar-mode-toggle">
@@ -5595,6 +5608,7 @@ function arStartSession(dive) {
   if (rPanel) rPanel.style.display = 'none';
   if (rToggle) rToggle.textContent = 'Revise key points';
   if (rInput) rInput.value = '';
+  arRenderGuidanceBadge();
   arSetMode(arState.mode);
   arPhase('setup');
 }
@@ -5608,14 +5622,102 @@ document.getElementById('ar-begin')?.addEventListener('click', () => {
   arRenderAnswer();
 });
 
+// Key points rendered WITH their marks. A point marked core is not the same
+// input as one never touched, and the model has to see the difference or the
+// user's corrections quietly evaporate on the next call.
+function arPointLines(points) {
+  return (points || []).map((k, i) => {
+    const mark = k.weight === 'core' ? ' [MUST HIT \u2014 they marked this the important one]'
+      : k.weight === 'minor' ? ' [minor \u2014 they say this barely matters]' : '';
+    const note = k.note ? '\n   their note on this point: "' + k.note + '"' : '';
+    return (i + 1) + '. ' + k.text + mark + note;
+  }).join('\n');
+}
+// Standing guidance, replayed into every revise and every grade. Without this a
+// correction is forgotten the moment it runs and has to be argued again.
+function arGuidanceBlock(g) {
+  return (g && g.trim())
+    ? '\nHOW THEY HAVE TOLD YOU TO WEIGHT THIS TOPIC (standing instructions from earlier \u2014 follow them):\n' + g.trim() + '\n'
+    : '';
+}
+
 // ── Revise key points (natural-language, persists to the dive) ──
+// Shows that this dive carries standing instructions, and reveals them on tap.
+// Silent memory would be worse than none: you would not know why it graded you
+// the way it did.
+function arRenderGuidanceBadge() {
+  const el = document.getElementById('ar-guidance-badge');
+  if (!el) return;
+  const g = arState && arState.dive && arState.dive.guidance;
+  if (!g) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = '<button class="ar-guidance-pill" title="' + esc(g) + '">Your steering is applied</button>';
+  el.querySelector('.ar-guidance-pill').addEventListener('click', () => {
+    const panel = document.getElementById('ar-revise-panel');
+    const btn = document.getElementById('ar-revise-toggle');
+    if (!panel || panel.style.display === '') return;
+    panel.style.display = ''; btn.textContent = 'Hide revise'; arRenderReviseCurrent();
+  });
+}
+
 function arRenderReviseCurrent() {
   const box = document.getElementById('ar-revise-current');
   if (!box) return;
   const pts = (arState && arState.keyPoints) || [];
-  box.innerHTML = pts.length
-    ? pts.map(k => arPointHtml(k.text, null)).join('')
-    : '<p class="framing" style="font-size:0.85rem">No key points yet.</p>';
+  if (!pts.length) { box.innerHTML = '<p class="framing" style="font-size:0.85rem">No key points yet.</p>'; return; }
+  // Marks are the fine-grained half of steering: saying "this one is the point"
+  // is quicker and less ambiguous than describing it in a sentence.
+  const chip = (on, label, act, i) =>
+    '<button class="ar-mark-chip' + (on ? ' on' : '') + '" data-act="' + act + '" data-i="' + i + '">' + label + '</button>';
+  box.innerHTML = pts.map((k, i) =>
+    '<div class="ar-mark-row">'
+    + '<div class="ar-mark-text' + (k.weight === 'minor' ? ' dim' : '') + '">' + esc(k.text)
+      + (k.weight === 'core' ? '<span class="ar-mark-star" title="You marked this the one that matters">\u2605</span>' : '')
+    + '</div>'
+    + '<div class="ar-mark-chips">'
+      + chip(k.weight === 'core', 'Must hit', 'core', i)
+      + chip(k.weight === 'minor', 'Barely matters', 'minor', i)
+      + chip(!!(k.note || k.noteOpen), k.note ? 'Note added' : 'Add a note', 'note', i)
+      + chip(false, 'Not relevant', 'drop', i)
+    + '</div>'
+    + ((k.noteOpen || k.note)
+        ? '<input class="ar-mark-note" data-i="' + i + '" value="' + esc(k.note || '') + '" placeholder="What\'s wrong with this point, or what it should say instead\u2026">'
+        : '')
+    + '</div>').join('');
+
+  box.querySelectorAll('.ar-mark-chip').forEach(b => b.addEventListener('click', () => {
+    const i = +b.dataset.i, act = b.dataset.act, k = arState.keyPoints[i];
+    if (!k) return;
+    if (act === 'core' || act === 'minor') k.weight = k.weight === act ? undefined : act;
+    else if (act === 'note') { k.noteOpen = !(k.noteOpen || k.note); if (!k.noteOpen) k.note = ''; }
+    else if (act === 'drop') {
+      if (arState.keyPoints.length <= 1) { showToast('A dive needs at least one key point'); return; }
+      arState.keyPoints.splice(i, 1);
+    }
+    arRenderReviseCurrent();
+    arPersistPoints();
+  }));
+  // Notes are read on input but only persisted on blur — saving per keystroke
+  // would be a write per character.
+  box.querySelectorAll('.ar-mark-note').forEach(el => {
+    el.addEventListener('input', () => { const k = arState.keyPoints[+el.dataset.i]; if (k) k.note = el.value; });
+    el.addEventListener('blur', arPersistPoints);
+  });
+}
+
+// Marks live on the dive, so they survive leaving the screen. Fire-and-forget:
+// a failed mark must never interrupt a study session.
+async function arPersistPoints() {
+  if (!arState || !arState.dive || !arState.dive.id) return;
+  const clean = arState.keyPoints.map(k => {
+    const o = { text: k.text };
+    if (k.weight === 'core' || k.weight === 'minor') o.weight = k.weight;
+    if (k.note && k.note.trim()) o.note = k.note.trim();
+    if (k.cardId) o.cardId = k.cardId;
+    return o;
+  });
+  arState.dive.key_points = clean;
+  try { await ddUpdate(arState.dive.id, { key_points: clean }); } catch (e) {}
 }
 document.getElementById('ar-revise-toggle')?.addEventListener('click', () => {
   const panel = document.getElementById('ar-revise-panel');
@@ -5626,7 +5728,7 @@ document.getElementById('ar-revise-toggle')?.addEventListener('click', () => {
   if (!open) { arRenderReviseCurrent(); document.getElementById('ar-revise-input')?.focus(); }
 });
 async function ddReviseKeyPoints(instruction) {
-  const current = arState.keyPoints.map((k, i) => (i + 1) + '. ' + k.text).join('\n');
+  const current = arPointLines(arState.keyPoints);
   // Card-sourced dives carry a cardId per point (the miss-resurfacing trace). If
   // any exist, ask Claude which originals each revised point derives from so we
   // can re-attach the cardId in JS — the model never sees the ids themselves.
@@ -5635,21 +5737,28 @@ async function ddReviseKeyPoints(instruction) {
     'A user is studying a concept and wants to reshape which key points their from-memory explanation is graded on.\n\n'
     + 'Concept: "' + arState.dive.title + '"\n'
     + (arState.dive.summary ? 'Summary: ' + arState.dive.summary + '\n' : '')
-    + '\nCurrent key points:\n' + current + '\n\n'
-    + "The user's revision request (plain language — they may add, drop, reword, or reprioritize):\n\""
+    + '\nCurrent key points:\n' + current + '\n'
+    + arGuidanceBlock(arState.dive.guidance)
+    + "\nThe user's revision request (plain language — they may add, drop, reword, or reprioritize):\n\""
     + instruction + '"\n\n'
-    + 'Rewrite the key points to honor the request. Keep 3 to 6 concise, checkable points a strong explanation '
-    + 'must hit. Do NOT reveal the answers themselves — each point names what must be covered, not the fact.\n\n'
+    + 'Rewrite the key points to honor the request. Put what they say matters most FIRST. Keep 3 to 6 concise, '
+    + 'checkable points a strong explanation must hit. Do NOT reveal the answers themselves — each point names '
+    + 'what must be covered, not the fact. Preserve each point\'s "weight" ("core" or "minor") unless they asked '
+    + 'to change it.\n\n'
+    + 'Also return "guidance": a merged, deduplicated restatement of ALL their standing instructions (the earlier '
+    + 'ones plus what they just said), as short imperative lines they would recognise. This is replayed every '
+    + 'future time this dive is revised or graded, so keep it durable and specific — 8 lines at most.\n\n'
     + (hasLinks
         ? 'For EACH revised key point also return "from": an array of the 1-based numbers of the current key '
           + 'points it derives from (a reworded or merged point lists its sources; a brand-new point lists []).\n\n'
-          + 'Return JSON only: {"keyPoints":[{"text":"...","from":[1]}]}'
-        : 'Return JSON only: {"keyPoints":[{"text":"..."}]}')
+          + 'Return JSON only: {"keyPoints":[{"text":"...","weight":"core|normal|minor","from":[1]}],"guidance":"..."}'
+        : 'Return JSON only: {"keyPoints":[{"text":"...","weight":"core|normal|minor"}],"guidance":"..."}')
   );
   const raw = Array.isArray(out.keyPoints) ? out.keyPoints.filter(k => k && k.text) : [];
   if (!raw.length) throw new Error('no key points returned');
-  return raw.map(k => {
+  const points = raw.map(k => {
     const point = { text: k.text };
+    if (k.weight === 'core' || k.weight === 'minor') point.weight = k.weight;
     if (hasLinks && Array.isArray(k.from)) {
       for (const n of k.from) {
         const orig = arState.keyPoints[Number(n) - 1];
@@ -5658,6 +5767,7 @@ async function ddReviseKeyPoints(instruction) {
     }
     return point;
   });
+  return { points, guidance: (out.guidance || arState.dive.guidance || '').trim() };
 }
 document.getElementById('ar-revise-submit')?.addEventListener('click', async () => {
   const input = document.getElementById('ar-revise-input');
@@ -5667,11 +5777,21 @@ document.getElementById('ar-revise-submit')?.addEventListener('click', async () 
   const label = btn.textContent;
   btn.textContent = 'Revising…'; btn.disabled = true; input.disabled = true;
   try {
-    const kp = await ddReviseKeyPoints(instruction);
+    const { points: kp, guidance } = await ddReviseKeyPoints(instruction);
     arState.keyPoints = kp;
     arState.dive.key_points = kp;
-    if (arState.dive.id) { try { await ddUpdate(arState.dive.id, { key_points: kp }); } catch (e) {} }
+    arState.dive.guidance = guidance;
+    if (arState.dive.id) {
+      // `guidance` ships ahead of its migration. Postgres 42703 is "column does
+      // not exist": drop it and retry rather than losing the revision itself.
+      try {
+        await ddUpdate(arState.dive.id, { key_points: kp, guidance: guidance || null });
+      } catch (e) {
+        try { await ddUpdate(arState.dive.id, { key_points: kp }); } catch (e2) {}
+      }
+    }
     arRenderReviseCurrent();
+    arRenderGuidanceBadge();
     input.value = '';
     showToast('Key points revised');
   } catch (e) {
@@ -5701,7 +5821,7 @@ function arSetupMental() {
 }
 document.getElementById('ar-reveal')?.addEventListener('click', () => {
   const box = document.getElementById('ar-mental-points');
-  box.innerHTML = arState.keyPoints.map(k => arPointHtml(k.text, null)).join('');
+  box.innerHTML = arState.keyPoints.map(k => arPointHtml(k.text, null, k.weight)).join('');
   box.style.display = '';
   document.getElementById('ar-reveal').style.display = 'none';
   document.getElementById('ar-mental-rate').style.display = '';
@@ -5818,11 +5938,14 @@ async function arGradeAndFinish(answer, btn) {
   btn.textContent = label; btn.disabled = false;
 }
 async function arGrade(answer) {
-  const points = arState.keyPoints.map((k, i) => (i + 1) + '. ' + k.text).join('\n');
+  const points = arPointLines(arState.keyPoints);
   return await callClaudeAR(
     'You are grading a from-memory explanation. Be encouraging but honest.\n\n'
     + 'Prompt the user was asked: "' + arState.prompt + '"\n\n'
-    + 'Key points a strong answer must hit (numbered):\n' + points + '\n\n'
+    + 'Key points a strong answer must hit (numbered):\n' + points + '\n'
+    + arGuidanceBlock(arState.dive && arState.dive.guidance)
+    + '\nWeight the overall read by what they said matters: missing a point marked MUST HIT is a "miss" '
+    + 'even if they covered everything else; missing only points marked minor is not.\n\n'
     + "User's explanation:\n\"" + answer + '"\n\n'
     + 'Return JSON only with exactly three fields: '
     + '"feedback" (2 to 3 sentences of specific prose, second person, naming what they hit and what they missed — NO score, grade, number, letter, or percentage), '
@@ -5919,9 +6042,11 @@ function arTagHtml(hit) {
   return '<span style="font-size:0.68rem;text-transform:uppercase;letter-spacing:0.05em;color:'
     + color + ';margin-right:8px;font-weight:600">' + (hit ? 'hit' : 'missed') + '</span>';
 }
-function arPointHtml(text, hit) {
+function arPointHtml(text, hit, weight) {
   const tag = (hit === null || hit === undefined) ? '' : arTagHtml(hit);
-  return '<div style="padding:9px 0;border-bottom:1px solid var(--border);line-height:1.45">' + tag + esc(text) + '</div>';
+  const star = weight === 'core' ? '<span class="ar-mark-star" title="You marked this the one that matters">\u2605</span>' : '';
+  const dim = weight === 'minor' ? 'color:var(--muted);' : '';
+  return '<div style="padding:9px 0;border-bottom:1px solid var(--border);line-height:1.45;' + dim + '">' + tag + esc(text) + star + '</div>';
 }
 function arShowFeedback(graded) {
   arPhase('feedback');
@@ -5944,7 +6069,7 @@ function arShowFeedback(graded) {
   const verdictFor = i => (graded && graded.verdicts) ? graded.verdicts.find(v => v.index === i) : null;
   document.getElementById('ar-feedback-points').innerHTML = arState.keyPoints.map((k, i) => {
     const v = verdictFor(i);
-    return arPointHtml(k.text, v ? !!v.hit : null);
+    return arPointHtml(k.text, v ? !!v.hit : null, k.weight);
   }).join('');
   const saveBtn = document.getElementById('ar-save-cards');
   saveBtn.style.display = ''; saveBtn.disabled = false; saveBtn.textContent = 'Pull terms into flashcards';
