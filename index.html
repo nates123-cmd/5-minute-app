@@ -2015,6 +2015,7 @@
     <textarea id="srs-edit-back" class="anki-textarea" rows="5"></textarea>
     <button class="btn btn-outline" id="srs-edit-swap" style="margin-top:10px;width:100%">⇄ Swap front &amp; back</button>
     <button class="btn btn-outline" id="srs-edit-reword" style="margin-top:8px;width:100%">Reword</button>
+    <button class="btn btn-outline" id="srs-edit-delete" style="margin-top:8px;width:100%;color:var(--accent)">Delete card</button>
     <div style="display:flex;gap:8px;margin-top:18px">
       <button class="btn btn-outline" id="srs-edit-cancel" style="flex:1">Cancel</button>
       <button class="btn btn-primary" id="srs-edit-save" style="flex:2">Save</button>
@@ -4268,6 +4269,10 @@ async function srsUpdate(id, fields) {
   });
 }
 
+async function srsDelete(id) {
+  return sbFetch('flashcards?id=eq.' + id, { method: 'DELETE' });
+}
+
 // SM-2
 function sm2(card, rating) {
   // rating: 0=miss, 1=hard, 2=easy
@@ -4509,6 +4514,25 @@ function closeSrsEdit() { document.getElementById('srs-edit-modal').classList.ad
 document.getElementById('srs-edit-btn').addEventListener('click', openSrsEdit);
 document.getElementById('srs-edit-close').addEventListener('click', closeSrsEdit);
 document.getElementById('srs-edit-cancel').addEventListener('click', closeSrsEdit);
+
+document.getElementById('srs-edit-delete').addEventListener('click', async () => {
+  const card = srsEditableCard();
+  if (!card) { closeSrsEdit(); return; }
+  if (!confirm('Delete this card permanently?')) return;
+  const btn = document.getElementById('srs-edit-delete');
+  btn.textContent = 'Deleting…'; btn.disabled = true;
+  try {
+    await srsDelete(card.id);
+    srsQueue.splice(srsCurrent, 1);
+    closeSrsEdit();
+    if (srsQueue.length === 0 || srsCurrent >= srsQueue.length) renderSrsDone();
+    else renderSrsCard();
+    showToast('Card deleted');
+  } catch(e) {
+    showToast('Delete failed (' + (e.message || 'offline') + ')');
+    btn.textContent = 'Delete card'; btn.disabled = false;
+  }
+});
 
 // Swap just exchanges the two fields in the form; nothing persists until Save.
 document.getElementById('srs-edit-swap').addEventListener('click', () => {
