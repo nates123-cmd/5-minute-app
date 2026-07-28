@@ -202,8 +202,16 @@ that slug's `spec.render()`, or `null` to fall through to Claude. Three tiers:
 | Tier | What | Slugs |
 |---|---|---|
 | 1. Bundled data | Canonical finite sets, in-repo. Instant, free, works offline and signed out. | `cognitive-bias`, `logical-fallacy`, `thought-experiment`, `etymology`, `new-word`, `stoic` |
-| 2. Free keyless API | Real data that changes. CORS-open, no key. | `on-this-day` (Wikimedia) |
+| 2. Free keyless API | Real data that changes. CORS-open, no key. | `on-this-day` (Wikimedia On This Day), `fun-fact` (Wikipedia "Did you know") |
 | 3. Claude | Genuinely generative, no source of truth. | everything else |
+
+`wikiFeatured()` fetches `api.wikimedia.org/feed/v1/wikipedia/en/featured/Y/M/D`
+once per day. It returns **six** sections — `tfa`, `dyk`, `image`, `news`,
+`mostread`, `onthisday` — so more card types can come off the same cached call.
+Only `dyk` is wired up: `tfa` would suit `history` and `image` (which has a real
+photo + description) would suit `beautiful-place`, but **both are bespoke
+loaders that never registered a `CARD_SPEC`, so the feed cannot serve them.**
+Registering those two as specs is the cheapest next win.
 
 **Why bundled beats a model for tier 1:** named biases, fallacies, thought
 experiments and etymologies are *lists*. Asking a model for one makes it
@@ -221,6 +229,24 @@ accurate and ~1000x faster.
   activities have sources, so the feed narrows.
 - `on-this-day` caches the day's Wikimedia payload in `onThisDayCache`.
   Without it every batch refetched the same list.
+
+**Landmines around the source layer:**
+- **Don't key `preferInstant` on `feedBuffer.length === 0`.** Sources yield one
+  card at a time, so the buffer sits at zero most of the time and that
+  condition latches on permanently — the model then never runs and the feed
+  serves only the 7 sourced activities forever. It's keyed on
+  `feedMounted.length === 0` (true cold start) plus the share target.
+- **Wikipedia DYK is curated for interest, not tone.** A live pull served
+  "Police investigating rapist ..." as a Fun Fact. `GRIM_TERMS` filters it —
+  coarse, will miss things. Deliberately *not* applied to `on-this-day`, where
+  historical weight is the point.
+- **Daily API pools are small** (~9 DYK items/day). `unseenOnly()` returns
+  `null` once they're spent so `feedGenerate` falls through to Claude instead
+  of recycling the same nine facts. Bundled sets use `pickUnseen`, which
+  reshuffles instead — they're big enough that it rarely bites.
+- DYK entries carry no `pages`/summary of their own (unlike onthisday events);
+  the article link is only in the `html` field. `wikiSummary()` pulls the
+  linked article's extract for the card's context line, cached per title.
 - Sources are consulted by **the feed only**. The single-activity screens
   still go through `makeLoader` → Claude, unchanged. Promoting sources into
   `makeLoader` so those screens get them too is a clean follow-up.

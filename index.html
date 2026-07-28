@@ -6744,7 +6744,8 @@ const CARD_SOURCES = {};
 
 // Draw n items the exclusion list hasn't recorded yet. Once the pool is
 // exhausted it reshuffles the whole set rather than returning nothing — a
-// repeat is better than a dead feed.
+// repeat is better than a dead feed. Bundled sets are large enough that this
+// rarely bites; API sets should use unseenOnly() instead (see below).
 function pickUnseen(slug, pool, n, keyOf) {
   const seen = new Set(getSeenForExclusion(slug));
   let bag = pool.filter(x => !seen.has(keyOf(x)));
@@ -6754,6 +6755,15 @@ function pickUnseen(slug, pool, n, keyOf) {
     out.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]);
   }
   return out;
+}
+
+// For daily API pools, which are small — Wikipedia publishes only ~9 "Did you
+// know" items a day. Returns null once they're all spent so feedGenerate falls
+// through to Claude instead of recycling the same nine facts.
+function unseenOnly(slug, pool, keyOf) {
+  const seen = new Set(getSeenForExclusion(slug));
+  const fresh = pool.filter(x => !seen.has(keyOf(x)));
+  return fresh.length ? fresh : null;
 }
 
 // ── Tier 2: today in history (Wikimedia, no key, CORS-open) ──────────────
@@ -6778,12 +6788,78 @@ CARD_SOURCES['on-this-day'] = async (n) => {
     onThisDayCache = { day, events };
   }
   if (!events.length) return null;
-  return pickUnseen('on-this-day', events, n, e => e.text).map(e => ({
+  const fresh = unseenOnly('on-this-day', events, e => e.text);
+  if (!fresh) return null;   // day's events spent — Claude takes over
+  return pickUnseen('on-this-day', fresh, n, e => e.text).map(e => ({
     event: e.text,
     year: e.year,
     // The linked article's summary is the "why this mattered" paragraph.
     context: (e.pages && e.pages[0] && e.pages[0].extract) || '',
   }));
+};
+
+// ── Tier 2: Wikipedia's daily featured feed ──────────────────────────────
+// One call returns six sections (tfa, dyk, image, news, mostread, onthisday).
+// Cached per day, so every card type drawn from it is free after the first.
+// Only `dyk` is wired up today: `tfa` and `image` would suit the history and
+// beautiful-place cards, but those are bespoke loaders that never registered
+// a CARD_SPEC, so the feed cannot serve them yet.
+let featuredCache = null;   // { day: 'YYYY/MM/DD', data }
+
+async function wikiFeatured() {
+  const d = new Date();
+  const day = d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+  if (featuredCache && featuredCache.day === day) return featuredCache.data;
+  const res = await fetch('https://api.wikimedia.org/feed/v1/wikipedia/en/featured/' + day);
+  if (!res.ok) return null;
+  const data = await res.json();
+  featuredCache = { day, data };
+  return data;
+}
+
+const stripTags = (s) => String(s == null ? '' : s).replace(/<[^>]*>/g, '').trim();
+
+// "Did you know" is Wikipedia's own curated surprising-fact section — human
+// picked, sourced, and refreshed daily. That is exactly the Fun Fact brief,
+// and unlike a model it cannot invent one.
+// DYK entries carry no article summary of their own (unlike onthisday), but
+// their `html` links the article the fact came from. Pull that summary for the
+// card's context line. Cached, and a failure just leaves the context empty.
+const wikiSummaryCache = new Map();
+
+async function wikiSummary(title) {
+  if (wikiSummaryCache.has(title)) return wikiSummaryCache.get(title);
+  let extract = '';
+  try {
+    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+    if (res.ok) extract = (await res.json()).extract || '';
+  } catch (e) { /* leave blank */ }
+  wikiSummaryCache.set(title, extract);
+  return extract;
+}
+
+// Wikipedia's DYK is curated for interest, NOT for tone — a live pull served
+// "Police investigating rapist ..." as a fun fact during testing. Break is a
+// five-minute-break app, so that lands badly. This is a coarse filter and will
+// miss things; it is not applied to on-this-day, where historical weight is
+// the point and filtering it would be whitewashing.
+const GRIM_TERMS = /\b(rapist|rape|murder|massacre|genocide|suicide|paedophil|pedophil|child abuse|sexual abuse|torture|execution|executed|terrorist|shooting|manslaughter|atrocit|lynch)/i;
+
+CARD_SOURCES['fun-fact'] = async (n) => {
+  const feed = await wikiFeatured();
+  const dyk = ((feed && feed.dyk) || []).filter(x => !GRIM_TERMS.test(stripTags(x.text)));
+  const fresh = unseenOnly('fun-fact', dyk, x => stripTags(x.text));
+  if (!fresh) return null;   // day's DYK spent — Claude takes over
+  const picked = pickUnseen('fun-fact', fresh, n, x => stripTags(x.text));
+  return Promise.all(picked.map(async (x) => {
+    // Entries read "... that <fact>?" — reshape into a statement.
+    let fact = stripTags(x.text).replace(/^\.{2,}\s*that\s+/i, '').replace(/\?\s*$/, '');
+    fact = fact.charAt(0).toUpperCase() + fact.slice(1);
+    if (!/[.!]$/.test(fact)) fact += '.';
+    const m = /\/wiki\/([^"#?]+)/.exec(x.html || '');
+    const context = m ? await wikiSummary(decodeURIComponent(m[1])) : '';
+    return { fact, context };
+  })).then(list => list.filter(d => d.fact.length > 12));
 };
 
 // ── Tier 1: bundled canonical sets ───────────────────────────────────────
@@ -7120,13 +7196,18 @@ async function feedGenerateViaClaude(slug, spec) {
 async function feedGenerate() {
   if (feedInFlight >= FEED_INFLIGHT) return;
   if (feedBuffer.length >= FEED_MAX) return;
-  // Prefer an instant source when the buffer is dry (nothing to show right
-  // now) or when the recent mix has drifted below the target share.
+  // Prefer an instant source at cold start (get something on screen now), and
+  // afterwards only when the recent mix has drifted below the target share.
+  //
+  // Deliberately NOT keyed on `feedBuffer.length === 0`: sources yield one
+  // card at a time, so the buffer sits at zero most of the time and that
+  // condition latches on permanently — the model then never runs at all.
   const recent = feedMounted.slice(-12);
   const instantShare = recent.length
     ? recent.filter(s => CARD_SOURCES[s]).length / recent.length
     : 0;
-  const slug = feedPickSlug(feedBuffer.length === 0 || instantShare < FEED_INSTANT_TARGET);
+  const coldStart = feedMounted.length === 0;
+  const slug = feedPickSlug(coldStart || instantShare < FEED_INSTANT_TARGET);
   if (!slug) return;
   const spec = CARD_SPECS[slug];
   feedInFlight++;
