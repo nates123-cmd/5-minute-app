@@ -1491,7 +1491,8 @@
       flex-shrink: 0;
       background: none;
       border: none;
-      padding: 0 0 14px;
+      /* Inline padding must match .feed-body's or the label sits left of the copy. */
+      padding: 0 34px 14px;
       font-family: var(--font-sans);
       font-size: 11px;
       font-weight: 700;
@@ -1512,14 +1513,20 @@
          clipping (justify-content:center would cut off the overflow). */
       display: flex;
       flex-direction: column;
-      padding-right: 62px;
+      /* `safe center` centres a card that fits and falls back to start-aligned
+         when it doesn't. Plain centring (or the auto margins this replaced)
+         makes overflow unreachable: scrollHeight never grows, so a long card
+         is clipped mid-sentence with no way to scroll to the rest. */
+      justify-content: safe center;
+      /* Symmetric. The rail used to be cleared with padding-right alone, which
+         pushed every card half the gutter (~31px) left of centre. */
+      padding-inline: 34px;
       width: 100%;
       max-width: 660px;
       margin-inline: auto;
     }
     .feed-body::-webkit-scrollbar { display: none; }
-    /* Short cards sit optically centered; long ones just fill and scroll. */
-    .feed-body > * { margin: auto 0; }
+    .feed-body > * { margin: 0; }
 
     /* Feed cards are the page, not a card on a page — drop the tinted panel
        and let the type carry it. */
@@ -1527,7 +1534,7 @@
     .feed-body .ai-card {
       background: none;
       padding: 0;
-      margin: auto 0;
+      margin: 0;   /* centring is justify-content: safe center on .feed-body */
       border-radius: 0;
     }
     .feed-body .ai-single .main-text {
@@ -7651,6 +7658,30 @@ function feedTopUp() {
   for (let i = 0; i < slots; i++) feedGenerate();
 }
 
+// Watchdog: retry while the feed is open and has genuinely run dry.
+//
+// Scrolling alone is not enough to recover. Parked on the last card, a swipe
+// produces NO scroll event — scrollTop is already at its maximum, so the
+// position never changes and feedOnScroll never fires. Without this the feed
+// stays dead until the user backs out and re-enters.
+//
+// Stops after FEED_FAIL_CAP consecutive failures so a persistently broken
+// proxy isn't retried forever; the sentinel's Try again button takes over.
+let feedWatchdog = null;
+const FEED_FAIL_CAP = 5;
+
+function feedStartWatchdog() {
+  if (feedWatchdog) return;
+  feedWatchdog = setInterval(() => {
+    if (!feedOpen || feedFails >= FEED_FAIL_CAP) return;
+    if (feedBuffer.length === 0 && feedInFlight === 0) { feedFill(); feedTopUp(); }
+  }, 2500);
+}
+
+function feedStopWatchdog() {
+  if (feedWatchdog) { clearInterval(feedWatchdog); feedWatchdog = null; }
+}
+
 // The buffer survives a reload so the next open is instant. Only unmounted
 // cards are stored — anything already scrolled past is spent.
 function feedPersist() {
@@ -7817,9 +7848,20 @@ function feedOnScroll() {
   if (!feedOpen || !track) return;
   const h = track.clientHeight || 1;
   const items = feedItems();
-  if (!items.length) return;
-  const idx = Math.min(Math.round(track.scrollTop / h), items.length - 1);
-  feedSetActive(items[idx]);
+  if (items.length) {
+    const idx = Math.min(Math.round(track.scrollTop / h), items.length - 1);
+    feedSetActive(items[idx]);
+  }
+  // Always try to refill, not just when the active card changed.
+  //
+  // This is load-bearing. feedSetActive() early-returns when the index is
+  // unchanged, and the index is clamped to the last mounted card — so once the
+  // feed runs out of cards the active index can never change again, and
+  // top-up (which only ran from feedSetActive) was never called. The feed's
+  // only way to ask for more cards depended on already having more cards, so a
+  // single slow or failed generation killed it permanently.
+  feedFill();
+  feedTopUp();
 }
 
 // ── Signals ──────────────────────────────────────────────
@@ -7889,6 +7931,7 @@ function openFeed() {
   feedFill();          // instant if the buffer is warm; activates card 0
   feedTopUp();
   feedRenderSentinel();
+  feedStartWatchdog();
   // One re-measure after paint, for the safe-area/URL-bar settle on iOS.
   requestAnimationFrame(feedSizeTrack);
 }
@@ -7898,6 +7941,7 @@ function closeFeed() {
   feedScoreExit();
   feedOpen = false;
   feedActiveEl = null;
+  feedStopWatchdog();
 }
 
 // Quietly refill the buffer while the user is on the home screen, so the
