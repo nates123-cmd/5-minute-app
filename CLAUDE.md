@@ -205,6 +205,33 @@ that slug's `spec.render()`, or `null` to fall through to Claude. Three tiers:
 | 2. Free keyless API | Real data that changes. CORS-open, no key. | `on-this-day` (Wikimedia On This Day), `fun-fact` (Wikipedia "Did you know") |
 | 3. Claude | Genuinely generative, no source of truth. | everything else |
 
+### Source-only activities (`sourceOnly: true`)
+
+Four activities are served **entirely** from public APIs and have **no Claude
+prompt at all** — Artwork, Country, From the Literature, Palette.
+
+| Activity | Source | Notes |
+|---|---|---|
+| `artwork` | Art Institute of Chicago + The Met | Public-domain works **only** (`is_public_domain` / `isPublicDomain`), so images are safe to display. Picks a museum at random, falls back to the other. |
+| `country` | Wikidata SPARQL | One query cached per session. Density is derived client-side — the kind of thing a structured source makes trivial and a model gets subtly wrong. |
+| `study` | PubMed E-utilities | Shows the **citation, not a summary**. Turning a title into "one evidence-based tip" is exactly where a model overstates a single study, so the card stops at the paper and links out. |
+| `palette` | thecolorapi | Random seed each call, so this pool never exhausts. |
+
+`sourceOnly` means `feedGenerate` **never** falls through to the model for
+these — a model asked for "a recent study" or "an artwork" invents a plausible
+one. If the API is down the card is skipped, not faked. They also carry no
+`fallbackData`, so the feed's fallback push is guarded on it existing.
+
+All four share one standalone-screen loader, `loadSourceCard(slug)`, dispatched
+from a single generic branch in `navigateToActivity` — no per-slug wiring.
+
+**PubMed landmine:** search the phrase quoted and scoped, i.e.
+`"resistance training"[Title/Abstract]`. Unquoted, PubMed treats the words
+separately and returns junk — during testing "resistance training" returned a
+paper on the freeze-thaw resistance of mortar. NCBI also rate-limits to ~3
+requests/sec without an API key; the source returns `null` on failure and the
+card is skipped.
+
 `wikiFeatured()` fetches `api.wikimedia.org/feed/v1/wikipedia/en/featured/Y/M/D`
 once per day. It returns **six** sections — `tfa`, `dyk`, `image`, `news`,
 `mostread`, `onthisday` — so more card types can come off the same cached call.

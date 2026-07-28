@@ -1320,6 +1320,82 @@
     }
     @keyframes listen-pull-spin { to { transform: rotate(360deg); } }
 
+    /* ── Source-backed activities (artwork / country / study / palette) ── */
+    .art-wrap {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--surface-2);
+      margin-bottom: 14px;
+      line-height: 0;
+    }
+    .art-img { width: 100%; height: auto; display: block; }
+    /* .ai-card a was styled long ago; .ai-single never was, so source links on
+       these cards rendered as default browser blue against the wheat palette. */
+    .ai-single a {
+      display: inline-block;
+      margin-top: 10px;
+      font-family: var(--font-sans);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-decoration: none;
+    }
+    .art-credit { font-size: 0.74rem; color: var(--text-faint); margin-top: 6px; line-height: 1.5; }
+
+    /* Country snapshot: a small stat grid rather than prose */
+    .fact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px 14px;
+      margin-top: 14px;
+    }
+    .fact-cell { min-width: 0; }
+    .fact-k {
+      font-family: var(--font-sans);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 2px;
+    }
+    .fact-v {
+      font-family: var(--font-serif);
+      font-size: 1.02rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    /* Literature card: the disclaimer is load-bearing, not decoration */
+    .study-meta { font-size: 0.82rem; color: var(--text-muted); line-height: 1.6; margin-top: 10px; }
+    .study-note {
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      font-size: 0.74rem;
+      color: var(--text-faint);
+      line-height: 1.5;
+    }
+
+    /* Palette: seed swatch plus its harmony row */
+    .pal-seed {
+      height: 96px;
+      border-radius: var(--radius-md);
+      margin-bottom: 14px;
+      border: 1px solid var(--border);
+    }
+    .pal-row { display: flex; gap: 8px; margin-top: 12px; }
+    .pal-sw { flex: 1; min-width: 0; text-align: center; }
+    .pal-chip { height: 46px; border-radius: 10px; border: 1px solid var(--border); }
+    .pal-nm {
+      font-size: 0.66rem;
+      color: var(--text-muted);
+      margin-top: 5px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+
     /* ── Scroll feed ─────────────────────────────────────
        Full-bleed, one card per screen, snap scrolling. Escapes the normal
        .screen box (centered 600px column with padding) because the feed owns
@@ -1678,6 +1754,47 @@
   <div class="section-label">Wander</div>
 
   <div class="activity-grid" id="activity-grid"><!-- rendered from ACTIVITY_REGISTRY by renderActivityGrid() --></div>
+</div>
+
+<!-- SOURCE-BACKED ACTIVITIES (no model call — see CARD_SOURCES) -->
+<div id="screen-artwork" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Artwork</span>
+  </div>
+  <div id="artwork-content"></div>
+  <button class="btn-refresh" id="artwork-refresh">Another work</button>
+  <div class="activity-actions"></div>
+</div>
+
+<div id="screen-country" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Country</span>
+  </div>
+  <div id="country-content"></div>
+  <button class="btn-refresh" id="country-refresh">Another country</button>
+  <div class="activity-actions"></div>
+</div>
+
+<div id="screen-study" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">From the Literature</span>
+  </div>
+  <div id="study-content"></div>
+  <button class="btn-refresh" id="study-refresh">Another paper</button>
+  <div class="activity-actions"></div>
+</div>
+
+<div id="screen-palette" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Palette</span>
+  </div>
+  <div id="palette-content"></div>
+  <button class="btn-refresh" id="palette-refresh">Another palette</button>
+  <div class="activity-actions"></div>
 </div>
 
 <!-- SCROLL FEED -->
@@ -2489,6 +2606,12 @@ const ACTIVITY_REGISTRY = [
   { slug:'pairing',              name:'Unexpected Pairing',   desc:"Two things that shouldn't work together but do.", form:'standalone', door:true, actions:_A4 },
   { slug:'weather',              name:'Weather',              desc:'Your forecast, with a little atmospheric science.', form:'standalone', door:false, actions:['lookup','claude'] },
   { slug:'interior',             name:'Interior Spotlight',   desc:'A named design movement, with a real example.', form:'standalone', door:true, actions:_A4 },
+  // Source-backed: these four are served entirely from public APIs, never the
+  // model. See CARD_SOURCES — they are real records, not generated text.
+  { slug:'artwork',              name:'Artwork',              desc:'A real work from the Art Institute or the Met.', form:'standalone', door:true,  actions:_A4 },
+  { slug:'country',              name:'Country',              desc:'One country, by the numbers.',                form:'standalone', door:true,  actions:_A4 },
+  { slug:'study',                name:'From the Literature',  desc:'A recent paper, straight from PubMed.',       form:'standalone', door:true,  actions:['lookup','claude','deepdive'] },
+  { slug:'palette',              name:'Palette',              desc:'A colour and the shades that harmonise with it.', form:'standalone', door:false, actions:[] },
   { slug:'history',   quiz:true, name:'History Quiz',         desc:'Gets harder as you improve. Stop when you want.' },
   { slug:'geography', quiz:true, name:'Geography Quiz',       desc:"Capitals, borders, and places you've never heard of." },
   { slug:'trivia',    quiz:true, name:'Trivia Quiz',          desc:'Mix of science, culture, and random knowledge.' },
@@ -2555,13 +2678,15 @@ const DURATION_ACTIVITIES = {
   'informational':['history','cooking','deep-dive-suggestion','fun-fact','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','cognitive-bias','etymology',
                    'on-this-day','thought-experiment','health-insight','productivity-insight',
-                   'flower','beautiful-place','color','design','science','good-news','pairing','weather','interior'],
+                   'flower','beautiful-place','color','design','science','good-news','pairing','weather','interior',
+                   'artwork','country','study'],
   'activity':     ['mental-math','brain-teaser','reading','weekend','recipe','flavor','room','quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
   'random':       ['history','cooking','reading','deep-dive-suggestion',
                    'fun-fact','mental-math','new-word','new-term','finance-term','stats-concept',
                    'geography-fact','logical-fallacy','on-this-day','thought-experiment',
                    'etymology','cognitive-bias','brain-teaser','health-insight','productivity-insight',
                    'flower','beautiful-place','color','design','science','weekend','recipe','flavor','room','good-news','pairing','weather','interior',
+                   'artwork','country','study','palette',
                    'quiz-history','quiz-geography','quiz-trivia','quiz-cooking'],
 };
 
@@ -2746,6 +2871,8 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'deep-dives')        loadDeepDives();
     if (a === 'anki-input')        resetAnkiInput();
     if (a === 'look-up-later')     loadLulScreen();
+    // Source-backed activities all share one loader — no per-slug branch.
+    if (CARD_SPECS[a] && CARD_SPECS[a].sourceOnly) loadSourceCard(a);
   }
 }
 
@@ -3887,6 +4014,8 @@ const FLASHCARD_FIELDS = {
   'pairing':        { kind:'unexpected pairing', front:d=>(d.item_a||'') + ' × ' + (d.item_b||''), back:d=>(d.why_it_works||'') + (d.try_it ? '\n\nTry: ' + d.try_it : '') },
   'flavor':         { kind:'flavor pairing',     front:d=>d.pairing, back:d=>(d.science_explanation||'') + (d.how_to_use ? '\n\nTry: ' + d.how_to_use : '') },
   'interior':       { kind:'design movement',    front:d=>d.style_name, back:d=>(d.description||'') + (d.key_elements ? '\n\nKey elements: ' + d.key_elements : '') + (d.famous_example ? '\n\nExample: ' + d.famous_example : '') },
+  'artwork':        { kind:'artwork',            front:d=>d.title, back:d=>d.artist + (d.date ? ', ' + d.date : '') + (d.medium ? '\n\n' + d.medium : '') + (d.collection ? '\n\n' + d.collection : '') },
+  'country':        { kind:'country fact',       front:d=>'Capital of ' + d.name, back:d=>d.capital + '\n\nPopulation ' + nfmt.format(d.population) + ' · ' + nfmt.format(Math.round(d.area)) + ' km²' },
 };
 
 function cardContentEl(slug) {
@@ -7032,6 +7161,264 @@ CARD_SOURCES['etymology']          = (n) => pickUnseen('etymology', DATA_ETYMOLO
 CARD_SOURCES['new-word']           = (n) => pickUnseen('new-word', DATA_WORDS, n, d => d.word);
 CARD_SOURCES['stoic']              = (n) => pickUnseen('stoic', DATA_STOIC, n, d => d.author + ' — ' + d.passage.slice(0, 60));
 
+// ── Source-only activities ───────────────────────────────────────────────
+// These four have no Claude prompt at all. That is deliberate: each one is a
+// real record from a public collection or database, and a model asked to
+// "give me a recent study" or "an artwork" would invent a plausible one.
+// `sourceOnly: true` tells feedGenerate never to fall through to the model —
+// if the API is down the card is simply skipped.
+const nfmt = new Intl.NumberFormat('en-US');
+
+// --- Artwork: Art Institute of Chicago + The Met -------------------------
+// Public-domain works only, so the images are safe to display.
+const ART_QUERIES = ['landscape','portrait','still life','river','garden','harbour','mountain',
+  'interior','market','bridge','forest','coast','dancer','horse','flowers','city','night','rain',
+  'winter','harvest','musician','window','street','bird'];
+const randOf = (a) => a[Math.floor(Math.random() * a.length)];
+
+async function artFromArtic() {
+  const url = 'https://api.artic.edu/api/v1/artworks/search?q=' + encodeURIComponent(randOf(ART_QUERIES)) +
+    '&limit=60&fields=id,title,artist_title,date_display,medium_display,place_of_origin,image_id,is_public_domain,thumbnail';
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const j = await res.json();
+  const iiif = (j.config && j.config.iiif_url) || 'https://www.artic.edu/iiif/2';
+  return (j.data || [])
+    .filter(a => a.is_public_domain && a.image_id && a.title)
+    .map(a => ({
+      title: a.title,
+      artist: a.artist_title || 'Unknown artist',
+      date: a.date_display || '',
+      medium: a.medium_display || '',
+      origin: a.place_of_origin || '',
+      img: iiif + '/' + a.image_id + '/full/600,/0/default.jpg',
+      alt: (a.thumbnail && a.thumbnail.alt_text) || a.title,
+      collection: 'Art Institute of Chicago',
+      url: 'https://www.artic.edu/artworks/' + a.id,
+    }));
+}
+
+async function artFromMet() {
+  const s = await fetch('https://collectionapi.metmuseum.org/public/collection/v1/search?hasImages=true&isPublicDomain=true&q=' + encodeURIComponent(randOf(ART_QUERIES)));
+  if (!s.ok) return [];
+  const ids = ((await s.json()).objectIDs || []).slice(0, 80);
+  if (!ids.length) return [];
+  const r = await fetch('https://collectionapi.metmuseum.org/public/collection/v1/objects/' + randOf(ids));
+  if (!r.ok) return [];
+  const o = await r.json();
+  if (!o.isPublicDomain || !o.primaryImageSmall || !o.title) return [];
+  return [{
+    title: o.title,
+    artist: o.artistDisplayName || 'Unknown artist',
+    date: o.objectDate || '',
+    medium: o.medium || '',
+    origin: o.culture || o.department || '',
+    img: o.primaryImageSmall,
+    alt: o.title,
+    collection: 'The Met',
+    url: o.objectURL || '',
+  }];
+}
+
+CARD_SOURCES['artwork'] = async (n) => {
+  const metFirst = Math.random() < 0.5;
+  let list = metFirst ? await artFromMet() : await artFromArtic();
+  if (!list.length) list = metFirst ? await artFromArtic() : await artFromMet();
+  if (!list.length) return null;
+  const keyOf = a => a.title + ' — ' + a.artist;
+  return pickUnseen('artwork', unseenOnly('artwork', list, keyOf) || list, n, keyOf);
+};
+
+CARD_SPECS['artwork'] = {
+  slug: 'artwork',
+  sourceOnly: true,
+  render: (d) => (d.img ? '<div class="art-wrap"><img class="art-img" src="' + esc(d.img) + '" alt="' + esc(d.alt || d.title) + '" loading="lazy"></div>' : '') +
+    '<div class="ai-single">' +
+      '<div class="am-tag">' + esc(d.collection || 'Museum collection') + '</div>' +
+      '<div class="word-title">' + esc(d.title) + '</div>' +
+      '<div class="pronunciation">' + esc(d.artist) + (d.date ? ' &middot; ' + esc(d.date) : '') + '</div>' +
+      (d.medium ? '<div class="sub-text">' + esc(d.medium) + (d.origin ? ' &middot; ' + esc(d.origin) : '') + '</div>' : '') +
+      (d.url ? '<a href="' + esc(d.url) + '" target="_blank" rel="noopener">View at ' + esc(d.collection) + ' &rarr;</a>' : '') +
+    '</div>',
+};
+
+// --- Country: Wikidata SPARQL -------------------------------------------
+// One query, cached for the session. Density is derived here rather than
+// queried, which is the sort of thing a structured source makes trivial and
+// a language model gets subtly wrong.
+let wikidataCountryCache = null;
+
+async function wikidataCountries() {
+  if (wikidataCountryCache) return wikidataCountryCache;
+  const q = 'SELECT ?countryLabel ?capitalLabel ?pop ?area ?continentLabel WHERE { ' +
+    '?country wdt:P31 wd:Q6256; wdt:P36 ?capital; wdt:P1082 ?pop; wdt:P2046 ?area; wdt:P30 ?continent. ' +
+    'SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } } LIMIT 400';
+  const res = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q),
+    { headers: { Accept: 'application/sparql-results+json' } });
+  if (!res.ok) return null;
+  const j = await res.json();
+  const rows = ((j.results && j.results.bindings) || [])
+    .map(b => ({
+      name: b.countryLabel && b.countryLabel.value,
+      capital: b.capitalLabel && b.capitalLabel.value,
+      continent: b.continentLabel && b.continentLabel.value,
+      population: Number(b.pop && b.pop.value),
+      area: Number(b.area && b.area.value),
+    }))
+    // Unlabelled entities come back as raw Q-ids; drop them.
+    .filter(c => c.name && c.capital && !/^Q\d+$/.test(c.name) && c.population > 0 && c.area > 0);
+  // Wikidata can carry several population/area statements per country; keep one row each.
+  const seen = new Set();
+  wikidataCountryCache = rows.filter(c => (seen.has(c.name) ? false : seen.add(c.name)));
+  return wikidataCountryCache;
+}
+
+CARD_SOURCES['country'] = async (n) => {
+  const all = await wikidataCountries();
+  if (!all || !all.length) return null;
+  return pickUnseen('country', unseenOnly('country', all, c => c.name) || all, n, c => c.name)
+    .map(c => Object.assign({}, c, { density: Math.round(c.population / c.area) }));
+};
+
+CARD_SPECS['country'] = {
+  slug: 'country',
+  sourceOnly: true,
+  render: (d) => '<div class="ai-single">' +
+      '<div class="am-tag">' + esc(d.continent || 'Country') + '</div>' +
+      '<div class="word-title">' + esc(d.name) + '</div>' +
+      '<div class="fact-grid">' +
+        '<div class="fact-cell"><div class="fact-k">Capital</div><div class="fact-v">' + esc(d.capital) + '</div></div>' +
+        '<div class="fact-cell"><div class="fact-k">Population</div><div class="fact-v">' + esc(nfmt.format(d.population)) + '</div></div>' +
+        '<div class="fact-cell"><div class="fact-k">Area</div><div class="fact-v">' + esc(nfmt.format(Math.round(d.area))) + ' km&sup2;</div></div>' +
+        '<div class="fact-cell"><div class="fact-k">Density</div><div class="fact-v">' + esc(nfmt.format(d.density)) + ' /km&sup2;</div></div>' +
+      '</div>' +
+      '<div class="art-credit">Live from Wikidata.</div>' +
+    '</div>',
+};
+
+// --- From the Literature: PubMed ----------------------------------------
+// Deliberately shows the paper, not a summary of it. Turning a title into
+// "one evidence-based tip" is exactly where a model would overstate a single
+// study, so the card stops at the citation and links out.
+const STUDY_TOPICS = ['sleep quality','physical activity','mediterranean diet','mindfulness meditation',
+  'vitamin D','gut microbiome','resistance training','cognitive behavioral therapy','time restricted eating',
+  'loneliness social connection','hydration','walking cadence','caffeine cognition','forest bathing',
+  'reading comprehension','memory consolidation','circadian rhythm','dietary fibre'];
+
+CARD_SOURCES['study'] = async (n) => {
+  const topic = randOf(STUDY_TOPICS);
+  // Quote the phrase and pin it to Title/Abstract. An unquoted search treats
+  // the words separately — "resistance training" returned a paper on the
+  // freeze-thaw resistance of mortar during testing.
+  const term = '"' + topic + '"[Title/Abstract]';
+  const s = await fetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=date&retmax=25&term=' + encodeURIComponent(term));
+  if (!s.ok) return null;
+  const ids = (((await s.json()).esearchresult) || {}).idlist || [];
+  if (!ids.length) return null;
+  const r = await fetch('https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=' + ids.join(','));
+  if (!r.ok) return null;
+  const result = (await r.json()).result || {};
+  const list = (result.uids || []).map(id => result[id]).filter(x => x && x.title).map(x => {
+    const authors = (x.authors || []).map(a => a.name);
+    return {
+      title: stripTags(x.title).replace(/\.\s*$/, ''),
+      journal: x.fulljournalname || x.source || '',
+      date: x.pubdate || '',
+      authors: authors.slice(0, 3).join(', ') + (authors.length > 3 ? ' et al.' : ''),
+      topic,
+      url: 'https://pubmed.ncbi.nlm.nih.gov/' + x.uid + '/',
+    };
+  });
+  if (!list.length) return null;
+  return pickUnseen('study', unseenOnly('study', list, x => x.title) || list, n, x => x.title);
+};
+
+CARD_SPECS['study'] = {
+  slug: 'study',
+  sourceOnly: true,
+  render: (d) => '<div class="ai-single">' +
+      '<div class="am-tag">' + esc(d.topic || 'Research') + '</div>' +
+      '<div class="main-text" style="font-size:1rem">' + esc(d.title) + '</div>' +
+      '<div class="study-meta">' +
+        (d.authors ? esc(d.authors) + '<br>' : '') +
+        (d.journal ? '<em>' + esc(d.journal) + '</em>' : '') +
+        (d.date ? ' &middot; ' + esc(d.date) : '') +
+      '</div>' +
+      (d.url ? '<a href="' + esc(d.url) + '" target="_blank" rel="noopener">Read on PubMed &rarr;</a>' : '') +
+      '<div class="study-note">A single recent paper, shown as published. Not a summary, not a recommendation, and not health advice — one study is rarely the whole picture.</div>' +
+    '</div>',
+};
+
+// --- Palette: thecolorapi -----------------------------------------------
+// Random seed each time, so this pool never exhausts.
+const PALETTE_MODES = ['analogic','complement','triad','quad','analogic-complement','monochrome'];
+
+CARD_SOURCES['palette'] = async (n) => {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const hex = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    const mode = randOf(PALETTE_MODES);
+    const res = await fetch('https://www.thecolorapi.com/scheme?hex=' + hex + '&mode=' + mode + '&count=5');
+    if (!res.ok) continue;
+    const j = await res.json();
+    const colors = (j.colors || [])
+      .map(c => ({ name: (c.name && c.name.value) || '', hex: (c.hex && c.hex.value) || '' }))
+      .filter(c => c.hex);
+    if (!colors.length) continue;
+    out.push({
+      name: (j.seed && j.seed.name && j.seed.name.value) || 'Untitled',
+      hex: '#' + hex.toUpperCase(),
+      mode: mode.replace(/-/g, ' '),
+      colors,
+    });
+  }
+  return out.length ? out : null;
+};
+
+CARD_SPECS['palette'] = {
+  slug: 'palette',
+  sourceOnly: true,
+  render: (d) => '<div class="pal-seed" style="background:' + esc(d.hex) + '"></div>' +
+    '<div class="ai-single">' +
+      '<div class="am-tag">' + esc(d.mode || '') + ' harmony</div>' +
+      '<div class="word-title">' + esc(d.name) + ' <span style="font-size:0.7rem;font-weight:400;color:var(--muted)">' + esc(d.hex) + '</span></div>' +
+      '<div class="pal-row">' +
+        d.colors.map(c => '<div class="pal-sw"><div class="pal-chip" style="background:' + esc(c.hex) + '"></div><div class="pal-nm">' + esc(c.name) + '</div></div>').join('') +
+      '</div>' +
+      '<div class="art-credit">Colour names and harmony from thecolorapi.com.</div>' +
+    '</div>',
+};
+
+// One loader for every source-only activity's standalone screen — they differ
+// only in which source they draw from, so there is no per-slug branch.
+async function loadSourceCard(slug) {
+  const container = document.getElementById(slug + '-content');
+  const spec = CARD_SPECS[slug];
+  const source = CARD_SOURCES[slug];
+  if (!container || !spec || !source) return;
+  container.innerHTML = skel();
+  try {
+    const items = await source(1);
+    if (!items || !items.length) throw new Error('source returned nothing');
+    const d = items[0];
+    const key = feedKey(slug, d);
+    addShown(slug, key);
+    searchTerms[slug] = key;
+    container.innerHTML = spec.render(d);
+    const card = container.querySelector('.ai-single') || container.querySelector('.ai-card');
+    if (card) card.insertAdjacentHTML('beforeend', cardFooter(slug, key, d.url || ''));
+  } catch (e) {
+    // No model fallback on purpose — see sourceOnly above.
+    container.innerHTML = '<div class="ai-single"><div class="sub-text">' +
+      'Couldn\'t reach the source just now. Try again in a moment.</div></div>';
+  }
+}
+
+// Refresh buttons for those screens.
+Object.keys(CARD_SPECS).filter(s => CARD_SPECS[s].sourceOnly).forEach(slug => {
+  document.getElementById(slug + '-refresh')?.addEventListener('click', () => loadSourceCard(slug));
+});
+
 // ══ Scroll feed ══════════════════════════════════════════════════════════
 // A vertical, snap-scrolling feed of activity cards — the grid is for when you
 // know what you want, this is for when you don't.
@@ -7222,7 +7609,10 @@ async function feedGenerate() {
       // A network-backed source that fails falls through to Claude.
       try { items = await source(1); } catch(e) { items = null; }
     }
-    if ((!items || !items.length) && hasSession()) {
+    // sourceOnly cards have no prompt on purpose — a model asked for "a recent
+    // study" or "an artwork" would invent a plausible one. If the API is down
+    // the card is skipped, not faked.
+    if ((!items || !items.length) && !spec.sourceOnly && hasSession()) {
       items = await feedGenerateViaClaude(slug, spec);
     }
     if (!items || !items.length) throw new Error('no cards available for ' + slug);
@@ -7242,7 +7632,9 @@ async function feedGenerate() {
     // in if there's nothing to scroll to at all, and lean off the slug.
     feedFails++;
     feedNudge(slug, 0.85);
-    if (!feedBuffer.length) {
+    // Only makeLoader specs carry a fallback; sourceOnly ones have none by
+    // design, and pushing an undefined card would render an empty item.
+    if (!feedBuffer.length && spec.fallbackData) {
       const key = feedKey(slug, spec.fallbackData);
       feedBuffer.push({ slug, data: spec.fallbackData, key });
     }
@@ -7339,10 +7731,15 @@ function feedTake() {
   const recent = feedMounted.slice(-FEED_LOOKBACK);
   let i = feedBuffer.findIndex(it => !recent.includes(it.slug));
   if (i === -1) {
-    // Everything buffered repeats something just shown. If another batch is
-    // still coming, hold rather than stacking three of a kind — the very first
-    // card is exempt so a cold open still fills instantly.
-    if (feedInFlight > 0 && feedMounted.length) return null;
+    // Everything buffered repeats something just shown. Hold rather than
+    // stacking three of a kind, either because another batch is still coming
+    // or because the last two cards were already the same activity. Holding is
+    // safe: feedFill runs again on every scroll and after every generate, so a
+    // deferred mount just waits for the buffer to gain some variety. The very
+    // first card is exempt so a cold open still fills instantly.
+    const lastTwoSame = feedMounted.length >= 2 &&
+      feedMounted[feedMounted.length - 1] === feedMounted[feedMounted.length - 2];
+    if ((feedInFlight > 0 || lastTwoSame) && feedMounted.length) return null;
     // Nothing else is coming, so something repeats. Take whichever activity
     // went longest ago rather than whatever happens to sit at index 0 — that
     // is what stops a model batch of three landing back to back.
