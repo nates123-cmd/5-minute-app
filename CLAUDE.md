@@ -132,10 +132,72 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 ## Home screen layout (post-Citrine redesign)
 - **Header**: "Break" wordmark + date; timer icon
 - **Capture button** (full-width, `--ink`) → opens the **Add menu** modal: Add Card / Recommendation / Look Up Later / Listen Later
+- **Scroll button** (outlined, below Capture) → `openFeed()`, the vertical card feed (see below)
 - **Pillars row**: 3 equal columns — Review (`--accent`), Queue (`--accent-2`), Recs (`--accent-4`). Recs number = `listening_queue` unlistened + `recommendations` saved, via `updateRecsBadge()` (`updateListenBadge()` now just delegates to it; no home element of its own). Tapping Recs → `recs` screen.
 - **Filter pills** (Reflect / Informational / Activity / Random)
 - **Activity grid**: 2-column card grid
 - Quiz cards use `data-quiz` attribute (not `data-activity`) — guard: `if (!card.dataset.activity) return`
+
+---
+
+## Scroll feed (`#screen-feed`)
+
+A vertical, snap-scrolling feed of activity cards — the grid is for when you know
+what you want, the feed is for when you don't. Entered from the home **Scroll**
+button (`openFeed()`), left via the back arrow. No end, no counter.
+
+### The two refactors it needed
+- **`CARD_SPECS`** — `makeLoader(slug, prompt, render, fallbackData)` now files
+  `{slug, prompt, render, fallbackData}` into `CARD_SPECS[slug]` as a side effect.
+  The feed needs those three pieces without makeLoader's DOM coupling (it renders
+  into feed items, not `#<slug>-content`). 25 activities register this way;
+  `stoic` predates makeLoader and registers its spec by hand in the feed section.
+- **`cardKey(data)`** — the "what is this card about" lookup, extracted out of
+  makeLoader so both paths share it. `feedKey(slug, data)` wraps it to give
+  stoic passages a stable identity (`cardKey` has no `passage` case).
+
+### How it stays ahead of a thumb
+| Mechanism | Where |
+|---|---|
+| **Batch fetch** — one Claude call returns `FEED_BATCH` (3) cards, not one | `feedGenerate()` appends "Return a JSON ARRAY of N…" to the spec's own prompt |
+| **Read-ahead** — keep `FEED_AHEAD` (3) cards mounted past the active one | `feedFill()` |
+| **Warm start** — the unmounted buffer persists and refills on the home screen | `feedPersist()` / `feedRestore()` / `feedPrewarm()` (4s after landing on home) |
+| **DOM windowing** — only `FEED_WINDOW` (10) items stay mounted | `feedTrim()` |
+| **Implicit ranking** — dwell time reweights which activity comes next | `feedScoreExit()`; `<2s` → ×0.88, `>9s` → ×1.18; thumbs → ×1.5 / ×0.6 |
+| **Forced variety** — no activity repeat within `FEED_LOOKBACK` (4) cards | `feedPickSlug()` at generation, `feedTake()` at mount |
+
+Weights live in `localStorage['feed_weights']`, clamped to 0.25–4 so no activity
+can die out or take over. Buffer in `localStorage['feed_buffer']`, filter in
+`localStorage['feed_bucket']`.
+
+### Landmines
+- **Active card comes from `scrollTop`, not an IntersectionObserver**
+  (`feedOnScroll()`). Every item is exactly one track-height tall (`--feed-h`,
+  set in JS), so it's one division — and an observer needs the tab to be
+  rendering, which silently breaks headless/background verification.
+- **`scroll-snap-type: y mandatory` re-anchors to its snapped element.** Two
+  consequences: (1) on a cold open the sentinel is the snap target, so inserting
+  cards above it scrolls *to the sentinel* — `feedFill()` forces `scrollTop = 0`
+  on the first fill; (2) `feedTrim()` must re-pin to `active.offsetTop`, never
+  subtract the removed height by hand (that lands a full card off).
+- **`openFeed()` is synchronous, not `requestAnimationFrame`** — rAF never fires
+  in a backgrounded tab and the feed would open empty.
+- **The rail keeps `class="card-actions"`** so the existing global `[data-thumb]`
+  handler still finds it (it calls `thumb.closest('.card-actions')` and would
+  throw on null). `.feed-rail` resets that class's row styling.
+- **Batches arrive three-of-a-kind.** `feedTake()` returns `null` rather than
+  mounting a third in a row while another batch is in flight; `feedFill()` breaks
+  on null and refills when that batch lands. Observed max run is 2.
+- There is **no `reflection` bucket** in DURATION_ACTIVITIES (removed with the
+  mantra/stoic screens). Feed filters are All / Learn / Do / Quick →
+  `random` / `informational` / `activity` / `1min`. "All" deliberately means
+  *every* `CARD_SPECS` key, not `DURATION_ACTIVITIES.random`, because a few
+  activities (stoic, psychology) have specs but sit in no bucket.
+
+### Rail actions (right side, per card)
+👍/👎 (global handler + weight nudge) · ☆ Remember It (`generateRememberCard` →
+`openRememberPreview`) · ↷ Look up later (`lulCreate` + `updateLulBadge`) ·
+↑ Share. The activity name at the top of each card opens that full activity screen.
 
 ---
 

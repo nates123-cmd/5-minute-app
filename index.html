@@ -1320,6 +1320,261 @@
     }
     @keyframes listen-pull-spin { to { transform: rotate(360deg); } }
 
+    /* ── Scroll feed ─────────────────────────────────────
+       Full-bleed, one card per screen, snap scrolling. Escapes the normal
+       .screen box (centered 600px column with padding) because the feed owns
+       the whole viewport while it's open. */
+    #screen-feed.active {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      max-width: none;
+      padding: 0;
+      margin: 0;
+      background: var(--bg);
+    }
+
+    .feed-top {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 3;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: calc(10px + env(safe-area-inset-top)) 14px 14px;
+      /* Cards scroll under this, so fade it out rather than cutting a hard edge */
+      background: linear-gradient(to bottom, var(--bg) 55%, rgba(244, 236, 221, 0));
+      pointer-events: none;
+    }
+    .feed-top > * { pointer-events: auto; }
+
+    .feed-back {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.3rem;
+      line-height: 1;
+      padding: 4px 8px 4px 0;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .feed-filters { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+    .feed-filters::-webkit-scrollbar { display: none; }
+    .feed-filter {
+      flex-shrink: 0;
+      padding: 6px 13px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .feed-filter.selected {
+      background: var(--accent-3);
+      border-color: var(--accent-3);
+      color: var(--ink-on);
+    }
+
+    .feed-track {
+      flex: 1;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+      overscroll-behavior-y: contain;
+      /* Manual scroll compensation runs when old items are unmounted off the
+         top; browser scroll anchoring would fight it and jump the view. */
+      overflow-anchor: none;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .feed-track::-webkit-scrollbar { display: none; }
+
+    .feed-item {
+      /* --feed-h is set in JS from the track's real height. iOS URL-bar
+         resizes make percentage heights unreliable inside a snap container. */
+      height: var(--feed-h, 100%);
+      scroll-snap-align: start;
+      scroll-snap-stop: always;
+      overflow-anchor: none;
+      display: flex;
+      flex-direction: column;
+      padding: calc(58px + env(safe-area-inset-top)) 20px calc(22px + env(safe-area-inset-bottom));
+      position: relative;
+    }
+
+    .feed-chip {
+      /* Shares the body's column so the label lines up with the copy on wide
+         screens instead of clinging to the window edge. */
+      width: 100%;
+      max-width: 660px;
+      margin-inline: auto;
+      text-align: left;
+      flex-shrink: 0;
+      background: none;
+      border: none;
+      padding: 0 0 14px;
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      cursor: pointer;
+    }
+    .feed-chip::after { content: ' ›'; opacity: 0.5; }
+
+    .feed-body {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
+      /* Short cards sit centered; long ones scroll from the top without
+         clipping (justify-content:center would cut off the overflow). */
+      display: flex;
+      flex-direction: column;
+      padding-right: 62px;
+      width: 100%;
+      max-width: 660px;
+      margin-inline: auto;
+    }
+    .feed-body::-webkit-scrollbar { display: none; }
+    /* Short cards sit optically centered; long ones just fill and scroll. */
+    .feed-body > * { margin: auto 0; }
+
+    /* Feed cards are the page, not a card on a page — drop the tinted panel
+       and let the type carry it. */
+    .feed-body .ai-single,
+    .feed-body .ai-card {
+      background: none;
+      padding: 0;
+      margin: auto 0;
+      border-radius: 0;
+    }
+    .feed-body .ai-single .main-text {
+      font-family: var(--font-serif);
+      font-size: clamp(21px, 5.6vw, 27px);
+      font-weight: 600;
+      line-height: 1.32;
+      letter-spacing: -0.4px;
+      margin-bottom: 16px;
+    }
+    .feed-body .ai-single .sub-text,
+    .feed-body .ai-card p { font-size: 15px; line-height: 1.65; }
+    .feed-body .ai-single .word-title,
+    .feed-body .ai-card h4 {
+      font-family: var(--font-serif);
+      font-size: clamp(21px, 5.6vw, 27px);
+      line-height: 1.25;
+      margin-bottom: 8px;
+    }
+    .feed-body blockquote { font-size: 19px; line-height: 1.6; }
+    /* The per-card footer belongs to the single-activity screens; the feed
+       has its own rail. */
+    .feed-body .card-actions { display: none; }
+
+    /* Right rail — thumb-reachable, sits over the card like a social feed */
+    .feed-rail {
+      position: absolute;
+      /* Hugs the right edge on a phone; tracks the content column on desktop. */
+      right: max(12px, calc(50% - 330px));
+      bottom: calc(26px + env(safe-area-inset-bottom));
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+      /* Reset the .card-actions row styling this element also carries (it
+         keeps that class so the global thumbs-up/down handler still works). */
+      margin: 0;
+      padding: 0;
+      border-top: none;
+      align-items: center;
+    }
+    .feed-rail .feed-act {
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-size: 16px;
+      line-height: 1;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .feed-rail .feed-act:active { transform: scale(0.92); }
+    .feed-rail .feed-act.active-up   { background: #d4edda; border-color: #5cb85c; }
+    .feed-rail .feed-act.active-down { background: #f8d7da; border-color: #d9534f; }
+
+    .feed-hint {
+      position: absolute;
+      left: 0; right: 0;
+      bottom: calc(30px + env(safe-area-inset-bottom));
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-faint);
+      pointer-events: none;
+      animation: feed-hint-fade 2.6s ease-in-out infinite;
+    }
+    @keyframes feed-hint-fade { 0%, 100% { opacity: 0.35; } 50% { opacity: 0.9; } }
+
+    /* Sentinel that always sits at the end of the feed, so there is never a
+       bottom to hit while the next batch is generating. */
+    .feed-loading .feed-body { justify-content: center; }
+    .feed-skel {
+      height: 13px;
+      border-radius: 6px;
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface-2) 50%, var(--surface) 75%);
+      background-size: 200% 100%;
+      animation: feed-shimmer 1.4s linear infinite;
+      margin-bottom: 11px;
+    }
+    @keyframes feed-shimmer { to { background-position: -200% 0; } }
+    .feed-loading-note {
+      margin-top: 18px;
+      font-size: 12.5px;
+      color: var(--text-faint);
+    }
+    .feed-retry {
+      margin-top: 14px;
+      align-self: flex-start;
+      padding: 8px 16px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* Home entry point */
+    .btn-scroll {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      width: 100%;
+      padding: 13px 18px;
+      border-radius: var(--radius-pill);
+      border: 1.5px solid var(--border-strong);
+      background: transparent;
+      color: var(--text);
+      cursor: pointer;
+      text-align: left;
+    }
+    .btn-scroll-label {
+      font-family: var(--font-serif);
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+    }
+    .btn-scroll-sub { font-size: 0.76rem; color: var(--text-muted); }
+
   </style>
 </head>
 <body>
@@ -1383,6 +1638,11 @@
     <span>Capture</span>
   </button>
 
+  <button class="btn-scroll" id="btn-scroll">
+    <span class="btn-scroll-label">Scroll</span>
+    <span class="btn-scroll-sub">one card at a time, as long as you want</span>
+  </button>
+
   <button id="state-line" class="state-line" hidden></button>
 
   <div class="pillars">
@@ -1418,6 +1678,15 @@
   <div class="section-label">Wander</div>
 
   <div class="activity-grid" id="activity-grid"><!-- rendered from ACTIVITY_REGISTRY by renderActivityGrid() --></div>
+</div>
+
+<!-- SCROLL FEED -->
+<div id="screen-feed" class="screen">
+  <div class="feed-top">
+    <button class="feed-back btn-back" data-back="home">←</button>
+    <div class="feed-filters" id="feed-filters"></div>
+  </div>
+  <div class="feed-track" id="feed-track"></div>
 </div>
 
 <!-- HISTORY -->
@@ -2743,7 +3012,24 @@ function skel() {
   return '<div class="ai-single"><div class="skeleton" style="width:60%;margin-bottom:12px"></div><div class="skeleton"></div><div class="skeleton" style="width:80%"></div></div>';
 }
 
+// Every activity payload names its subject differently. One place to answer
+// "what is this card about" — used for the seen/exclusion list, dedupe, and
+// share text. Was inline in makeLoader; the Scroll feed needs it too.
+function cardKey(data) {
+  if (!data || typeof data !== 'object') return '';
+  return data.name || data.word || data.term || data.fact || data.question || data.event || data.title || data.problem || data.reminder ||
+    data.headline || data.concept || data.suggestion || data.idea || data.pairing || data.style_name ||
+    (data.item_a && data.item_b ? data.item_a + ' × ' + data.item_b : '') || '';
+}
+
+// Prompt/render/fallback for every makeLoader activity, keyed by slug. The
+// Scroll feed needs those three pieces without makeLoader's DOM coupling
+// (it renders into its own feed items, not into `#<slug>-content`), so every
+// makeLoader call files its spec here as a side effect.
+const CARD_SPECS = {};
+
 function makeLoader(slug, prompt, render, fallbackData, onAfterRender) {
+  CARD_SPECS[slug] = { slug, prompt, render, fallbackData };
   async function load() {
     const container = document.getElementById(slug + '-content');
     container.innerHTML = skel();
@@ -2755,9 +3041,7 @@ function makeLoader(slug, prompt, render, fallbackData, onAfterRender) {
       const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
                         (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
       const data = await callClaude(prompt(exclude + ratingCtx));
-      const key = data.name || data.word || data.term || data.fact || data.question || data.event || data.title || data.problem || data.reminder ||
-        data.headline || data.concept || data.suggestion || data.idea || data.pairing || data.style_name ||
-        (data.item_a && data.item_b ? data.item_a + ' × ' + data.item_b : '') || '';
+      const key = cardKey(data);
       addShown(slug, key);
       searchTerms[slug] = key;
       container.innerHTML = render(data);
@@ -6428,6 +6712,546 @@ document.querySelectorAll('.timer-menu-opt').forEach(btn => {
     document.getElementById('timer-menu-modal').classList.add('hidden');
     startTimer(Number(btn.dataset.mins));
   });
+});
+
+// ══ Scroll feed ══════════════════════════════════════════════════════════
+// A vertical, snap-scrolling feed of activity cards — the grid is for when you
+// know what you want, this is for when you don't.
+//
+// The whole design goal is that it never makes you wait. Everything below is
+// borrowed from how the big social feeds stay ahead of a thumb:
+//
+//   1. Batch fetch     — one Claude call returns FEED_BATCH cards, not one.
+//                        Latency per card drops ~3x and so does cost.
+//   2. Read-ahead      — keep FEED_AHEAD generated cards mounted past the one
+//                        you're on, and top the buffer up before it drains.
+//   3. Warm start      — the unmounted buffer persists to localStorage and
+//                        quietly refills while you're on the home screen, so
+//                        opening the feed shows content instantly, not a spinner.
+//   4. DOM windowing   — only FEED_WINDOW items stay mounted; older ones are
+//                        unmounted with manual scroll compensation.
+//   5. Implicit signal — dwell time reweights which activities come up next.
+//                        Nobody taps 👍 on a fun fact, but everybody stops on
+//                        the ones that land. Explicit thumbs still count, harder.
+//   6. Forced variety  — weighted pick that refuses to repeat an activity
+//                        inside a short lookback, so the feed never ruts.
+//
+// There is deliberately no "end" and no counter. Leaving is the only stop.
+
+const FEED_BATCH    = 3;     // cards per Claude call
+const FEED_AHEAD    = 3;     // mounted cards kept past the active one
+const FEED_MIN      = 5;     // top up the buffer below this
+const FEED_MAX      = 12;    // hard ceiling on buffered cards (cost guard)
+const FEED_INFLIGHT = 2;     // concurrent generation calls
+const FEED_WINDOW   = 10;    // mounted .feed-item nodes before trimming
+const FEED_LOOKBACK = 4;     // no activity repeat within this many cards
+const FEED_DWELL_SHORT = 2000;   // flicked past — weight down
+const FEED_DWELL_LONG  = 9000;   // sat on it — weight up
+
+// Mirrors the home filter pills. 'random' is handled specially in
+// feedEligible() — see there.
+const FEED_BUCKETS = [
+  { bucket: 'random',        label: 'All' },
+  { bucket: 'informational', label: 'Learn' },
+  { bucket: 'activity',      label: 'Do' },
+  { bucket: '1min',          label: 'Quick' },
+];
+
+let feedBuffer   = [];    // {slug, data, key} generated, not yet mounted
+let feedMounted  = [];    // slugs in DOM order (for the variety lookback)
+let feedInFlight = 0;
+let feedFails    = 0;
+let feedBucket   = localStorage.getItem('feed_bucket') || 'random';
+let feedActiveIdx = -1;
+let feedActiveEl  = null;
+let feedEnterTs   = 0;
+let feedScrollBound = false;
+let feedOpen      = false;
+let feedPrewarmTimer = null;
+
+// Stoic passages are one of the better things to land on mid-scroll, but the
+// Stoic screen predates makeLoader so it never filed a spec. Register one.
+CARD_SPECS['stoic'] = {
+  slug: 'stoic',
+  prompt: (ex) => 'Give me a Stoic passage from Marcus Aurelius, Epictetus, or Seneca. Choose something genuinely thought-provoking, not the most commonly quoted ones.' + ex +
+    ' Return JSON: {author, passage, explanation}',
+  render: (d) => '<div class="ai-card">' +
+    '<div class="stoic-author">' + esc(d.author) + '</div>' +
+    '<blockquote>' + esc(d.passage) + '</blockquote>' +
+    '<p class="stoic-explanation">' + esc(d.explanation) + '</p>' +
+  '</div>',
+  fallbackData: {
+    author: 'Marcus Aurelius',
+    passage: 'The impediment to action advances action. What stands in the way becomes the way.',
+    explanation: 'Obstacles aren\'t detours from your path — they are the path.',
+  },
+};
+// cardKey() has no `passage` case; give stoic cards a stable identity so the
+// exclusion list and dedupe work the same as everywhere else.
+function feedKey(slug, d) {
+  if (slug === 'stoic' && d && d.passage) return d.author + ' — ' + d.passage.slice(0, 60);
+  return cardKey(d);
+}
+
+const FEED_NAMES = ACTIVITY_REGISTRY.reduce((m, a) => {
+  if (!a.quiz && !m[a.slug]) m[a.slug] = a.name;
+  return m;
+}, {});
+
+// ── Activity weights (the ranking signal) ────────────────
+function feedWeights() {
+  try { return JSON.parse(localStorage.getItem('feed_weights') || '{}'); } catch(e) { return {}; }
+}
+function feedWeight(slug) {
+  const w = feedWeights()[slug];
+  return typeof w === 'number' && isFinite(w) ? w : 1;
+}
+// Clamped so no activity can ever fully die or fully take over — a feed that
+// only serves one thing stops being worth opening.
+function feedNudge(slug, factor) {
+  const m = feedWeights();
+  m[slug] = Math.max(0.25, Math.min(4, feedWeight(slug) * factor));
+  try { localStorage.setItem('feed_weights', JSON.stringify(m)); } catch(e) {}
+}
+
+// ── Selection ────────────────────────────────────────────
+function feedEligible() {
+  const hidden = getHiddenActivities();
+  // "All" means every card the feed can render, not DURATION_ACTIVITIES.random
+  // — a few activities (stoic, psychology) have specs but sit in no bucket, and
+  // in a feed there's no reason to hide them.
+  const pool = feedBucket === 'random'
+    ? Object.keys(CARD_SPECS)
+    : (DURATION_ACTIVITIES[feedBucket] || Object.keys(CARD_SPECS));
+  // Quiz slugs live in the buckets too but have no card spec — filtered here.
+  return pool.filter(s => CARD_SPECS[s] && !hidden.has(s));
+}
+
+function feedPickSlug() {
+  let pool = feedEligible();
+  if (!pool.length) return null;
+  const recent = feedMounted.slice(-FEED_LOOKBACK).concat(feedBuffer.map(i => i.slug));
+  const fresh = pool.filter(s => !recent.includes(s));
+  if (fresh.length) pool = fresh;   // only relax the rule if it'd leave nothing
+  const total = pool.reduce((sum, s) => sum + feedWeight(s), 0);
+  let r = Math.random() * total;
+  for (const s of pool) { r -= feedWeight(s); if (r <= 0) return s; }
+  return pool[pool.length - 1];
+}
+
+// ── Generation ───────────────────────────────────────────
+async function feedGenerate() {
+  if (feedInFlight >= FEED_INFLIGHT) return;
+  if (feedBuffer.length >= FEED_MAX) return;
+  if (!hasSession()) return;
+  const slug = feedPickSlug();
+  if (!slug) return;
+  const spec = CARD_SPECS[slug];
+  feedInFlight++;
+  try {
+    const seen = getSeenForExclusion(slug);
+    const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join(', ') + '.' : '';
+    const liked    = getLiked(slug).slice(-8);
+    const disliked = getDisliked(slug).slice(-8);
+    const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
+                      (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
+    // Same prompt the single-card screen uses, asked for in bulk.
+    const raw = await callClaude(
+      spec.prompt(exclude + ratingCtx) +
+      '\n\nReturn a JSON ARRAY of ' + FEED_BATCH + ' different objects, each matching exactly the JSON shape described above. ' +
+      'They must be genuinely distinct from each other. No wrapper object, no extra keys.',
+      { max_tokens: 2200 }
+    );
+    const items = Array.isArray(raw) ? raw : [raw];
+    let added = 0;
+    items.forEach(d => {
+      const key = feedKey(slug, d);
+      if (!key) return;
+      if (feedBuffer.some(i => i.key === key)) return;
+      addShown(slug, key);
+      feedBuffer.push({ slug, data: d, key });
+      added++;
+    });
+    if (added) feedFails = 0;
+    feedPersist();
+  } catch(e) {
+    // A dead batch must not dead-end the feed. Drop this activity's fallback
+    // in if there's nothing to scroll to at all, and lean off the slug.
+    feedFails++;
+    feedNudge(slug, 0.85);
+    if (!feedBuffer.length) {
+      const key = feedKey(slug, spec.fallbackData);
+      feedBuffer.push({ slug, data: spec.fallbackData, key });
+    }
+  } finally {
+    feedInFlight--;
+    feedFill();
+    feedRenderSentinel();
+  }
+}
+
+function feedTopUp() {
+  if (feedBuffer.length >= FEED_MIN) return;
+  const slots = FEED_INFLIGHT - feedInFlight;
+  for (let i = 0; i < slots; i++) feedGenerate();
+}
+
+// The buffer survives a reload so the next open is instant. Only unmounted
+// cards are stored — anything already scrolled past is spent.
+function feedPersist() {
+  try { localStorage.setItem('feed_buffer', JSON.stringify(feedBuffer.slice(0, FEED_MAX))); } catch(e) {}
+}
+function feedRestore() {
+  try {
+    const saved = JSON.parse(localStorage.getItem('feed_buffer') || '[]');
+    if (Array.isArray(saved)) {
+      feedBuffer = saved.filter(i => i && i.slug && i.data && CARD_SPECS[i.slug] && i.key);
+    }
+  } catch(e) { feedBuffer = []; }
+}
+
+// ── Rendering ────────────────────────────────────────────
+function feedItemNode(item) {
+  const spec = CARD_SPECS[item.slug];
+  const el = document.createElement('div');
+  el.className = 'feed-item';
+  el.dataset.slug = item.slug;
+  el.dataset.key  = item.key;
+  let body = '';
+  try { body = spec.render(item.data); } catch(e) { body = '<div class="ai-single"><div class="main-text">' + esc(item.key) + '</div></div>'; }
+  const liked    = getLiked(item.slug).includes(item.key);
+  const disliked = getDisliked(item.slug).includes(item.key);
+  const idAttr = 'data-slug="' + esc(item.slug) + '" data-id="' + esc(item.key) + '"';
+  el.innerHTML =
+    '<button class="feed-chip" data-feed-open="' + esc(item.slug) + '">' + esc(FEED_NAMES[item.slug] || item.slug) + '</button>' +
+    '<div class="feed-body">' + body + '</div>' +
+    // Keeps .card-actions so the existing global thumbs handler (rating
+    // storage + active state) works unchanged; .feed-rail restyles it.
+    '<div class="card-actions feed-rail">' +
+      '<button class="feed-act' + (liked ? ' active-up' : '') + '" data-thumb="up" ' + idAttr + ' title="More like this">👍</button>' +
+      '<button class="feed-act' + (disliked ? ' active-down' : '') + '" data-thumb="down" ' + idAttr + ' title="Less like this">👎</button>' +
+      '<button class="feed-act" data-feed-remember="1" title="Make a flashcard">☆</button>' +
+      '<button class="feed-act" data-feed-lul="1" title="Look up later">↷</button>' +
+      '<button class="feed-act" data-feed-share="1" title="Share">↑</button>' +
+    '</div>';
+  return el;
+}
+
+function feedSentinelNode() {
+  const el = document.createElement('div');
+  el.className = 'feed-item feed-loading';
+  el.innerHTML =
+    '<div class="feed-body"><div>' +
+      '<div class="feed-skel" style="width:78%"></div>' +
+      '<div class="feed-skel" style="width:92%"></div>' +
+      '<div class="feed-skel" style="width:64%"></div>' +
+      '<div class="feed-loading-note" id="feed-loading-note">Finding the next one…</div>' +
+    '</div></div>';
+  return el;
+}
+
+// The sentinel doubles as the failure surface — if generation keeps dying
+// (offline, signed out, proxy down) it says so instead of spinning forever.
+function feedRenderSentinel() {
+  const note = document.getElementById('feed-loading-note');
+  if (!note) return;
+  if (feedFails >= 2) {
+    note.innerHTML = esc(hasSession() ? 'Nothing came back. Check your connection.' : 'Sign in to generate cards.') +
+      '<br><button class="feed-retry" id="feed-retry">Try again</button>';
+  } else {
+    note.textContent = 'Finding the next one…';
+  }
+}
+
+function feedItems() {
+  const track = document.getElementById('feed-track');
+  return track ? [...track.querySelectorAll('.feed-item:not(.feed-loading)')] : [];
+}
+
+// Pull the next card out of the buffer, preferring one whose activity hasn't
+// just been on screen. Batches arrive three-of-a-kind, so without this you'd
+// scroll past three finance terms in a row — interleaving them is what makes
+// the feed feel varied even though generation is batched.
+function feedTake() {
+  const recent = feedMounted.slice(-FEED_LOOKBACK);
+  let i = feedBuffer.findIndex(it => !recent.includes(it.slug));
+  if (i === -1) {
+    // Everything buffered repeats something just shown. If another batch is
+    // still coming, hold rather than stacking three of a kind — the very first
+    // card is exempt so a cold open still fills instantly.
+    if (feedInFlight > 0 && feedMounted.length) return null;
+    i = 0;
+  }
+  return feedBuffer.splice(i, 1)[0];
+}
+
+function feedShowHint(el) {
+  if (localStorage.getItem('feed_hinted')) return;
+  el.insertAdjacentHTML('beforeend', '<div class="feed-hint">swipe up for the next one</div>');
+  localStorage.setItem('feed_hinted', '1');
+}
+
+// Mount from the buffer until FEED_AHEAD cards sit past the active one.
+function feedFill() {
+  const track = document.getElementById('feed-track');
+  if (!feedOpen || !track) return;
+  const sentinel = track.querySelector('.feed-loading');
+  const wasCold = feedActiveIdx === -1;
+  let ahead = feedItems().length - 1 - feedActiveIdx;
+  while (feedBuffer.length && ahead < FEED_AHEAD) {
+    const item = feedTake();
+    if (!item) break;              // holding for variety; refills on next batch
+    const node = feedItemNode(item);
+    if (sentinel) track.insertBefore(node, sentinel); else track.appendChild(node);
+    feedMounted.push(item.slug);
+    ahead++;
+  }
+  // Cold start: the only thing in the track was the loading sentinel, so a
+  // mandatory-snap container is snapped to *it* — and the cards we just
+  // inserted pushed it down the page. Pull the view back to the first card.
+  if (wasCold) {
+    const first = feedItems()[0];
+    if (first) {
+      track.scrollTop = 0;
+      feedActiveIdx = 0;
+      feedActiveEl  = first;
+      feedEnterTs   = Date.now();
+      feedShowHint(first);
+    }
+  }
+  feedPersist();
+  feedTrim();
+}
+
+// Unmount cards well behind the active one, then re-pin the scroll position
+// to the active card's new offset. Don't try to subtract the removed height by
+// hand: a mandatory-snap container already re-anchors to its snapped element,
+// so manual compensation lands a full card off.
+function feedTrim() {
+  const track = document.getElementById('feed-track');
+  if (!track) return;
+  const items = feedItems();
+  const excess = items.length - FEED_WINDOW;
+  if (excess <= 0) return;
+  const drop = Math.min(excess, Math.max(0, feedActiveIdx - 2));
+  if (drop <= 0) return;
+  for (let i = 0; i < drop; i++) items[i].remove();
+  feedActiveIdx -= drop;
+  const active = feedItems()[feedActiveIdx];
+  if (active) track.scrollTop = active.offsetTop;
+}
+
+// Which card is on screen. Derived from scrollTop rather than an
+// IntersectionObserver: every item is exactly one track-height tall, so this
+// is one division — and unlike an observer it still resolves when the tab
+// isn't rendering.
+function feedOnScroll() {
+  const track = document.getElementById('feed-track');
+  if (!feedOpen || !track) return;
+  const h = track.clientHeight || 1;
+  const items = feedItems();
+  if (!items.length) return;
+  const idx = Math.min(Math.round(track.scrollTop / h), items.length - 1);
+  feedSetActive(items[idx]);
+}
+
+// ── Signals ──────────────────────────────────────────────
+function feedScoreExit() {
+  if (!feedActiveEl || !feedEnterTs) return;
+  const dwell = Date.now() - feedEnterTs;
+  const slug = feedActiveEl.dataset.slug;
+  if (slug) {
+    if (dwell < FEED_DWELL_SHORT)     feedNudge(slug, 0.88);
+    else if (dwell > FEED_DWELL_LONG) feedNudge(slug, 1.18);
+  }
+  feedEnterTs = 0;
+}
+
+function feedSetActive(el) {
+  const items = feedItems();
+  const idx = items.indexOf(el);
+  if (idx === -1 || idx === feedActiveIdx) return;
+  feedScoreExit();
+  feedActiveIdx = idx;
+  feedActiveEl  = el;
+  feedEnterTs   = Date.now();
+  feedFill();
+  feedTopUp();
+}
+
+// ── Open / close ─────────────────────────────────────────
+function feedSizeTrack() {
+  const track = document.getElementById('feed-track');
+  if (!track) return;
+  track.style.setProperty('--feed-h', track.clientHeight + 'px');
+}
+
+function feedRenderFilters() {
+  const el = document.getElementById('feed-filters');
+  if (!el) return;
+  el.innerHTML = FEED_BUCKETS.map(b =>
+    '<button class="feed-filter' + (b.bucket === feedBucket ? ' selected' : '') + '" data-feed-bucket="' + b.bucket + '">' + esc(b.label) + '</button>'
+  ).join('');
+}
+
+function openFeed() {
+  const track = document.getElementById('feed-track');
+  if (!track) return;
+  feedOpen = true;
+  showScreen('feed');
+  feedRenderFilters();
+
+  if (!feedScrollBound) {
+    track.addEventListener('scroll', feedOnScroll, { passive: true });
+    feedScrollBound = true;
+  }
+
+  // Fresh session each open: the buffer carries over (warm), the DOM doesn't.
+  track.innerHTML = '';
+  track.appendChild(feedSentinelNode());
+  feedMounted = [];
+  feedActiveIdx = -1;
+  feedActiveEl = null;
+  feedEnterTs = 0;
+  track.scrollTop = 0;
+
+  // Layout has to settle before --feed-h is measurable.
+  // Synchronous, not rAF: showScreen() already laid the track out, and rAF
+  // never fires in a backgrounded tab — which would leave the feed empty.
+  feedSizeTrack();
+  feedFill();          // instant if the buffer is warm; activates card 0
+  feedTopUp();
+  feedRenderSentinel();
+  // One re-measure after paint, for the safe-area/URL-bar settle on iOS.
+  requestAnimationFrame(feedSizeTrack);
+}
+
+function closeFeed() {
+  if (!feedOpen) return;
+  feedScoreExit();
+  feedOpen = false;
+  feedActiveEl = null;
+}
+
+// Quietly refill the buffer while the user is on the home screen, so the
+// first swipe of the next session never waits on a network round trip.
+function feedPrewarm() {
+  if (feedPrewarmTimer) return;
+  feedPrewarmTimer = setTimeout(() => {
+    feedPrewarmTimer = null;
+    if (feedOpen || !navigator.onLine || !hasSession()) return;
+    if (feedBuffer.length >= FEED_MIN) return;
+    feedGenerate();
+  }, 4000);
+}
+
+// ── Wiring ───────────────────────────────────────────────
+feedRestore();
+
+document.getElementById('btn-scroll')?.addEventListener('click', openFeed);
+
+document.addEventListener('screenchange', e => {
+  if (e.detail !== 'feed') closeFeed();
+  if (e.detail === 'home') feedPrewarm();
+});
+
+window.addEventListener('resize', () => { if (feedOpen) feedSizeTrack(); });
+document.addEventListener('visibilitychange', () => {
+  // Don't credit a card with dwell time the phone spent in a pocket.
+  if (document.hidden) feedScoreExit();
+  else if (feedOpen && feedActiveEl) feedEnterTs = Date.now();
+});
+
+document.addEventListener('click', async e => {
+  const bucketBtn = e.target.closest('[data-feed-bucket]');
+  if (bucketBtn) {
+    const next = bucketBtn.dataset.feedBucket;
+    if (next === feedBucket) return;
+    feedBucket = next;
+    localStorage.setItem('feed_bucket', next);
+    // The buffer was picked under the old filter — drop it and start clean.
+    feedBuffer = [];
+    feedFails = 0;
+    feedPersist();
+    openFeed();
+    return;
+  }
+
+  const openBtn = e.target.closest('[data-feed-open]');
+  if (openBtn) {
+    closeFeed();
+    navigateToActivity(openBtn.dataset.feedOpen);
+    return;
+  }
+
+  if (e.target.closest('#feed-retry')) {
+    feedFails = 0;
+    feedRenderSentinel();
+    feedTopUp();
+    return;
+  }
+
+  // Explicit ratings are a stronger signal than dwell. The global handler
+  // already stored the rating; this only moves the feed's own weight.
+  const thumb = e.target.closest('.feed-rail [data-thumb]');
+  if (thumb) {
+    feedNudge(thumb.dataset.slug, thumb.dataset.thumb === 'up' ? 1.5 : 0.6);
+    return;
+  }
+
+  const shareBtn = e.target.closest('[data-feed-share]');
+  if (shareBtn) {
+    const item = shareBtn.closest('.feed-item');
+    const text = item?.querySelector('.feed-body')?.innerText.trim() || '';
+    if (!text) return;
+    if (navigator.share) navigator.share({ title: 'Break', text }).catch(() => {});
+    else { try { await navigator.clipboard.writeText(text); showToast('Copied to clipboard'); } catch(err) {} }
+    return;
+  }
+
+  // Scrolling is where "huh, I want to know more about that" happens most —
+  // one tap parks the subject in the Queue instead of derailing the scroll.
+  const lulBtn = e.target.closest('[data-feed-lul]');
+  if (lulBtn) {
+    const item = lulBtn.closest('.feed-item');
+    const q = item?.dataset.key || '';
+    if (!q) return;
+    lulBtn.disabled = true;
+    try {
+      await lulCreate(q);
+      showToast('Added to Queue');
+      updateLulBadge();
+    } catch(err) {
+      showToast('Couldn\'t save — try again');
+    }
+    lulBtn.disabled = false;
+    return;
+  }
+
+  const remBtn = e.target.closest('[data-feed-remember]');
+  if (remBtn) {
+    const item = remBtn.closest('.feed-item');
+    const body = item?.querySelector('.feed-body');
+    if (!body) return;
+    const source = {
+      kind: FEED_NAMES[item.dataset.slug] || item.dataset.slug,
+      rawFront: item.dataset.key || '',
+      rawBack: body.innerText.trim(),
+      srsSource: item.dataset.slug,
+    };
+    remBtn.textContent = '…';
+    remBtn.disabled = true;
+    try {
+      const card = await generateRememberCard(source, Math.floor(Math.random() * 900) + 100);
+      openRememberPreview(source, card);
+    } catch(err) {
+      openRememberPreview(source, null);
+      showToast('Couldn\'t condense — edit and save');
+    }
+    remBtn.textContent = '☆';
+    remBtn.disabled = false;
+    return;
+  }
 });
 
 boot();
