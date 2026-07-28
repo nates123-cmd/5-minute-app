@@ -2596,6 +2596,14 @@ document.getElementById('btn-settings').addEventListener('click', () => {
 document.getElementById('otp-signout')?.addEventListener('click', signOut);
 
 // ── Claude API ────────────────────────────────
+// Two models, split by what the call is worth. CLAUDE_MODEL handles the
+// quality-sensitive, once-per-user-action paths (condensing a flashcard,
+// building a deep dive, grading recall). FEED_MODEL handles the Scroll feed,
+// which fires once per three cards and is where the token spend actually
+// lives — Haiku is ~3x cheaper and noticeably faster there.
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
+const FEED_MODEL   = 'claude-haiku-4-5';
+
 async function callClaude(userPrompt, opts = {}) {
   if (!hasSession()) throw new Error('Sign in to use AI');
 
@@ -2603,7 +2611,7 @@ async function callClaude(userPrompt, opts = {}) {
     method: 'POST',
     headers: await claudeHeaders(),
     body: JSON.stringify({
-      model: 'claude-sonnet-4-6',
+      model: opts.model || CLAUDE_MODEL,
       max_tokens: opts.max_tokens || 1000,
       system: 'You are a helpful assistant. Return ONLY valid JSON — no markdown, no backticks, no explanation, no preamble. Just the raw JSON object or array.',
       messages: [{ role: 'user', content: userPrompt }],
@@ -6714,6 +6722,240 @@ document.querySelectorAll('.timer-menu-opt').forEach(btn => {
   });
 });
 
+// ══ Card sources ═════════════════════════════════════════════════════════
+// Not every card needs a model call. Three tiers, cheapest first:
+//
+//   1. Bundled data — canonical, finite sets. Named cognitive biases,
+//      logical fallacies, thought experiments, Stoic passages and word
+//      etymologies are *lists*, not open questions. Asking a model to
+//      "give me a cognitive bias" makes it recite a list it memorised and
+//      occasionally invent an entry. A real list is more accurate, instant,
+//      free, and works with no signal.
+//   2. Free keyless APIs — real data that actually changes day to day
+//      (today's date in history). No key, CORS-open, ~200ms.
+//   3. Claude — cards that are genuinely generative with no source of truth
+//      (fun facts, pairings, insights). See CARD_SPECS.
+//
+// A source takes the number of cards wanted and returns an array of card
+// objects shaped for that slug's spec.render(), or null to fall through to
+// Claude. Sources are consulted by the feed only; the single-activity
+// screens still go through makeLoader unchanged.
+const CARD_SOURCES = {};
+
+// Draw n items the exclusion list hasn't recorded yet. Once the pool is
+// exhausted it reshuffles the whole set rather than returning nothing — a
+// repeat is better than a dead feed.
+function pickUnseen(slug, pool, n, keyOf) {
+  const seen = new Set(getSeenForExclusion(slug));
+  let bag = pool.filter(x => !seen.has(keyOf(x)));
+  if (bag.length < n) bag = pool.slice();
+  const out = [];
+  while (out.length < n && bag.length) {
+    out.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]);
+  }
+  return out;
+}
+
+// ── Tier 2: today in history (Wikimedia, no key, CORS-open) ──────────────
+// The day's event list is fetched once and reused. Without this every batch
+// re-fetched the same payload, which is the one place a "free" source can
+// still cost you real latency.
+let onThisDayCache = null;   // { day: 'MM-DD', events: [...] }
+
+CARD_SOURCES['on-this-day'] = async (n) => {
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  const day = mm + '-' + dd;
+  let events;
+  if (onThisDayCache && onThisDayCache.day === day) {
+    events = onThisDayCache.events;
+  } else {
+    const res = await fetch('https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/events/' + mm + '/' + dd);
+    if (!res.ok) return null;
+    const data = await res.json();
+    events = (data.events || []).filter(e => e && e.text && e.year);
+    onThisDayCache = { day, events };
+  }
+  if (!events.length) return null;
+  return pickUnseen('on-this-day', events, n, e => e.text).map(e => ({
+    event: e.text,
+    year: e.year,
+    // The linked article's summary is the "why this mattered" paragraph.
+    context: (e.pages && e.pages[0] && e.pages[0].extract) || '',
+  }));
+};
+
+// ── Tier 1: bundled canonical sets ───────────────────────────────────────
+const DATA_BIASES = [
+  { name: 'Survivorship Bias', definition: 'Judging from the things that made it through a selection process while the failures stay invisible.', example: 'Reading habits of billionaires to learn success. The people who did the same things and failed did not write books.', antidote: 'Ask where the missing data went. Who tried this and is not here to tell you?' },
+  { name: 'Base Rate Neglect', definition: 'Weighting vivid specifics over how common something actually is to begin with.', example: 'A test that is 99% accurate flags you for a disease 1 in 10,000 people have. You are still far more likely to be a false positive than sick.', antidote: 'Ask how common the thing is before asking how convincing the evidence is.' },
+  { name: 'The Curse of Knowledge', definition: 'Once you know something, being unable to imagine not knowing it.', example: 'An expert writes documentation that skips the step they stopped noticing years ago, and every newcomer gets stuck there.', antidote: 'Have someone unfamiliar do the task in front of you without helping them.' },
+  { name: 'Hyperbolic Discounting', definition: 'Preferring a smaller reward now over a larger one later, at a rate that collapses as the wait gets shorter.', example: 'You would take $50 today over $60 next week, but not $50 in a year over $60 in a year and a week. The same seven days.', antidote: 'Compare the two options as if both were a year away, then decide.' },
+  { name: 'The Planning Fallacy', definition: 'Underestimating how long your own projects will take, even when you know similar projects ran long.', example: 'You have shipped four features late and still estimate the fifth at two weeks.', antidote: 'Estimate from your own track record on similar work, not from imagining this one going well.' },
+  { name: 'Fundamental Attribution Error', definition: "Explaining other people's behaviour by character and your own by circumstance.", example: 'He cut you off because he is a jerk. You cut someone off because you were late to a hospital.', antidote: 'Ask what situation would make a reasonable person do exactly that.' },
+  { name: 'Availability Cascade', definition: 'A belief becomes more plausible the more it is repeated, and gets repeated more because it seems plausible.', example: 'A rare risk dominates the news, so people discuss it more, so it feels more common, so it stays in the news.', antidote: 'Ask whether you are seeing more evidence or the same evidence more times.' },
+  { name: 'The IKEA Effect', definition: 'Valuing something more because you built it yourself.', example: 'A team defends its own clunky internal tool against a better one because they wrote it.', antidote: 'Ask what you would pay for it if a stranger handed it to you finished.' },
+  { name: 'Anchoring', definition: 'Letting the first number you hear set the range for every judgement that follows.', example: 'A crossed-out price of $400 makes $250 feel like a deal, independent of what the item is worth.', antidote: 'Decide your number before you see theirs.' },
+  { name: 'Illusion of Explanatory Depth', definition: 'Believing you understand how something works until you try to explain it step by step.', example: 'Most people are confident they know how a zip, a toilet, or a bicycle works, and cannot draw one that would function.', antidote: 'Explain the mechanism out loud, in full. The gaps show up immediately.' },
+  { name: 'Negativity Bias', definition: 'Bad information carrying more psychological weight than equally strong good information.', example: 'Nine positive reviews and one scathing one, and you remember the scathing one.', antidote: 'Count, do not weigh. Ask what the ratio actually is.' },
+  { name: 'Confirmation Bias', definition: 'Searching for and remembering evidence that fits what you already think.', example: 'You form a view on a candidate in ten seconds and spend the rest of the interview collecting support for it.', antidote: 'Go looking specifically for the strongest case against your view, and see who makes it well.' },
+  { name: 'Loss Aversion', definition: 'Losing something feeling roughly twice as bad as gaining the same thing feels good.', example: 'Holding a falling stock so the loss stays theoretical, while selling winners early to lock the gain in.', antidote: 'Ask whether you would buy it today at this price. If no, you are holding to avoid feeling the loss.' },
+  { name: 'The Overconfidence Effect', definition: "Confidence in your judgements outrunning their actual accuracy, most sharply where you know a little.", example: 'People who say they are 99% certain are wrong far more than 1% of the time.', antidote: 'State a confidence percentage before you find out, and keep score over time.' },
+  { name: 'Present Bias in Effort', definition: 'Assuming your future self will have more time, discipline, and energy than your present self.', example: 'Agreeing to something for next month you would refuse today.', antidote: 'Ask if you would do it this week. Your future week will look like this one.' },
+  { name: 'The Halo Effect', definition: 'Letting one strong impression colour unrelated judgements about the same thing.', example: 'A well-designed website makes people rate a company as more trustworthy and competent, on no other evidence.', antidote: 'Score the dimensions separately before forming an overall view.' },
+  { name: 'Status Quo Bias', definition: 'Treating the current arrangement as the neutral option and every change as a risk.', example: 'Countries with opt-out organ donation have vastly higher donation rates than opt-in ones, with the same people.', antidote: 'Ask whether you would actively choose the current setup if starting fresh.' },
+  { name: 'Clustering Illusion', definition: 'Seeing patterns in what is actually random, because true randomness clumps more than intuition expects.', example: 'A run of five reds at roulette looks like a streak. It is what randomness routinely does.', antidote: 'Ask what genuine randomness would look like. Usually it looks streakier than you expect.' },
+  { name: 'Reactance', definition: 'Wanting something more, or resisting it harder, simply because your freedom to choose was threatened.', example: 'A blunt warning label makes the behaviour more attractive to people who feel pushed.', antidote: 'Notice whether you are choosing the thing or refusing to be told.' },
+  { name: 'Peak-End Rule', definition: 'Judging an experience almost entirely by its most intense moment and its ending, nearly ignoring duration.', example: 'A long good holiday with a miserable last day is remembered as a bad holiday.', antidote: 'Reconstruct the whole timeline before deciding how it went.' },
+  { name: 'Denomination Effect', definition: 'Spending small money more freely than the same total in one large unit.', example: 'Five twenties leaves your pocket faster than a hundred does.', antidote: 'Track the total, not the transaction.' },
+  { name: 'Selection Bias in Feedback', definition: 'Hearing disproportionately from the people motivated enough to speak.', example: 'A product survey answered by the delighted and the furious, and by nobody in the middle who represents most users.', antidote: 'Ask who did not respond and what they most likely think.' },
+  { name: 'Sunk Cost Fallacy', definition: 'Continuing because of what you already spent rather than what you will get.', example: 'Finishing a bad book at page 300 because of the 300 pages.', antidote: 'Ask: starting fresh today, knowing what I know, would I choose this?' },
+  { name: 'Naive Realism', definition: 'Believing you see things as they are, and that anyone who disagrees is uninformed or biased.', example: 'Both sides of a contested issue rate the same neutral news report as biased against them.', antidote: 'Try to state the other position well enough that someone who holds it would agree.' },
+];
+
+const DATA_FALLACIES = [
+  { name: 'Survivorship Reasoning', definition: 'Drawing a rule from the surviving cases while the failed ones are structurally invisible.', example: '"Every founder I admire dropped out." So did far more people you have never heard of.' },
+  { name: 'Motte and Bailey', definition: 'Defending an easy claim when challenged, then reverting to the hard one when unchallenged.', example: 'Arguing for a sweeping policy, retreating to "I just think we should care about this" under scrutiny, then going back to the policy.' },
+  { name: 'Nirvana Fallacy', definition: 'Rejecting a workable option because it falls short of a perfect one that is not available.', example: '"Seatbelts do not save everyone, so why bother?"' },
+  { name: 'Appeal to Nature', definition: 'Treating natural as good and artificial as bad.', example: '"It is all-natural, so it is safe." Arsenic, belladonna and asbestos are natural.' },
+  { name: 'Texas Sharpshooter', definition: 'Finding a cluster in scattered data and drawing the target around it afterwards.', example: 'Testing twenty variables, finding one correlation, and reporting only that one as the finding.' },
+  { name: 'Middle Ground Fallacy', definition: 'Assuming the truth must sit between two positions.', example: 'One side says the bridge is safe, one says it will collapse, so we half-cross it.' },
+  { name: 'Special Pleading', definition: 'Inventing an exemption for your case when the rule you invoked goes against you.', example: 'Demanding evidence for every claim, then exempting your own as "just obvious".' },
+  { name: 'Loaded Question', definition: 'A question whose phrasing presumes something not yet established.', example: '"Why is this team so resistant to change?" assumes it is.' },
+  { name: 'Equivocation', definition: 'Letting a word shift meaning mid-argument.', example: '"Evolution is only a theory, and theories are just guesses." Two different senses of theory.' },
+  { name: 'False Dilemma', definition: 'Presenting two options as exhaustive when others exist.', example: '"Either we ship this today or we have wasted the whole quarter."' },
+  { name: 'Appeal to Tradition', definition: 'Treating longevity as evidence of correctness.', example: '"We have always run the deploy this way." So was bloodletting, for centuries.' },
+  { name: 'Composition and Division', definition: 'Assuming what is true of the parts is true of the whole, or the reverse.', example: 'Every player is the best in their position, so this must be the best team.' },
+  { name: 'Post Hoc', definition: 'Treating sequence as causation.', example: 'Sales rose after the rebrand, so the rebrand raised sales. So did the season and the competitor going down.' },
+  { name: 'Moving the Goalposts', definition: 'Raising the evidence bar each time it is met.', example: 'Asking for a prototype, then users, then revenue, then profitability, having said each would settle it.' },
+  { name: 'Appeal to Incredulity', definition: 'Treating your own difficulty imagining something as evidence it is false.', example: '"I cannot see how that could evolve, so it did not."' },
+  { name: 'Gambler’s Fallacy', definition: 'Believing independent events owe you a correction.', example: '"Red six times, black is due." The wheel has no memory.' },
+  { name: 'Cherry Picking', definition: 'Citing the supporting cases and omitting the rest of the record.', example: 'Quoting the three studies that agree with you from a literature of forty.' },
+  { name: 'Burden of Proof Shift', definition: 'Demanding your opponent disprove a claim you have not supported.', example: '"Prove it does not work."' },
+  { name: 'Slippery Slope', definition: 'Treating a chain of increasingly unlikely consequences as though it were one step.', example: '"Allow this exception and there will be no rules left at all."' },
+  { name: 'Anecdotal Evidence', definition: 'Letting one vivid case outweigh systematic data.', example: '"My grandfather smoked and lived to 96."' },
+  { name: 'Tu Quoque', definition: 'Deflecting criticism by pointing at the critic rather than the claim.', example: '"You are lecturing me about deadlines?" The deadline is still missed.' },
+  { name: 'Appeal to Authority', definition: 'Treating credentials as proof, particularly outside the expert’s field.', example: 'A Nobel laureate in physics holding forth on nutrition.' },
+  { name: 'No True Scotsman', definition: 'Defending a generalisation by redefining the category to exclude counterexamples.', example: '"No serious engineer skips tests." Here is one who does. "Then they are not serious."' },
+  { name: 'Circular Reasoning', definition: 'Assuming in the premises what you set out to prove.', example: '"It is the best option because nothing else is as good."' },
+];
+
+const DATA_THOUGHT_EXPERIMENTS = [
+  { name: 'The Ship of Theseus', setup: 'A ship is preserved as a monument. As each plank rots it is replaced, until no original material remains. Meanwhile someone has collected every discarded plank and reassembled them.', question: 'Which one is the original ship? And if neither, when exactly did it stop being?' },
+  { name: 'The Experience Machine', setup: 'Nozick asks you to imagine a machine that can give you any experience you want, indistinguishable from reality. You would not know you were plugged in. You can programme a whole lifetime.', question: 'Would you plug in? If not, what is it you want besides the experience of having it?' },
+  { name: 'The Chinese Room', setup: 'Searle imagines a person in a room who does not speak Chinese, following an enormous rulebook to produce Chinese replies to Chinese notes slipped under the door. From outside, the responses are fluent.', question: 'Does anything in that room understand Chinese? If not, what would have to be added?' },
+  { name: 'The Veil of Ignorance', setup: 'Rawls asks you to design a society without knowing which position in it you will occupy: your class, talents, health, or era are all hidden until after the rules are set.', question: 'What rules would you actually choose, and how far are they from the ones you defend now?' },
+  { name: 'Mary’s Room', setup: 'Mary is a brilliant scientist who knows every physical fact about colour vision, but has lived her whole life in a black and white room. One day she walks outside and sees a red tomato.', question: 'Does she learn something new? If she does, was her physical knowledge complete?' },
+  { name: 'The Trolley Problem', setup: 'A runaway trolley will kill five people. You can divert it to a track where it will kill one. In a variant, the only way to stop it is to push a large stranger onto the track.', question: 'Why does pulling a lever feel permissible when pushing does not, if the arithmetic is identical?' },
+  { name: 'The Utility Monster', setup: 'A being exists that derives vastly more pleasure from each unit of resource than anyone else does. Pure utilitarian arithmetic says resources should flow to it.', question: 'Does that follow? And if you reject it, what does that say about aggregating happiness at all?' },
+  { name: 'Newcomb’s Problem', setup: 'A reliable predictor puts $1,000 in a clear box and either $1,000,000 or nothing in a sealed one, having already predicted your choice. It fills the sealed box only if it predicted you take that box alone.', question: 'Take both boxes, or only the sealed one? Two solid principles of rational choice disagree.' },
+  { name: 'The Beetle in a Box', setup: 'Wittgenstein imagines everyone having a box containing something they call a beetle. Nobody can look in anyone else’s box. The word "beetle" is defined for each person by their own contents.', question: 'What role does the thing in the box play in the language? Could the boxes be empty and nothing change?' },
+  { name: 'Theseus’ Teleporter', setup: 'A teleporter scans and destroys your body, then rebuilds it atom for atom on Mars. One day it malfunctions and does not destroy the original. Both wake up.', question: 'Which one is you? And was it ever travel, or a copy with a death attached?' },
+  { name: 'The Original Position of the Chicken', setup: 'Consider a being brought into existence solely to be eaten, living a comfortable life it would never have had otherwise, then killed painlessly.', question: 'Is it wronged? Can you harm something by creating it, if the alternative was never existing?' },
+  { name: 'Buridan’s Ass', setup: 'A perfectly rational donkey stands exactly between two identical bales of hay, with no reason to prefer either.', question: 'Does it starve? What does a rational agent do when reasons run out entirely?' },
+  { name: 'The Violinist', setup: 'Thomson asks you to imagine waking up surgically connected to a famous violinist who will die unless he uses your kidneys for nine months. You did not consent.', question: 'Must you stay connected? Does the answer change if it is one hour, or nine years?' },
+  { name: 'Swampman', setup: 'Davidson imagines lightning striking a swamp and, by pure coincidence, assembling a being molecule-for-molecule identical to you at that moment. It walks off and lives your life convincingly.', question: 'Do its thoughts mean anything? Can meaning depend on a history it does not have?' },
+  { name: 'The Sorites Paradox', setup: 'A heap of sand remains a heap if you remove one grain. Apply that rule repeatedly and one grain is a heap. Apply it in reverse and no number of grains ever makes one.', question: 'Where is the boundary? And what does it mean that most useful words have none?' },
+  { name: 'Roko’s Basilisk of the Present', setup: 'Consider a decision you will be judged on by people with far more information than you have, who did not face your constraints.', question: 'How much should anticipated future judgement shape a choice made under present ignorance?' },
+  { name: 'The Twin Earth', setup: 'Putnam imagines a planet identical to Earth in every way, except its water is a different compound with identical properties. A person there says "water" meaning that compound.', question: 'Do the two speakers mean the same thing? Is meaning in the head at all?' },
+  { name: 'The Prisoner’s Dilemma', setup: 'Two accomplices are questioned separately. Each does better betraying the other regardless of what the other does, but if both stay silent both do better than if both betray.', question: 'What makes cooperation rational, given that defection dominates every single round?' },
+  { name: 'The Lifeboat', setup: 'A lifeboat holds seven. Eight people are in the water. Nobody is more deserving by any obvious measure.', question: 'Is a lottery the fairest answer? And is fairness even what you want here?' },
+  { name: 'The Last Person', setup: 'You are the last human alive. Before you die you can, at no cost or benefit to anyone, destroy a forest that will otherwise stand for millennia unseen.', question: 'Would that be wrong? If yes, wrong to whom?' },
+];
+
+const DATA_ETYMOLOGY = [
+  { word: 'Salary', origin: 'Latin: salarium', journey: 'From "sal", salt. Roman soldiers received an allowance connected to salt, then one of the most valuable preservatives in the empire.', modernMeaning: 'A fixed regular payment, with the seasoning entirely forgotten.' },
+  { word: 'Clue', origin: 'Middle English: clew', journey: 'A clew was a ball of thread. It means what it does because Theseus unwound one through the labyrinth to find his way back out.', modernMeaning: 'Any thread of evidence you follow toward an answer.' },
+  { word: 'Muscle', origin: 'Latin: musculus', journey: 'Literally "little mouse". Roman anatomists thought a flexing bicep looked like a small mouse moving under the skin.', modernMeaning: 'Contractile tissue, mouse imagery long since dead.' },
+  { word: 'Disaster', origin: 'Italian: disastro', journey: 'From "dis-" (against) and "astro" (star). A disaster was originally an event blamed on an unfavourable alignment of the stars.', modernMeaning: 'A catastrophe, with the astrology stripped out.' },
+  { word: 'Quarantine', origin: 'Venetian: quaranta giorni', journey: 'Forty days. Ships arriving in plague-era Venice were held offshore for exactly that long before anyone could land.', modernMeaning: 'Isolation to limit contagion, for any period at all.' },
+  { word: 'Nightmare', origin: 'Old English: mare', journey: 'The "mare" is not a horse. It was a malevolent spirit believed to sit on a sleeper’s chest and cause suffocating dreams.', modernMeaning: 'A bad dream, with the demon quietly retired.' },
+  { word: 'Sarcasm', origin: 'Greek: sarkazein', journey: 'To tear flesh, and by extension to bite the lip in rage or to speak bitterly.', modernMeaning: 'Cutting irony, with the etymology still fairly honest about it.' },
+  { word: 'Companion', origin: 'Latin: com + panis', journey: 'Literally "with bread". A companion was someone you broke bread with.', modernMeaning: 'Anyone you keep company with, meals optional.' },
+  { word: 'Malaria', origin: 'Italian: mala aria', journey: 'Literally "bad air". The disease was blamed on the foul air of marshes for centuries before mosquitoes were identified as the vector.', modernMeaning: 'A parasitic disease, carrying a fossil of a wrong theory in its name.' },
+  { word: 'Sincere', origin: 'Latin: sincerus', journey: 'Meaning clean, pure, unadulterated. The popular story that it comes from "sine cera", without wax, referring to sculptors hiding cracks, is a charming folk etymology and almost certainly false.', modernMeaning: 'Genuine and unfeigned. The false origin is more famous than the real one.' },
+  { word: 'Muscat and Nutmeg', origin: 'Latin: nux muscata', journey: '"Musky nut". Nutmeg reached English through Old French, keeping the nut and translating the musk.', modernMeaning: 'A spice whose name is a half-translated compound.' },
+  { word: 'Assassin', origin: 'Arabic: hashishin', journey: 'A name applied to a medieval sect by its enemies. European crusaders carried the word home along with an exaggerated reputation.', modernMeaning: 'A killer of prominent figures.' },
+  { word: 'Robot', origin: 'Czech: robota', journey: 'Meaning forced labour or drudgery. Coined for Karel Čapek’s 1920 play R.U.R., where the robots are artificial workers who eventually revolt.', modernMeaning: 'An automated machine. The play warned about it first.' },
+  { word: 'Villain', origin: 'Latin: villanus', journey: 'A villanus was a farmhand attached to a villa. The word slid from rural, to low-born, to boorish, to wicked.', modernMeaning: 'A wrongdoer, via several centuries of class contempt.' },
+  { word: 'Deadline', origin: 'American Civil War prison camps', journey: 'A literal line around a prison perimeter that inmates were shot for crossing. Its move into publishing was a grim metaphor.', modernMeaning: 'A time you must finish by, with the shooting removed.' },
+  { word: 'Handicap', origin: 'English: hand in cap', journey: 'From a betting and trading game in which stakes and forfeits were drawn from a cap, then applied to horse racing weights that evened the field.', modernMeaning: 'A disadvantage, or a compensating adjustment.' },
+  { word: 'Panic', origin: 'Greek: panikos', journey: 'Of Pan, the god of woods and flocks, blamed for the sudden groundless terror that could sweep a herd or an army.', modernMeaning: 'Sudden overwhelming fear, still arriving without warning.' },
+  { word: 'Curfew', origin: 'Old French: couvre-feu', journey: 'Literally "cover the fire". A bell signalled the hour to bank your hearth for the night, a serious fire precaution in timber towns.', modernMeaning: 'An hour after which you must be inside.' },
+  { word: 'Sabotage', origin: 'French: sabot', journey: 'A sabot is a wooden shoe. The link to jamming machinery with clogs is a good story and disputed; the likelier route is "saboter", to work clumsily or noisily.', modernMeaning: 'Deliberate obstruction or damage.' },
+  { word: 'Ostracise', origin: 'Greek: ostrakon', journey: 'A pottery shard. Athenians voted to exile a citizen for ten years by scratching his name onto broken pottery.', modernMeaning: 'To exclude from a group, ballot no longer required.' },
+  { word: 'Trivial', origin: 'Latin: trivium', journey: 'Literally "three roads", a public crossroads. What was discussed at a crossroads was common talk, hence commonplace.', modernMeaning: 'Of little importance.' },
+  { word: 'Muscle Memory of "Calculate"', origin: 'Latin: calculus', journey: 'A calculus was a small pebble, of the kind used as a counter on a reckoning board.', modernMeaning: 'To compute. The pebbles survive in kidney stones and in calculus the discipline.' },
+  { word: 'Bankrupt', origin: 'Italian: banca rotta', journey: 'Literally "broken bench". A money changer who failed had his trading bench broken, publicly and literally.', modernMeaning: 'Legally unable to pay debts.' },
+  { word: 'Alcohol', origin: 'Arabic: al-kuhl', journey: 'Originally a fine powder of antimony used as eye cosmetic. It came to mean any substance refined by sublimation, then the refined spirit of wine specifically.', modernMeaning: 'Ethanol, via a long detour through cosmetics.' },
+];
+
+const DATA_WORDS = [
+  { word: 'Sonder', pronunciation: '/ˈsɒndər/', partOfSpeech: 'noun', definition: 'The realisation that each passer-by has a life as vivid and complex as your own.', example: 'She stood in the terminal and felt a wave of sonder as the crowd streamed past.' },
+  { word: 'Petrichor', pronunciation: '/ˈpɛtrɪkɔːr/', partOfSpeech: 'noun', definition: 'The smell of rain falling on dry earth.', example: 'The first storm in months, and the whole street filled with petrichor.' },
+  { word: 'Apricity', pronunciation: '/əˈprɪsɪti/', partOfSpeech: 'noun', definition: 'The warmth of the sun in winter.', example: 'He stayed in the doorway a moment longer than he needed to, for the apricity of it.' },
+  { word: 'Hiraeth', pronunciation: '/ˈhɪrɑɪθ/', partOfSpeech: 'noun', definition: 'A Welsh word for homesickness for a home you cannot return to, or that never existed.', example: 'Old photographs of a town he had never lived in still produced a kind of hiraeth.' },
+  { word: 'Sprezzatura', pronunciation: '/ˌsprɛtsəˈturə/', partOfSpeech: 'noun', definition: 'Studied carelessness. Making something difficult look effortless, and concealing the effort.', example: 'The whole performance had a sprezzatura that took twenty years to learn.' },
+  { word: 'Limerence', pronunciation: '/ˈlɪmərəns/', partOfSpeech: 'noun', definition: 'The involuntary, intrusive infatuated state of early attraction, distinct from love.', example: 'He mistook six weeks of limerence for a decision about the rest of his life.' },
+  { word: 'Nepenthe', pronunciation: '/nɪˈpɛnθi/', partOfSpeech: 'noun', definition: 'Something that makes you forget grief or suffering.', example: 'Work became a nepenthe, which is not the same as recovery.' },
+  { word: 'Sillage', pronunciation: '/siˈjɑːʒ/', partOfSpeech: 'noun', definition: 'The scented trail left behind by someone who has passed, or the wake left by a ship.', example: 'She had left an hour earlier and the sillage was still in the hallway.' },
+  { word: 'Apophenia', pronunciation: '/ˌæpəˈfiːniə/', partOfSpeech: 'noun', definition: 'The tendency to perceive meaningful connections between unrelated things.', example: 'Three coincidences in a week and his apophenia did the rest.' },
+  { word: 'Kintsugi', pronunciation: '/kɪnˈtsuːɡi/', partOfSpeech: 'noun', definition: 'The Japanese art of repairing broken pottery with gold, treating the break as part of the history rather than something to disguise.', example: 'The bowl was worth more mended, which is the whole argument of kintsugi.' },
+  { word: 'Ultracrepidarian', pronunciation: '/ˌʌltrəˌkrɛpɪˈdɛəriən/', partOfSpeech: 'noun', definition: 'Someone who offers confident opinions beyond the limits of their knowledge.', example: 'Every comment section is an ultracrepidarian convention.' },
+  { word: 'Saudade', pronunciation: '/saʊˈdɑːdə/', partOfSpeech: 'noun', definition: 'A Portuguese word for a deep longing for something absent and probably unreturnable, held with affection rather than only pain.', example: 'Fado is more or less saudade set to music.' },
+  { word: 'Meliorism', pronunciation: '/ˈmiːliərɪzəm/', partOfSpeech: 'noun', definition: 'The belief that the world can be made better by human effort. Positioned between optimism and pessimism.', example: 'She was not an optimist about any of it, but a stubborn meliorist.' },
+  { word: 'Anagnorisis', pronunciation: '/ˌænæɡˈnɒrɪsɪs/', partOfSpeech: 'noun', definition: 'The moment in a story when a character makes a critical discovery, usually about their own situation.', example: 'The second act ends on an anagnorisis and nothing after it can be undone.' },
+  { word: 'Solastalgia', pronunciation: '/ˌsɒləˈstældʒə/', partOfSpeech: 'noun', definition: 'Distress caused by environmental change to a place you still live in. Homesickness without leaving home.', example: 'The valley was still there, and the solastalgia was constant.' },
+  { word: 'Eucatastrophe', pronunciation: '/ˌjuːkəˈtæstrəfi/', partOfSpeech: 'noun', definition: 'Tolkien’s coinage for a sudden turn to good fortune at the darkest point of a story.', example: 'He kept waiting for a eucatastrophe, which is not a plan.' },
+  { word: 'Psithurism', pronunciation: '/ˈsɪθjʊrɪzəm/', partOfSpeech: 'noun', definition: 'The sound of wind moving through trees.', example: 'No traffic for miles, only psithurism and the occasional bird.' },
+  { word: 'Deliquesce', pronunciation: '/ˌdɛlɪˈkwɛs/', partOfSpeech: 'verb', definition: 'To dissolve or melt away, especially by absorbing moisture from the air.', example: 'The evening deliquesced into something none of them could reconstruct later.' },
+  { word: 'Velleity', pronunciation: '/vɛˈliːɪti/', partOfSpeech: 'noun', definition: 'A wish so faint it produces no effort at all. The lowest possible degree of volition.', example: 'His plan to learn Portuguese never rose above velleity.' },
+  { word: 'Susurrus', pronunciation: '/sʊˈsʌrəs/', partOfSpeech: 'noun', definition: 'A whispering or rustling sound.', example: 'The lecture continued over a susurrus of turning pages.' },
+  { word: 'Quotidian', pronunciation: '/kwəˈtɪdiən/', partOfSpeech: 'adjective', definition: 'Daily. Also, commonplace to the point of being unremarkable.', example: 'He was interested in the quotidian details, which is where the argument actually lived.' },
+  { word: 'Adumbrate', pronunciation: '/ˈædʌmbreɪt/', partOfSpeech: 'verb', definition: 'To outline faintly, or to foreshadow something before it happens.', example: 'The first chapter adumbrates the ending without giving anything away.' },
+  { word: 'Aporia', pronunciation: '/əˈpɔːriə/', partOfSpeech: 'noun', definition: 'A state of genuine puzzlement, where the arguments on both sides are equally strong.', example: 'Two hours of discussion produced a well-mapped aporia and no decision.' },
+  { word: 'Sitzfleisch', pronunciation: '/ˈzɪtsflaɪʃ/', partOfSpeech: 'noun', definition: 'The ability to sit still and see difficult work through. Literally "sitting flesh".', example: 'The talent was ordinary; the Sitzfleisch was not.' },
+  { word: 'Nemophilist', pronunciation: '/nɪˈmɒfɪlɪst/', partOfSpeech: 'noun', definition: 'Someone fond of forests; a haunter of woods.', example: 'A committed nemophilist, he took the long route through the trees every time.' },
+  { word: 'Ineffable', pronunciation: '/ɪnˈɛfəbəl/', partOfSpeech: 'adjective', definition: 'Too great or extreme to be put into words.', example: 'He called it ineffable and then talked about it for an hour.' },
+  { word: 'Rasasvada', pronunciation: '/rɑːsəˈsvɑːdə/', partOfSpeech: 'noun', definition: 'A Sanskrit term for the taste of bliss in the absence of all thought.', example: 'Twenty minutes of sitting, and a few seconds of something like rasasvada.' },
+  { word: 'Opsimath', pronunciation: '/ˈɒpsɪmæθ/', partOfSpeech: 'noun', definition: 'A person who begins to learn or study only late in life.', example: 'She took up Greek at sixty-eight, a cheerful opsimath.' },
+];
+
+const DATA_STOIC = [
+  { author: 'Marcus Aurelius', passage: 'You have power over your mind, not outside events. Realise this, and you will find strength.', explanation: 'The whole system compresses into this. Sort every situation into what you control and what you do not, then spend your effort only on the first pile.' },
+  { author: 'Marcus Aurelius', passage: 'The impediment to action advances action. What stands in the way becomes the way.', explanation: 'Written by a man running an empire through plague and war. The obstacle is not a detour from the work; on most days it is the work.' },
+  { author: 'Marcus Aurelius', passage: 'Waste no more time arguing about what a good man should be. Be one.', explanation: 'A note to himself, in a private journal, by someone who clearly caught himself theorising instead of acting.' },
+  { author: 'Marcus Aurelius', passage: 'If you are distressed by anything external, the pain is not due to the thing itself, but to your estimate of it; and this you have the power to revoke at any moment.', explanation: 'Not a denial that bad things happen. A claim that the second arrow, the judgement about the event, is the one you fire yourself.' },
+  { author: 'Marcus Aurelius', passage: 'Confine yourself to the present.', explanation: 'Three words against both rumination and anxiety, which are the past and the future doing damage in a moment where neither exists.' },
+  { author: 'Marcus Aurelius', passage: 'How much time he gains who does not look to see what his neighbour says or does or thinks.', explanation: 'A productivity argument, not just a moral one. Comparison is a tax on attention.' },
+  { author: 'Marcus Aurelius', passage: 'Never let the future disturb you. You will meet it, if you have to, with the same weapons of reason which today arm you against the present.', explanation: 'Anxiety assumes you will face the future without the faculties you have now. You will not.' },
+  { author: 'Marcus Aurelius', passage: 'Everything we hear is an opinion, not a fact. Everything we see is a perspective, not the truth.', explanation: 'Written eighteen centuries before anyone used the phrase cognitive bias.' },
+  { author: 'Epictetus', passage: 'It is not what happens to you, but how you react to it that matters.', explanation: 'Epictetus was born enslaved and permanently lamed. This is not the observation of a man who had it easy.' },
+  { author: 'Epictetus', passage: 'Men are disturbed not by things, but by the views which they take of things.', explanation: 'The founding sentence of cognitive behavioural therapy, roughly nineteen hundred years early.' },
+  { author: 'Epictetus', passage: 'We have two ears and one mouth so that we can listen twice as much as we speak.', explanation: 'Usually quoted as a manners rule. It was closer to an epistemics rule: you learn nothing during the parts you are talking.' },
+  { author: 'Epictetus', passage: 'No man is free who is not master of himself.', explanation: 'Said by a former slave, which makes it a claim about where freedom actually lives rather than a consolation.' },
+  { author: 'Epictetus', passage: 'First say to yourself what you would be; and then do what you have to do.', explanation: 'Identity before tactics. Decide who is doing the work, and the work follows more easily than the reverse.' },
+  { author: 'Epictetus', passage: 'If you wish to improve, be content to be thought foolish and stupid.', explanation: 'You cannot both protect your image of competence and learn something new in public. Pick one.' },
+  { author: 'Epictetus', passage: 'Wealth consists not in having great possessions, but in having few wants.', explanation: 'A definitional trick with real force. There are two ways to close a gap, and only one of them requires anyone else to cooperate.' },
+  { author: 'Seneca', passage: 'We suffer more often in imagination than in reality.', explanation: 'Most of what you dread never arrives, and you paid for it anyway, sometimes for years.' },
+  { author: 'Seneca', passage: 'It is not that we have a short time to live, but that we waste a lot of it.', explanation: 'The opening argument of On the Shortness of Life. His claim is that life is long enough, and almost nobody spends it deliberately.' },
+  { author: 'Seneca', passage: 'Every new beginning comes from some other beginning’s end.', explanation: 'Less consoling than it sounds. It also means every beginning you want requires ending something you currently have.' },
+  { author: 'Seneca', passage: 'He who fears death will never do anything worthy of a living man.', explanation: 'The Stoic argument for contemplating death is not morbid. It is that an unfaced fear quietly makes all your decisions for you.' },
+  { author: 'Seneca', passage: 'Difficulties strengthen the mind, as labour does the body.', explanation: 'The training metaphor is deliberate. On this view a life without resistance is not a good life but an untrained one.' },
+  { author: 'Seneca', passage: 'While we are postponing, life speeds by.', explanation: 'Seneca’s recurring target is not laziness but deferral: the assumption that real life begins after the current phase ends.' },
+  { author: 'Seneca', passage: 'Associate with people who are likely to improve you.', explanation: 'A blunt statement that character is contagious and the people around you are not a neutral input.' },
+  { author: 'Seneca', passage: 'Luck is what happens when preparation meets opportunity.', explanation: 'Widely attributed to Seneca and probably not his words, but the underlying Stoic point stands: you cannot summon the opportunity, only the readiness.' },
+  { author: 'Marcus Aurelius', passage: 'Do every act of your life as though it were the very last act of your life.', explanation: 'Not a licence for recklessness. A standard of attention: nothing done carelessly on the grounds that it is routine.' },
+];
+
+CARD_SOURCES['cognitive-bias']     = (n) => pickUnseen('cognitive-bias', DATA_BIASES, n, d => d.name);
+CARD_SOURCES['logical-fallacy']    = (n) => pickUnseen('logical-fallacy', DATA_FALLACIES, n, d => d.name);
+CARD_SOURCES['thought-experiment'] = (n) => pickUnseen('thought-experiment', DATA_THOUGHT_EXPERIMENTS, n, d => d.name);
+CARD_SOURCES['etymology']          = (n) => pickUnseen('etymology', DATA_ETYMOLOGY, n, d => d.word);
+CARD_SOURCES['new-word']           = (n) => pickUnseen('new-word', DATA_WORDS, n, d => d.word);
+CARD_SOURCES['stoic']              = (n) => pickUnseen('stoic', DATA_STOIC, n, d => d.author + ' — ' + d.passage.slice(0, 60));
+
 // ══ Scroll feed ══════════════════════════════════════════════════════════
 // A vertical, snap-scrolling feed of activity cards — the grid is for when you
 // know what you want, this is for when you don't.
@@ -6747,6 +6989,11 @@ const FEED_WINDOW   = 10;    // mounted .feed-item nodes before trimming
 const FEED_LOOKBACK = 4;     // no activity repeat within this many cards
 const FEED_DWELL_SHORT = 2000;   // flicked past — weight down
 const FEED_DWELL_LONG  = 9000;   // sat on it — weight up
+// Roughly what share of cards should come from instant, zero-cost sources.
+// Higher = cheaper and faster but a narrower feed (only 7 activities have
+// sources); lower = more variety but more tokens and more waiting. This is a
+// taste dial, not a correctness one.
+const FEED_INSTANT_TARGET = 0.4;
 
 // Mirrors the home filter pills. 'random' is handled specially in
 // feedEligible() — see there.
@@ -6824,12 +7071,23 @@ function feedEligible() {
     ? Object.keys(CARD_SPECS)
     : (DURATION_ACTIVITIES[feedBucket] || Object.keys(CARD_SPECS));
   // Quiz slugs live in the buckets too but have no card spec — filtered here.
-  return pool.filter(s => CARD_SPECS[s] && !hidden.has(s));
+  let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s));
+  // Signed out (or offline), the Claude proxy is closed — but bundled-data
+  // cards still work, so the feed degrades to those instead of dying.
+  if (!hasSession()) list = list.filter(s => CARD_SOURCES[s]);
+  return list;
 }
 
-function feedPickSlug() {
+function feedPickSlug(preferInstant) {
   let pool = feedEligible();
   if (!pool.length) return null;
+  // Buffer empty: prefer a card we can produce instantly and for free, so
+  // something is on screen now and the model calls catch up behind it. This
+  // is a latency rule, not a cost one — the saving is a side effect.
+  if (preferInstant) {
+    const instant = pool.filter(s => CARD_SOURCES[s]);
+    if (instant.length) pool = instant;
+  }
   const recent = feedMounted.slice(-FEED_LOOKBACK).concat(feedBuffer.map(i => i.slug));
   const fresh = pool.filter(s => !recent.includes(s));
   if (fresh.length) pool = fresh;   // only relax the rule if it'd leave nothing
@@ -6840,29 +7098,53 @@ function feedPickSlug() {
 }
 
 // ── Generation ───────────────────────────────────────────
+// The Claude path, split out so feedGenerate can prefer a cheaper source.
+async function feedGenerateViaClaude(slug, spec) {
+  const seen = getSeenForExclusion(slug);
+  const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join(', ') + '.' : '';
+  const liked    = getLiked(slug).slice(-8);
+  const disliked = getDisliked(slug).slice(-8);
+  const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
+                    (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
+  // Same prompt the single-card screen uses, asked for in bulk, on the
+  // cheaper feed model.
+  const raw = await callClaude(
+    spec.prompt(exclude + ratingCtx) +
+    '\n\nReturn a JSON ARRAY of ' + FEED_BATCH + ' different objects, each matching exactly the JSON shape described above. ' +
+    'They must be genuinely distinct from each other. No wrapper object, no extra keys.',
+    { max_tokens: 2200, model: FEED_MODEL }
+  );
+  return Array.isArray(raw) ? raw : [raw];
+}
+
 async function feedGenerate() {
   if (feedInFlight >= FEED_INFLIGHT) return;
   if (feedBuffer.length >= FEED_MAX) return;
-  if (!hasSession()) return;
-  const slug = feedPickSlug();
+  // Prefer an instant source when the buffer is dry (nothing to show right
+  // now) or when the recent mix has drifted below the target share.
+  const recent = feedMounted.slice(-12);
+  const instantShare = recent.length
+    ? recent.filter(s => CARD_SOURCES[s]).length / recent.length
+    : 0;
+  const slug = feedPickSlug(feedBuffer.length === 0 || instantShare < FEED_INSTANT_TARGET);
   if (!slug) return;
   const spec = CARD_SPECS[slug];
   feedInFlight++;
   try {
-    const seen = getSeenForExclusion(slug);
-    const exclude = seen.length ? ' Do not repeat any of these: ' + seen.join(', ') + '.' : '';
-    const liked    = getLiked(slug).slice(-8);
-    const disliked = getDisliked(slug).slice(-8);
-    const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
-                      (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
-    // Same prompt the single-card screen uses, asked for in bulk.
-    const raw = await callClaude(
-      spec.prompt(exclude + ratingCtx) +
-      '\n\nReturn a JSON ARRAY of ' + FEED_BATCH + ' different objects, each matching exactly the JSON shape described above. ' +
-      'They must be genuinely distinct from each other. No wrapper object, no extra keys.',
-      { max_tokens: 2200 }
-    );
-    const items = Array.isArray(raw) ? raw : [raw];
+    let items = null;
+    const source = CARD_SOURCES[slug];
+    if (source) {
+      // Tier 1/2: bundled data or a free API. No tokens, no round trip.
+      // Pull ONE card, not FEED_BATCH: batching exists to amortise a model
+      // round trip, and these have none. One at a time lets the mount-time
+      // interleave alternate types instead of landing three of a kind.
+      // A network-backed source that fails falls through to Claude.
+      try { items = await source(1); } catch(e) { items = null; }
+    }
+    if ((!items || !items.length) && hasSession()) {
+      items = await feedGenerateViaClaude(slug, spec);
+    }
+    if (!items || !items.length) throw new Error('no cards available for ' + slug);
     let added = 0;
     items.forEach(d => {
       const key = feedKey(slug, d);
@@ -6928,8 +7210,8 @@ function feedItemNode(item) {
     // Keeps .card-actions so the existing global thumbs handler (rating
     // storage + active state) works unchanged; .feed-rail restyles it.
     '<div class="card-actions feed-rail">' +
-      '<button class="feed-act' + (liked ? ' active-up' : '') + '" data-thumb="up" ' + idAttr + ' title="More like this">👍</button>' +
-      '<button class="feed-act' + (disliked ? ' active-down' : '') + '" data-thumb="down" ' + idAttr + ' title="Less like this">👎</button>' +
+      '<button class="feed-act' + (liked ? ' active-up' : '') + '" data-thumb="up" ' + idAttr + ' title="More like this">▲</button>' +
+      '<button class="feed-act' + (disliked ? ' active-down' : '') + '" data-thumb="down" ' + idAttr + ' title="Less like this">▼</button>' +
       '<button class="feed-act" data-feed-remember="1" title="Make a flashcard">☆</button>' +
       '<button class="feed-act" data-feed-lul="1" title="Look up later">↷</button>' +
       '<button class="feed-act" data-feed-share="1" title="Share">↑</button>' +
@@ -6956,7 +7238,7 @@ function feedRenderSentinel() {
   const note = document.getElementById('feed-loading-note');
   if (!note) return;
   if (feedFails >= 2) {
-    note.innerHTML = esc(hasSession() ? 'Nothing came back. Check your connection.' : 'Sign in to generate cards.') +
+    note.innerHTML = esc(hasSession() ? 'Nothing came back. Check your connection.' : 'Sign in for the full feed.') +
       '<br><button class="feed-retry" id="feed-retry">Try again</button>';
   } else {
     note.textContent = 'Finding the next one…';
@@ -6980,7 +7262,14 @@ function feedTake() {
     // still coming, hold rather than stacking three of a kind — the very first
     // card is exempt so a cold open still fills instantly.
     if (feedInFlight > 0 && feedMounted.length) return null;
+    // Nothing else is coming, so something repeats. Take whichever activity
+    // went longest ago rather than whatever happens to sit at index 0 — that
+    // is what stops a model batch of three landing back to back.
+    const lastSeen = s => { const k = feedMounted.lastIndexOf(s); return k === -1 ? -1 : k; };
     i = 0;
+    for (let j = 1; j < feedBuffer.length; j++) {
+      if (lastSeen(feedBuffer[j].slug) < lastSeen(feedBuffer[i].slug)) i = j;
+    }
   }
   return feedBuffer.splice(i, 1)[0];
 }
@@ -7139,9 +7428,9 @@ function feedPrewarm() {
   if (feedPrewarmTimer) return;
   feedPrewarmTimer = setTimeout(() => {
     feedPrewarmTimer = null;
-    if (feedOpen || !navigator.onLine || !hasSession()) return;
+    if (feedOpen) return;
     if (feedBuffer.length >= FEED_MIN) return;
-    feedGenerate();
+    feedGenerate();   // bundled sources work offline and signed out
   }, 4000);
 }
 

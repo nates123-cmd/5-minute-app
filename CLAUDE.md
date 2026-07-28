@@ -194,10 +194,59 @@ can die out or take over. Buffer in `localStorage['feed_buffer']`, filter in
   *every* `CARD_SPECS` key, not `DURATION_ACTIVITIES.random`, because a few
   activities (stoic, psychology) have specs but sit in no bucket.
 
+### Card sources — not every card costs a model call
+
+`CARD_SOURCES[slug]` is a function returning finished card objects shaped for
+that slug's `spec.render()`, or `null` to fall through to Claude. Three tiers:
+
+| Tier | What | Slugs |
+|---|---|---|
+| 1. Bundled data | Canonical finite sets, in-repo. Instant, free, works offline and signed out. | `cognitive-bias`, `logical-fallacy`, `thought-experiment`, `etymology`, `new-word`, `stoic` |
+| 2. Free keyless API | Real data that changes. CORS-open, no key. | `on-this-day` (Wikimedia) |
+| 3. Claude | Genuinely generative, no source of truth. | everything else |
+
+**Why bundled beats a model for tier 1:** named biases, fallacies, thought
+experiments and etymologies are *lists*. Asking a model for one makes it
+recite from memory and occasionally invent an entry. A real list is more
+accurate and ~1000x faster.
+
+- `pickUnseen(slug, pool, n, keyOf)` draws from a bundled set, preferring
+  entries the exclusion list hasn't recorded, reshuffling the whole pool once
+  exhausted rather than returning nothing.
+- **Sources are pulled ONE card at a time, not `FEED_BATCH`.** Batching exists
+  to amortise a model round trip; bundled data has none, and pulling three at
+  once makes the mount-time interleave land three of a kind.
+- `FEED_INSTANT_TARGET` (0.4) is the share of cards the feed tries to serve
+  from instant sources. It's a taste dial: higher = cheaper/faster but only 7
+  activities have sources, so the feed narrows.
+- `on-this-day` caches the day's Wikimedia payload in `onThisDayCache`.
+  Without it every batch refetched the same list.
+- Sources are consulted by **the feed only**. The single-activity screens
+  still go through `makeLoader` → Claude, unchanged. Promoting sources into
+  `makeLoader` so those screens get them too is a clean follow-up.
+- Because tier-1 cards need neither network nor session, `feedEligible()`
+  narrows to sourced slugs when `hasSession()` is false — **the feed works
+  signed out and offline**, on bundled content only.
+
+### Models
+
+`CLAUDE_MODEL` (`claude-sonnet-4-6`) is the default for quality-sensitive,
+once-per-user-action calls. `FEED_MODEL` (`claude-haiku-4-5`) is used only by
+`feedGenerateViaClaude` — the feed is where token spend actually lives, and
+Haiku is ~3x cheaper and faster. `callClaude(prompt, {model})` takes the
+override; everything that omits it gets `CLAUDE_MODEL`.
+
+> **Unverified:** the deployed `claude` edge function is not in this repo. It's
+> assumed to forward the request body's `model` field through. If it pins or
+> allowlists the model server-side, the Haiku swap silently does nothing (or
+> 400s) and you'll see it in the proxy response, not in this code.
+
 ### Rail actions (right side, per card)
-👍/👎 (global handler + weight nudge) · ☆ Remember It (`generateRememberCard` →
+▲/▼ (global handler + weight nudge) · ☆ Remember It (`generateRememberCard` →
 `openRememberPreview`) · ↷ Look up later (`lulCreate` + `updateLulBadge`) ·
 ↑ Share. The activity name at the top of each card opens that full activity screen.
+Glyphs are geometric, not emoji — the pre-existing `.card-actions` footer uses
+emoji, the feed rail deliberately does not.
 
 ---
 
