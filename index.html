@@ -1514,6 +1514,30 @@
       cursor: pointer;
     }
     .feed-chip::after { content: ' ›'; opacity: 0.5; }
+    /* Static label for cards with no screen behind them. */
+    .feed-chip-static { cursor: default; }
+    .feed-chip-static::after { content: none; }
+
+    /* ── Ink cards — your own writing, coming back at you ── */
+    .ink-card { text-align: left; }
+    .ink-meta {
+      font-family: var(--font-sans); font-size: 10.5px; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      opacity: 0.55; margin-bottom: 14px;
+    }
+    .ink-quote {
+      margin: 0; border: none; padding: 0;
+      font-family: var(--font-serif, Georgia, serif);
+      font-size: 21px; line-height: 1.5; white-space: pre-wrap;
+    }
+    .ink-challenge-title { font-family: var(--font-serif, Georgia, serif); font-size: 24px; line-height: 1.35; }
+    .ink-col { margin-top: 14px; font-size: 13.5px; font-style: italic; opacity: 0.6; }
+    .ink-check {
+      margin-top: 22px; padding: 11px 20px; border-radius: 999px;
+      border: 1px solid var(--accent); background: none; color: var(--accent);
+      font-family: var(--font-sans); font-size: 13px; cursor: pointer;
+    }
+    .ink-check.done, .ink-check:disabled { opacity: 0.55; cursor: default; }
 
     .feed-body {
       flex: 1;
@@ -7628,10 +7652,118 @@ CARD_SPECS['stoic'] = {
     explanation: 'Obstacles aren\'t detours from your path — they are the path.',
   },
 };
+// ── Ink cards: your own writing, coming back at you ─────────────────────────
+// Everything else in the feed is something the world knows. These two are
+// something *you* wrote — a thought from Ink resurfacing, and a nudge when a
+// challenge's check-in is still open. Same Supabase project, so this is a read,
+// not an integration.
+//
+// Filed items are included on purpose: filing in Ink means "dealt with, stop
+// showing me this in the list", and a filed note rediscovered mid-scroll six
+// weeks later is the best version of that archive.
+let inkPool = null;            // cached per session; null = not loaded yet
+let inkChallenges = [];        // refreshed when the feed opens
+
+// Ink stores rich text (b/i/u/lists) in these columns. Break renders plain
+// text, so flatten rather than inject markup we don't style.
+function inkPlain(s) {
+  const v = String(s ?? '');
+  if (!/<(b|strong|i|em|u|ul|ol|li|br|div|p)\b/i.test(v)) return v.trim();
+  const doc = new DOMParser().parseFromString('<body>' + v + '</body>', 'text/html');
+  doc.body.querySelectorAll('li').forEach(li => li.prepend(doc.createTextNode('• ')));
+  doc.body.querySelectorAll('div,p,li,br').forEach(el => el.before(doc.createTextNode('\n')));
+  return doc.body.textContent.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+function inkWhen(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const days = Math.round((Date.now() - d.getTime()) / 86400000);
+  if (days <= 1) return 'yesterday';
+  if (days < 14) return days + ' days ago';
+  if (days < 60) return Math.round(days / 7) + ' weeks ago';
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+}
+
+async function inkLoadPool() {
+  if (inkPool) return inkPool;
+  if (!hasSession()) return (inkPool = []);
+  const KINDS = [['thoughts', 'Thought'], ['insights', 'Insight'], ['mantras', 'Mantra']];
+  try {
+    const [cols, ...sets] = await Promise.all([
+      sbFetch('collections?select=id,name').catch(() => []),
+      ...KINDS.map(([t]) => sbFetch(t + '?select=id,text,created_at,collection_id&order=created_at.desc&limit=150').catch(() => [])),
+    ]);
+    const colName = {};
+    (cols || []).forEach(c => { colName[c.id] = c.name; });
+    inkPool = sets.flatMap((rows, i) => (rows || []).map(r => ({
+      id: KINDS[i][1].toLowerCase() + ':' + r.id,
+      kind: KINDS[i][1],
+      text: inkPlain(r.text),
+      when: inkWhen(r.created_at),
+      collection: colName[r.collection_id] || '',
+    }))).filter(x => x.text);
+  } catch (e) { inkPool = []; }
+  return inkPool;
+}
+
+CARD_SOURCES['ink-thought'] = async (n) => {
+  const pool = await inkLoadPool();
+  if (!pool.length) return null;
+  return pickUnseen('ink-thought', pool, n, d => d.id);
+};
+
+CARD_SPECS['ink-thought'] = {
+  slug: 'ink-thought',
+  sourceOnly: true,   // never invent one of these — the whole point is that it's his
+  noOpen: true,       // no activity screen behind it, so the chip must not navigate
+  render: (d) => '<div class="ai-card ink-card">' +
+    '<div class="ink-meta">' + esc(d.kind) + (d.when ? ' · ' + esc(d.when) : '') + '</div>' +
+    '<blockquote class="ink-quote">' + esc(d.text) + '</blockquote>' +
+    (d.collection ? '<div class="ink-col">' + esc(d.collection) + '</div>' : '') +
+  '</div>',
+};
+
+CARD_SOURCES['ink-challenge'] = async () => {
+  const open = (inkChallenges || []).filter(c => !c.done_today);
+  if (!open.length) return null;
+  const c = open[Math.floor(Math.random() * open.length)];
+  return [{ id: c.id, title: c.title, why: c.why || '', day: c.day_number, days: c.days, streak: c.streak }];
+};
+
+CARD_SPECS['ink-challenge'] = {
+  slug: 'ink-challenge',
+  sourceOnly: true,
+  noOpen: true,
+  render: (d) => '<div class="ai-card ink-card">' +
+    '<div class="ink-meta">Challenge · day ' + esc(d.day) + (d.days ? ' of ' + esc(d.days) : '') +
+      (d.streak > 1 ? ' · ' + esc(d.streak) + ' day streak' : '') + '</div>' +
+    '<div class="ink-challenge-title">' + esc(d.title) + '</div>' +
+    (d.why ? '<div class="ink-col">' + esc(d.why) + '</div>' : '') +
+    '<button class="ink-check" data-ink-check="' + esc(d.id) + '">Mark today done</button>' +
+  '</div>',
+};
+
+// Only offer the nudge when there is genuinely something open. Without a gate
+// the source would keep returning null, and every miss counts as a feed
+// failure — five of those in a row stop the watchdog.
+const CARD_GATES = {
+  'ink-challenge': () => (inkChallenges || []).some(c => !c.done_today),
+  'ink-thought':   () => inkPool === null || inkPool.length > 0,
+};
+
+async function inkRefreshChallenges() {
+  if (!hasSession()) { inkChallenges = []; return; }
+  try { inkChallenges = (await sbFetch('challenges_today?order=start_date.asc')) || []; }
+  catch (e) { inkChallenges = []; }   // view not migrated yet — card just stays out
+}
+
 // cardKey() has no `passage` case; give stoic cards a stable identity so the
 // exclusion list and dedupe work the same as everywhere else.
 function feedKey(slug, d) {
   if (slug === 'stoic' && d && d.passage) return d.author + ' — ' + d.passage.slice(0, 60);
+  if (slug === 'ink-thought' && d && d.id) return d.id;
+  if (slug === 'ink-challenge' && d && d.id) return 'challenge:' + d.id + ':' + new Date().toISOString().slice(0, 10);
   return cardKey(d);
 }
 
@@ -7639,14 +7771,20 @@ const FEED_NAMES = ACTIVITY_REGISTRY.reduce((m, a) => {
   if (!a.quiz && !m[a.slug]) m[a.slug] = a.name;
   return m;
 }, {});
+FEED_NAMES['ink-thought']   = 'From your Ink';
+FEED_NAMES['ink-challenge'] = 'Your challenge';
 
 // ── Activity weights (the ranking signal) ────────────────
 function feedWeights() {
   try { return JSON.parse(localStorage.getItem('feed_weights') || '{}'); } catch(e) { return {}; }
 }
+// Ink cards start below par on purpose — "occasional" is the point. Your own
+// thought landing every third card would make it wallpaper. Ratings still move
+// them from here like any other activity.
+const FEED_BASE_WEIGHT = { 'ink-thought': 0.4, 'ink-challenge': 0.5 };
 function feedWeight(slug) {
   const w = feedWeights()[slug];
-  return typeof w === 'number' && isFinite(w) ? w : 1;
+  return typeof w === 'number' && isFinite(w) ? w : (FEED_BASE_WEIGHT[slug] ?? 1);
 }
 // Clamped so no activity can ever fully die or fully take over — a feed that
 // only serves one thing stops being worth opening.
@@ -7667,6 +7805,8 @@ function feedEligible() {
     : (DURATION_ACTIVITIES[feedBucket] || Object.keys(CARD_SPECS));
   // Quiz slugs live in the buckets too but have no card spec — filtered here.
   let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s));
+  // Some cards are only eligible when their data says so (an open challenge).
+  list = list.filter(s => !CARD_GATES[s] || CARD_GATES[s]());
   // Signed out (or offline), the Claude proxy is closed — but bundled-data
   // cards still work, so the feed degrades to those instead of dying.
   if (!hasSession()) list = list.filter(s => CARD_SOURCES[s]);
@@ -7833,8 +7973,13 @@ function feedItemNode(item) {
   const liked    = getLiked(item.slug).includes(item.key);
   const disliked = getDisliked(item.slug).includes(item.key);
   const idAttr = 'data-slug="' + esc(item.slug) + '" data-id="' + esc(item.key) + '"';
+  // Cards with no activity screen behind them get a label, not a button —
+  // navigateToActivity() would otherwise show an empty screen.
+  const chip = spec.noOpen
+    ? '<div class="feed-chip feed-chip-static">' + esc(FEED_NAMES[item.slug] || item.slug) + '</div>'
+    : '<button class="feed-chip" data-feed-open="' + esc(item.slug) + '">' + esc(FEED_NAMES[item.slug] || item.slug) + '</button>';
   el.innerHTML =
-    '<button class="feed-chip" data-feed-open="' + esc(item.slug) + '">' + esc(FEED_NAMES[item.slug] || item.slug) + '</button>' +
+    chip +
     '<div class="feed-body">' + body + '</div>' +
     // Keeps .card-actions so the existing global thumbs handler (rating
     // storage + active state) works unchanged; .feed-rail restyles it.
@@ -8034,6 +8179,9 @@ function openFeed() {
   feedOpen = true;
   showScreen('feed');
   feedRenderFilters();
+  // Whether a challenge is still open changes during the day, so re-read it
+  // per open rather than trusting a session-long cache.
+  inkRefreshChallenges();
 
   if (!feedScrollBound) {
     track.addEventListener('scroll', feedOnScroll, { passive: true });
@@ -8110,6 +8258,26 @@ document.addEventListener('click', async e => {
     feedFails = 0;
     feedPersist();
     openFeed();
+    return;
+  }
+
+  // Check in on a challenge without leaving the feed. Writes the same
+  // challenge_logs row Ink and Today write — one per challenge per day.
+  const inkChk = e.target.closest('[data-ink-check]');
+  if (inkChk) {
+    const id = inkChk.dataset.inkCheck;
+    const day = new Date().toISOString().slice(0, 10);
+    inkChk.disabled = true;
+    try {
+      await sbFetch('challenge_logs', { method: 'POST', body: JSON.stringify({ active_challenge_id: id, date: day }) });
+      inkChk.textContent = 'Done today ✓';
+      inkChk.classList.add('done');
+      const hit = (inkChallenges || []).find(c => c.id === id);
+      if (hit) hit.done_today = true;
+    } catch (err) {
+      inkChk.disabled = false;
+      inkChk.textContent = 'Could not save — tap to retry';
+    }
     return;
   }
 
