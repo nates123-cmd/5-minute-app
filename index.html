@@ -1592,6 +1592,40 @@
       margin-bottom: 8px;
     }
     .feed-body blockquote { font-size: 19px; line-height: 1.6; }
+
+    /* Pictures in the feed. The activity screens size these for a scrolling
+       column; here the card owns the screen, so they get real room — capped in
+       vh so a tall portrait can't push its own caption out of view. */
+    .feed-body .art-wrap,
+    .feed-body .bp-img-wrap,
+    .feed-body .am-img-wrap { margin: 0 0 18px; }
+    .feed-body .art-img,
+    .feed-body .bp-img,
+    .feed-body .am-img {
+      width: 100%;
+      max-height: 46vh;
+      object-fit: cover;
+      border-radius: var(--radius-md);
+      display: block;
+    }
+    /* Photographs get a floor as well as a ceiling, so a wide landscape shot
+       still reads as a picture card rather than a strip. Artwork is exempt:
+       cropping a painting to fit a band is the one thing you must not do. */
+    .feed-body .bp-img,
+    .feed-body .am-img { min-height: 28vh; }
+    /* An image that hasn't landed yet must take up no space at all, or short
+       text cards sit visibly off-centre waiting for a picture that may never
+       come. (.am-img-wrap already does this; the other two need it too.) */
+    .feed-body .bp-img-wrap:empty,
+    .feed-body .art-wrap:empty { display: none; }
+    /* Credit line under a photo — present tense of "where this came from". */
+    .feed-cap {
+      font-family: var(--font-sans);
+      font-size: 11.5px;
+      line-height: 1.5;
+      color: var(--text-faint);
+      margin-top: 12px;
+    }
     /* The per-card footer belongs to the single-activity screens; the feed
        has its own rail. */
     .feed-body .card-actions { display: none; }
@@ -2992,8 +3026,11 @@ function navigateToActivity(a, skipLoad = false) {
     if (a === 'deep-dives')        loadDeepDives();
     if (a === 'anki-input')        resetAnkiInput();
     if (a === 'look-up-later')     loadLulScreen();
-    // Source-backed activities all share one loader — no per-slug branch.
-    if (CARD_SPECS[a] && CARD_SPECS[a].sourceOnly) loadSourceCard(a);
+    // Source-backed activities all share one loader — no per-slug branch,
+    // except the ones that already had a bespoke one above (they'd otherwise
+    // fetch twice and race, with the generic render clobbering the specific
+    // one's ankiData/searchTerms bookkeeping).
+    if (CARD_SPECS[a] && CARD_SPECS[a].sourceOnly && !CARD_SPECS[a].hasOwnLoader) loadSourceCard(a);
   }
 }
 
@@ -3285,7 +3322,11 @@ function cardKey(data) {
 const CARD_SPECS = {};
 
 function makeLoader(slug, prompt, render, fallbackData, onAfterRender) {
-  CARD_SPECS[slug] = { slug, prompt, render, fallbackData };
+  // onAfterRender rides along in the spec: render() can only return a string,
+  // so an activity whose picture arrives on a second async hop (Flower, the
+  // interior shot) had no way to hydrate it in the feed. Dropping it here is
+  // why those cards were text-only when scrolled instead of opened.
+  CARD_SPECS[slug] = { slug, prompt, render, fallbackData, onAfterRender };
   async function load() {
     const container = document.getElementById(slug + '-content');
     container.innerHTML = skel();
@@ -3320,7 +3361,7 @@ function makeLoader(slug, prompt, render, fallbackData, onAfterRender) {
 const loadFunFact = makeLoader(
   'fun-fact',
   (ex) => 'Give me one genuinely surprising, specific fun fact — the kind that makes someone say "wait, really?" Not a common one.' + ex + ' Return JSON: {fact, context}',
-  (d) => '<div class="ai-single"><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>',
+  (d) => cardImg(d.img, d.fact) + '<div class="ai-single"><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>',
   { fact: 'A day on Venus is longer than a year on Venus.', context: 'Venus rotates so slowly that it completes an orbit around the Sun before it finishes one full spin on its own axis — making its day (243 Earth days) longer than its year (225 Earth days).' }
 );
 document.getElementById('fun-fact-refresh').addEventListener('click', loadFunFact);
@@ -3497,8 +3538,9 @@ document.getElementById('stats-concept-refresh').addEventListener('click', loadS
 const loadGeographyFact = makeLoader(
   'geography-fact',
   (ex) => 'Give me a specific, surprising geographical fact about a place — something that makes you see the world differently.' + ex + ' Return JSON: {fact, location, context}',
-  (d) => { ankiData['geography-fact'] = d; return '<div class="ai-single"><div class="tag">' + esc(d.location) + '</div><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>'; },
-  { fact: 'Canada has more lakes than the rest of the world combined.', location: 'Canada', context: 'With over 2 million lakes covering about 9% of its land area, Canada holds roughly 60% of the world\'s freshwater lakes — a legacy of glacial retreat after the last ice age.' }
+  (d) => { ankiData['geography-fact'] = d; return '<div class="am-img-wrap" data-img></div><div class="ai-single"><div class="tag">' + esc(d.location) + '</div><div class="main-text">' + esc(d.fact) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>'; },
+  { fact: 'Canada has more lakes than the rest of the world combined.', location: 'Canada', context: 'With over 2 million lakes covering about 9% of its land area, Canada holds roughly 60% of the world\'s freshwater lakes — a legacy of glacial retreat after the last ice age.' },
+  (d, container) => fetchWikiImage(d.location, container.querySelector('[data-img]'))
 );
 document.getElementById('geography-fact-refresh').addEventListener('click', loadGeographyFact);
 
@@ -3518,7 +3560,7 @@ const loadOnThisDay = makeLoader(
     const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
     return 'Give me one genuinely interesting historical event that happened on ' + today + '.' + ex + ' Return JSON: {event, year, context}';
   },
-  (d) => { ankiData['on-this-day'] = d; return '<div class="ai-single"><div class="tag">' + esc(String(d.year)) + '</div><div class="main-text">' + esc(d.event) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>'; },
+  (d) => { ankiData['on-this-day'] = d; return cardImg(d.img, d.event) + '<div class="ai-single"><div class="tag">' + esc(String(d.year)) + '</div><div class="main-text">' + esc(d.event) + '</div><div class="sub-text">' + esc(d.context) + '</div></div>'; },
   { event: 'The Library of Congress was established.', year: 1800, context: 'Founded with an initial purchase of 740 books and 3 maps, it is now the largest library in the world with over 170 million items.' }
 );
 document.getElementById('on-this-day-refresh').addEventListener('click', loadOnThisDay);
@@ -3747,6 +3789,29 @@ document.getElementById('anki-regenerate').addEventListener('click', async () =>
 // Adapted to Break's makeLoader / cardFooter / esc conventions.
 // ═══════════════════════════════════════════════
 
+// Wikipedia extracts and NASA explanations run to several hundred words. A
+// scroll card is one screen, and the picture takes a third of it — so cut at
+// the last sentence end before the limit, which reads as finished rather than
+// clipped. Falls back to a word boundary if there's no sentence to land on.
+function trimTo(text, max) {
+  // Wikipedia extracts strip inline IPA/script spans and leave the space
+  // behind them, so they arrive with "Kyoto City , is the capital".
+  const s = String(text == null ? '' : text)
+    .replace(/\s+([,.;:!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const end = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
+  return end > max * 0.5 ? cut.slice(0, end + 1) : cut.replace(/\s+\S*$/, '') + '…';
+}
+
+// One picture, one place. Returns '' for a missing src so every caller can
+// concatenate it unconditionally, and the :empty rules collapse the gap.
+function cardImg(src, alt, cls) {
+  if (!src) return '';
+  return '<div class="' + (cls || 'bp-img-wrap') + '"><img class="bp-img" src="' + esc(src) +
+    '" alt="' + esc(alt || '') + '" loading="lazy"></div>';
+}
+
 // Non-strict Wikipedia/Commons image finder (flower).
 async function fetchWikiImage(query, wrapEl) {
   if (!wrapEl || !query) return;
@@ -3845,22 +3910,40 @@ const BEAUTIFUL_PLACE_FALLBACK = {
   thumb: null,
   url: 'https://en.wikipedia.org/wiki/Petra',
 };
-function renderBeautifulPlace(d) {
-  _beautifulPlaceData = d;
-  ankiData['beautiful-place'] = d;
-  searchTerms['beautiful-place'] = d.title;
-  const el = document.getElementById('beautiful-place-content');
-  const imgHtml = d.thumb
-    ? '<div class="bp-img-wrap"><img class="bp-img" src="' + esc(d.thumb) + '" alt="' + esc(d.title) + '"></div>'
-    : '';
-  el.innerHTML =
-    imgHtml +
+// Pulled out of renderBeautifulPlace so the Scroll feed can render the same
+// card without the #beautiful-place-content DOM coupling.
+function placeBodyHtml(d) {
+  return cardImg(d.thumb, d.title) +
     '<div class="ai-single">' +
       (d.description ? '<div class="tag">' + esc(d.description) + '</div>' : '') +
       '<div class="word-title" style="margin-bottom:8px">' + esc(d.title) + '</div>' +
       '<div class="sub-text">' + esc(d.extract) + '</div>' +
       (d.url ? '<div class="example" style="margin-top:14px"><a href="' + esc(d.url) + '" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:underline;text-underline-offset:2px">Read on Wikipedia →</a></div>' : '') +
     '</div>';
+}
+
+function renderBeautifulPlace(d) {
+  _beautifulPlaceData = d;
+  ankiData['beautiful-place'] = d;
+  searchTerms['beautiful-place'] = d.title;
+  document.getElementById('beautiful-place-content').innerHTML = placeBodyHtml(d);
+}
+
+// One place, from the bundled list, via Wikipedia's summary endpoint (which
+// carries the photo, the one-line description and the extract in one call).
+async function wikiPlaceCard(title) {
+  const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
+  if (!res.ok) throw new Error('wiki ' + res.status);
+  const j = await res.json();
+  const d = {
+    title: j.title || title,
+    description: j.description || '',
+    extract: j.extract || '',
+    thumb: j.originalimage?.source || j.thumbnail?.source || null,
+    url: j.content_urls?.desktop?.page || ('https://en.wikipedia.org/wiki/' + encodeURIComponent(title)),
+  };
+  if (!d.extract) throw new Error('empty extract');
+  return d;
 }
 async function loadBeautifulPlace() {
   renderBeautifulPlace({ title: '…', description: '', extract: 'Finding somewhere worth knowing about.', thumb: null, url: null });
@@ -3869,17 +3952,7 @@ async function loadBeautifulPlace() {
   if (!pool.length) { localStorage.removeItem('shown_beautiful-place'); pool = BEAUTIFUL_PLACES.slice(); }
   const title = pool[Math.floor(Math.random() * pool.length)];
   try {
-    const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
-    if (!res.ok) throw new Error('wiki ' + res.status);
-    const j = await res.json();
-    const d = {
-      title: j.title || title,
-      description: j.description || '',
-      extract: j.extract || '',
-      thumb: j.originalimage?.source || j.thumbnail?.source || null,
-      url: j.content_urls?.desktop?.page || ('https://en.wikipedia.org/wiki/' + encodeURIComponent(title)),
-    };
-    if (!d.extract) throw new Error('empty extract');
+    const d = await wikiPlaceCard(title);
     addShown('beautiful-place', title);
     renderBeautifulPlace(d);
   } catch(e) {
@@ -7152,12 +7225,18 @@ CARD_SOURCES['on-this-day'] = async (n) => {
   if (!events.length) return null;
   const fresh = unseenOnly('on-this-day', events, e => e.text);
   if (!fresh) return null;   // day's events spent — Claude takes over
-  return pickUnseen('on-this-day', fresh, n, e => e.text).map(e => ({
-    event: e.text,
-    year: e.year,
-    // The linked article's summary is the "why this mattered" paragraph.
-    context: (e.pages && e.pages[0] && e.pages[0].extract) || '',
-  }));
+  return pickUnseen('on-this-day', fresh, n, e => e.text).map(e => {
+    const page = (e.pages && e.pages[0]) || {};
+    return {
+      event: e.text,
+      year: e.year,
+      // The linked article's summary is the "why this mattered" paragraph.
+      context: trimTo(page.extract, 300),
+      // ...and it ships the article's lead image in the same payload.
+      img: (page.thumbnail && page.thumbnail.source) ||
+           (page.originalimage && page.originalimage.source) || null,
+    };
+  });
 };
 
 // ── Tier 2: Wikipedia's daily featured feed ──────────────────────────────
@@ -7189,15 +7268,28 @@ const stripTags = (s) => String(s == null ? '' : s).replace(/<[^>]*>/g, '').trim
 // card's context line. Cached, and a failure just leaves the context empty.
 const wikiSummaryCache = new Map();
 
-async function wikiSummary(title) {
+// The summary endpoint returns the lead image alongside the extract, so a card
+// that already pays for this call gets its picture for free. Cache the pair and
+// let wikiSummary() keep its string contract for existing callers.
+async function wikiPage(title) {
   if (wikiSummaryCache.has(title)) return wikiSummaryCache.get(title);
-  let extract = '';
+  let page = { extract: '', thumb: null };
   try {
     const res = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title));
-    if (res.ok) extract = (await res.json()).extract || '';
+    if (res.ok) {
+      const j = await res.json();
+      page = {
+        extract: j.extract || '',
+        // originalimage can be enormous; the thumbnail is already ~800px wide.
+        thumb: (j.thumbnail && j.thumbnail.source) || (j.originalimage && j.originalimage.source) || null,
+      };
+    }
   } catch (e) { /* leave blank */ }
-  wikiSummaryCache.set(title, extract);
-  return extract;
+  wikiSummaryCache.set(title, page);
+  return page;
+}
+async function wikiSummary(title) {
+  return (await wikiPage(title)).extract;
 }
 
 // Wikipedia's DYK is curated for interest, NOT for tone — a live pull served
@@ -7219,8 +7311,10 @@ CARD_SOURCES['fun-fact'] = async (n) => {
     fact = fact.charAt(0).toUpperCase() + fact.slice(1);
     if (!/[.!]$/.test(fact)) fact += '.';
     const m = /\/wiki\/([^"#?]+)/.exec(x.html || '');
-    const context = m ? await wikiSummary(decodeURIComponent(m[1])) : '';
-    return { fact, context };
+    // Same call already paid for the context paragraph — take the lead image
+    // off it too. Claude-generated fun facts have no article, so no picture.
+    const page = m ? await wikiPage(decodeURIComponent(m[1])) : { extract: '', thumb: null };
+    return { fact, context: trimTo(page.extract, 300), img: page.thumb };
   })).then(list => list.filter(d => d.fact.length > 12));
 };
 
@@ -7516,7 +7610,12 @@ CARD_SOURCES['country'] = async (n) => {
 CARD_SPECS['country'] = {
   slug: 'country',
   sourceOnly: true,
-  render: (d) => '<div class="ai-single">' +
+  // Photograph the capital, not the country: Wikipedia's lead image for a
+  // country is nearly always its flag or a locator map, and a flag tells you
+  // nothing you didn't already get from the name.
+  onAfterRender: (d, container) => fetchWikiImage(d.capital, container.querySelector('[data-img]')),
+  render: (d) => '<div class="am-img-wrap" data-img></div>' +
+    '<div class="ai-single">' +
       '<div class="am-tag">' + esc(d.continent || 'Country') + '</div>' +
       '<div class="word-title">' + esc(d.name) + '</div>' +
       '<div class="fact-grid">' +
@@ -7622,6 +7721,118 @@ CARD_SPECS['palette'] = {
     '</div>',
 };
 
+// --- Beautiful Place: bundled list + Wikipedia ---------------------------
+// The activity has served these since it was ported over, but its bespoke
+// renderer never filed a CARD_SPEC — so although 'beautiful-place' is listed
+// in three feed pools, feedEligible()'s `CARD_SPECS[s]` filter dropped it
+// every time. Filing the spec is the whole fix. It is the most visual card
+// Break has.
+CARD_SOURCES['beautiful-place'] = async (n) => {
+  const picked = pickUnseen('beautiful-place', BEAUTIFUL_PLACES, n, t => t);
+  if (!picked.length) return null;
+  const cards = await Promise.all(picked.map(t => wikiPlaceCard(t).catch(() => null)));
+  // Trimmed for the feed only. The activity screen scrolls and keeps the full
+  // extract; here the "Read on Wikipedia" link carries the rest.
+  const usable = cards.filter(Boolean).map(d => ({ ...d, extract: trimTo(d.extract, 300) }));
+  return usable.length ? usable : null;
+};
+
+CARD_SPECS['beautiful-place'] = {
+  slug: 'beautiful-place',
+  // No prompt on purpose: asked for "somewhere beautiful" a model will hand
+  // back a real-sounding place with invented details, and there is no photo
+  // behind it. The bundled list is ~90 deep and every entry is verifiable.
+  sourceOnly: true,
+  // Its screen predates the shared loader and keeps its own bookkeeping.
+  hasOwnLoader: true,
+  render: (d) => placeBodyHtml(d),
+};
+
+// --- Picture of the Day: Wikimedia --------------------------------------
+// wikiFeatured() is already fetched and cached for Fun Fact's "Did you know";
+// the same payload carries Commons' picture of the day, which Break was
+// throwing away. One card a day, and the best-looking one in the deck.
+CARD_SOURCES['potd'] = async () => {
+  const feed = await wikiFeatured();
+  const im = feed && feed.image;
+  const src = im && ((im.thumbnail && im.thumbnail.source) || (im.image && im.image.source));
+  if (!src) return null;
+  const title = stripTags((im.title || '').replace(/^File:/, '').replace(/\.(jpe?g|png|webp|tiff?)$/i, ''));
+  // One picture a day means the pool is spent the moment it's been seen.
+  if (!unseenOnly('potd', [title], t => t)) return null;
+  return [{
+    title,
+    img: src,
+    caption: trimTo(stripTags((im.description && im.description.text) || ''), 300),
+    credit: [stripTags((im.artist && im.artist.text) || ''), (im.license && im.license.type) || '']
+      .filter(Boolean).join(' · '),
+  }];
+};
+
+CARD_SPECS['potd'] = {
+  slug: 'potd',
+  sourceOnly: true,
+  render: (d) => cardImg(d.img, d.title) +
+    '<div class="ai-single">' +
+      '<div class="am-tag">Picture of the day</div>' +
+      '<div class="word-title">' + esc(d.title) + '</div>' +
+      (d.caption ? '<div class="sub-text">' + esc(d.caption) + '</div>' : '') +
+      (d.credit ? '<div class="feed-cap">' + esc(d.credit) + ' · Wikimedia Commons</div>' : '') +
+    '</div>',
+};
+
+// --- Astronomy Picture of the Day: NASA ---------------------------------
+// DEMO_KEY is NASA's own anonymous tier (30 requests/hour per IP), which one
+// person scrolling never approaches — `count` returns a whole batch per call.
+// Drop a free key from api.nasa.gov into localStorage 'nasa_api_key' to lift
+// the ceiling. No key is baked into the repo.
+// The feed asks for one card at a time, so a request per card would spend the
+// anonymous hourly allowance in about half an hour of scrolling. Pull a batch
+// and serve out of it — same pattern as onThisDayCache.
+let apodPool = [];
+
+CARD_SOURCES['apod'] = async (n) => {
+  if (apodPool.length < n) {
+    let key = 'DEMO_KEY';
+    try { key = localStorage.getItem('nasa_api_key') || key; } catch(e) {}
+    const res = await fetch('https://api.nasa.gov/planetary/apod?thumbs=true&count=12&api_key=' + encodeURIComponent(key));
+    // Rate-limited or down: return nothing and let the feed pick another slug,
+    // rather than inventing an astronomy photo that doesn't exist.
+    if (!res.ok) return null;
+    const list = await res.json();
+    if (!Array.isArray(list)) return null;
+    apodPool = apodPool.concat(list
+      // Video entries carry a thumbnail_url instead of a still; take that.
+      .map(a => ({ ...a, still: a.media_type === 'image' ? a.url : a.thumbnail_url }))
+      .filter(a => a.still && a.title && a.explanation)
+      .map(a => ({
+        title: a.title,
+        img: a.still,
+        explanation: trimTo(a.explanation, 300),
+        date: a.date || '',
+        credit: a.copyright ? String(a.copyright).replace(/\s+/g, ' ').trim() : 'Public domain',
+      })));
+  }
+  if (!apodPool.length) return null;
+  const picked = pickUnseen('apod', apodPool, n, a => a.title);
+  // Serving from a pool means dropping what was served, or the same photo
+  // comes back until `shown` catches up.
+  apodPool = apodPool.filter(a => !picked.includes(a));
+  return picked.length ? picked : null;
+};
+
+CARD_SPECS['apod'] = {
+  slug: 'apod',
+  sourceOnly: true,
+  render: (d) => cardImg(d.img, d.title) +
+    '<div class="ai-single">' +
+      '<div class="am-tag">NASA · ' + esc(d.date) + '</div>' +
+      '<div class="word-title">' + esc(d.title) + '</div>' +
+      '<div class="sub-text">' + esc(d.explanation) + '</div>' +
+      '<div class="feed-cap">' + esc(d.credit) + ' · NASA Astronomy Picture of the Day</div>' +
+    '</div>',
+};
+
 // One loader for every source-only activity's standalone screen — they differ
 // only in which source they draw from, so there is no per-slug branch.
 async function loadSourceCard(slug) {
@@ -7638,6 +7849,7 @@ async function loadSourceCard(slug) {
     addShown(slug, key);
     searchTerms[slug] = key;
     container.innerHTML = spec.render(d);
+    if (spec.onAfterRender) { try { spec.onAfterRender(d, container); } catch(e) {} }
     const card = container.querySelector('.ai-single') || container.querySelector('.ai-card');
     if (card) card.insertAdjacentHTML('beforeend', cardFooter(slug, key, d.url || ''));
   } catch (e) {
@@ -7647,8 +7859,9 @@ async function loadSourceCard(slug) {
   }
 }
 
-// Refresh buttons for those screens.
-Object.keys(CARD_SPECS).filter(s => CARD_SPECS[s].sourceOnly).forEach(slug => {
+// Refresh buttons for those screens. hasOwnLoader slugs wired theirs already —
+// a second listener here would fire two fetches per tap.
+Object.keys(CARD_SPECS).filter(s => CARD_SPECS[s].sourceOnly && !CARD_SPECS[s].hasOwnLoader).forEach(slug => {
   document.getElementById(slug + '-refresh')?.addEventListener('click', () => loadSourceCard(slug));
 });
 
@@ -7743,6 +7956,8 @@ const FEED_NAMES = ACTIVITY_REGISTRY.reduce((m, a) => {
 // Slugs whose card spec is registered outside ACTIVITY_REGISTRY have no name to
 // inherit. Without this the back of the card reads "Open stoic".
 FEED_NAMES.stoic = FEED_NAMES.stoic || 'Stoic Passage';
+FEED_NAMES.potd  = FEED_NAMES.potd  || 'Picture of the Day';
+FEED_NAMES.apod  = FEED_NAMES.apod  || 'Astronomy Photo';
 
 // ── Activity weights (the ranking signal) ────────────────
 function feedWeights() {
@@ -7761,6 +7976,14 @@ function feedNudge(slug, factor) {
 }
 
 // ── Selection ────────────────────────────────────────────
+// Feed-only sources. These can't join DURATION_ACTIVITIES: the timer menu
+// navigates to whatever it draws from those lists, and there is no #screen-potd
+// to land on. The feed adds them to its own buckets instead.
+const FEED_EXTRA_BY_BUCKET = {
+  informational: ['potd', 'apod'],
+  '1min':        ['potd', 'apod'],
+};
+
 function feedEligible() {
   const hidden = getHiddenActivities();
   // "All" means every card the feed can render, not DURATION_ACTIVITIES.random
@@ -7768,7 +7991,8 @@ function feedEligible() {
   // in a feed there's no reason to hide them.
   const pool = feedBucket === 'random'
     ? Object.keys(CARD_SPECS)
-    : (DURATION_ACTIVITIES[feedBucket] || Object.keys(CARD_SPECS));
+    : (DURATION_ACTIVITIES[feedBucket] || Object.keys(CARD_SPECS))
+        .concat(FEED_EXTRA_BY_BUCKET[feedBucket] || []);
   // Quiz slugs live in the buckets too but have no card spec — filtered here.
   let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s));
   // Signed out (or offline), the Claude proxy is closed — but bundled-data
@@ -7975,6 +8199,12 @@ function feedItemNode(item) {
         '</div>' +
       '</div>' +
     '</div>';
+  // Pictures that arrive on a second hop. Safe to fire against the still
+  // detached node: every hydrator re-checks isConnected before it writes, and
+  // feedFill appends synchronously right after this returns.
+  if (spec.onAfterRender) {
+    try { spec.onAfterRender(item.data, el.querySelector('.feed-body')); } catch(e) {}
+  }
   return el;
 }
 
