@@ -1487,11 +1487,33 @@
       scroll-snap-align: start;
       scroll-snap-stop: always;
       overflow-anchor: none;
+      position: relative;
+      perspective: 1200px;
+    }
+
+    /* Tap the card to turn it over — the actions live on the back instead of a
+       rail parked over the copy. Same 3D pattern as the SRS flashcards. */
+    .feed-flip {
+      position: absolute;
+      inset: 0;
+      transform-style: preserve-3d;
+      transition: transform 0.5s cubic-bezier(0.2, 0.7, 0.3, 1);
+    }
+    .feed-item.flipped .feed-flip { transform: rotateY(180deg); }
+    .feed-face {
+      position: absolute;
+      inset: 0;
       display: flex;
       flex-direction: column;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
       padding: calc(58px + env(safe-area-inset-top)) 20px calc(22px + env(safe-area-inset-bottom));
-      position: relative;
     }
+    .feed-face-back { transform: rotateY(180deg); }
+    /* The hidden face keeps layout (innerText still reads) but must never
+       swallow a tap meant for the face that's showing. */
+    .feed-item:not(.flipped) .feed-face-back,
+    .feed-item.flipped .feed-face-front { pointer-events: none; }
 
     .feed-chip {
       /* Shares the body's column so the label lines up with the copy on wide
@@ -1514,6 +1536,9 @@
       cursor: pointer;
     }
     .feed-chip::after { content: ' ›'; opacity: 0.5; }
+    /* No screen to open — drop the affordance, keep the label. */
+    .feed-chip-static { cursor: default; }
+    .feed-chip-static::after { content: none; }
 
     .feed-body {
       flex: 1;
@@ -1571,39 +1596,115 @@
        has its own rail. */
     .feed-body .card-actions { display: none; }
 
-    /* Right rail — thumb-reachable, sits over the card like a social feed */
-    .feed-rail {
-      position: absolute;
-      /* Hugs the right edge on a phone; tracks the content column on desktop. */
-      right: max(12px, calc(50% - 330px));
-      bottom: calc(26px + env(safe-area-inset-bottom));
-      z-index: 2;
-      display: flex;
-      flex-direction: column;
-      gap: 9px;
-      /* Reset the .card-actions row styling this element also carries (it
-         keeps that class so the global thumbs-up/down handler still works). */
-      margin: 0;
-      padding: 0;
-      border-top: none;
-      align-items: center;
+    /* Back of the card — the actions, full width, nothing covering the copy. */
+    .feed-back-face {
+      justify-content: safe center;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: none;
     }
-    .feed-rail .feed-act {
-      width: 42px; height: 42px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%;
+    .feed-back-face::-webkit-scrollbar { display: none; }
+    .feed-back-inner {
+      width: 100%;
+      max-width: 660px;
+      margin-inline: auto;
+      padding-inline: 34px;
+    }
+    .feed-back-kind {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 6px;
+    }
+    .feed-back-topic {
+      font-family: var(--font-serif);
+      font-size: clamp(19px, 4.8vw, 24px);
+      font-weight: 600;
+      line-height: 1.28;
+      letter-spacing: -0.3px;
+      margin-bottom: 18px;
+      /* A runaway topic must not push the buttons off the face. */
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .feed-back-acts { display: flex; flex-direction: column; gap: 8px; }
+    .feed-bact {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      text-align: left;
+      padding: 12px 15px;
+      border-radius: var(--radius);
       border: 1px solid var(--border);
       background: var(--surface);
-      font-size: 16px;
+      font-family: var(--font-sans);
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .feed-bact:active { transform: scale(0.985); }
+    .feed-bact:disabled { opacity: 0.55; }
+    .feed-bact-ic {
+      width: 26px;
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 15px;
+      line-height: 1;
+      color: var(--text-muted);
+    }
+
+    /* Ratings sit apart from the do-something actions — they steer the feed
+       rather than acting on the card. Keeps .card-actions so the global
+       thumbs handler (rating storage + active state) works unchanged. */
+    .feed-rate {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0 0;
+      padding: 0;
+      border-top: none;
+    }
+    .feed-rate .feed-act {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 10px 8px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border);
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 600;
       line-height: 1;
       color: var(--text-muted);
       cursor: pointer;
-      padding: 0;
       transition: background 0.15s, border-color 0.15s, transform 0.1s;
     }
-    .feed-rail .feed-act:active { transform: scale(0.92); }
-    .feed-rail .feed-act.active-up   { background: #d4edda; border-color: #5cb85c; }
-    .feed-rail .feed-act.active-down { background: #f8d7da; border-color: #d9534f; }
+    .feed-rate .feed-act:active { transform: scale(0.96); }
+    .feed-rate .feed-act.active-up   { background: #d4edda; border-color: #5cb85c; color: #256b30; }
+    .feed-rate .feed-act.active-down { background: #f8d7da; border-color: #d9534f; color: #7a2525; }
+
+    .feed-back-close {
+      display: block;
+      width: 100%;
+      margin-top: 16px;
+      background: none;
+      border: none;
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--text-faint);
+      cursor: pointer;
+      padding: 4px 0;
+    }
 
     .feed-hint {
       position: absolute;
@@ -7639,6 +7740,9 @@ const FEED_NAMES = ACTIVITY_REGISTRY.reduce((m, a) => {
   if (!a.quiz && !m[a.slug]) m[a.slug] = a.name;
   return m;
 }, {});
+// Slugs whose card spec is registered outside ACTIVITY_REGISTRY have no name to
+// inherit. Without this the back of the card reads "Open stoic".
+FEED_NAMES.stoic = FEED_NAMES.stoic || 'Stoic Passage';
 
 // ── Activity weights (the ranking signal) ────────────────
 function feedWeights() {
@@ -7833,31 +7937,66 @@ function feedItemNode(item) {
   const liked    = getLiked(item.slug).includes(item.key);
   const disliked = getDisliked(item.slug).includes(item.key);
   const idAttr = 'data-slug="' + esc(item.slug) + '" data-id="' + esc(item.key) + '"';
+  const kindRaw = FEED_NAMES[item.slug] || item.slug;
+  const kind = esc(kindRaw);
+  // Not every feed source has a standalone screen behind it (stoic registers a
+  // card spec but no #screen-stoic). Opening one blanks the app, so a slug with
+  // nowhere to go gets a plain label instead of a link.
+  const hasScreen = !!document.getElementById('screen-' + item.slug);
+  const openAttr = 'data-feed-open="' + esc(item.slug) + '"';
   el.innerHTML =
-    '<button class="feed-chip" data-feed-open="' + esc(item.slug) + '">' + esc(FEED_NAMES[item.slug] || item.slug) + '</button>' +
-    '<div class="feed-body">' + body + '</div>' +
-    // Keeps .card-actions so the existing global thumbs handler (rating
-    // storage + active state) works unchanged; .feed-rail restyles it.
-    '<div class="card-actions feed-rail">' +
-      '<button class="feed-act' + (liked ? ' active-up' : '') + '" data-thumb="up" ' + idAttr + ' title="More like this">▲</button>' +
-      '<button class="feed-act' + (disliked ? ' active-down' : '') + '" data-thumb="down" ' + idAttr + ' title="Less like this">▼</button>' +
-      '<button class="feed-act" data-feed-remember="1" title="Make a flashcard">☆</button>' +
-      '<button class="feed-act" data-feed-lul="1" title="Look up later">↷</button>' +
-      '<button class="feed-act" data-feed-share="1" title="Share">↑</button>' +
+    '<div class="feed-flip">' +
+      '<div class="feed-face feed-face-front">' +
+        (hasScreen
+          ? '<button class="feed-chip" ' + openAttr + '>' + kind + '</button>'
+          : '<div class="feed-chip feed-chip-static">' + kind + '</div>') +
+        '<div class="feed-body">' + body + '</div>' +
+      '</div>' +
+      '<div class="feed-face feed-face-back feed-back-face">' +
+        '<div class="feed-back-inner">' +
+          '<div class="feed-back-kind">' + kind + '</div>' +
+          '<div class="feed-back-topic">' + esc(item.key) + '</div>' +
+          '<div class="feed-back-acts">' +
+            feedActBtn('data-feed-remember="1"', '☆', 'Make a flashcard') +
+            feedActBtn('data-feed-claude="1"',   '✳', 'Ask Claude') +
+            feedActBtn('data-feed-google="1"',   '⌕', 'Google it') +
+            feedActBtn('data-feed-dive="1"',     '◎', 'Deep dive later') +
+            feedActBtn('data-feed-lul="1"',      '↷', 'Look up later') +
+            feedActBtn('data-feed-share="1"',    '↑', 'Share') +
+            (hasScreen ? feedActBtn(openAttr, '›', 'Open ' + kindRaw) : '') +
+          '</div>' +
+          // Keeps .card-actions so the existing global thumbs handler (rating
+          // storage + active state) works unchanged; .feed-rate restyles it.
+          '<div class="card-actions feed-rate">' +
+            '<button class="feed-act' + (liked ? ' active-up' : '') + '" data-thumb="up" ' + idAttr + '>▲ More like this</button>' +
+            '<button class="feed-act' + (disliked ? ' active-down' : '') + '" data-thumb="down" ' + idAttr + '>▼ Less like this</button>' +
+          '</div>' +
+          '<button class="feed-back-close" data-feed-unflip="1">tap anywhere to flip back</button>' +
+        '</div>' +
+      '</div>' +
     '</div>';
   return el;
+}
+
+// The label lives in its own span so a busy state ("Condensing…") can swap the
+// text without blowing away the icon.
+function feedActBtn(attrs, icon, label) {
+  return '<button class="feed-bact" ' + attrs + '>' +
+    '<span class="feed-bact-ic">' + icon + '</span>' +
+    '<span class="feed-bact-lb">' + esc(label) + '</span>' +
+  '</button>';
 }
 
 function feedSentinelNode() {
   const el = document.createElement('div');
   el.className = 'feed-item feed-loading';
   el.innerHTML =
-    '<div class="feed-body"><div>' +
+    '<div class="feed-face"><div class="feed-body"><div>' +
       '<div class="feed-skel" style="width:78%"></div>' +
       '<div class="feed-skel" style="width:92%"></div>' +
       '<div class="feed-skel" style="width:64%"></div>' +
       '<div class="feed-loading-note" id="feed-loading-note">Finding the next one…</div>' +
-    '</div></div>';
+    '</div></div></div>';
   return el;
 }
 
@@ -7877,6 +8016,56 @@ function feedRenderSentinel() {
 function feedItems() {
   const track = document.getElementById('feed-track');
   return track ? [...track.querySelectorAll('.feed-item:not(.feed-loading)')] : [];
+}
+
+// The front face still has layout when it's turned away (backface-visibility
+// hides paint, not layout), so innerText reads fine from the back.
+function feedCardText(item) {
+  return item?.querySelector('.feed-body')?.innerText.trim() || '';
+}
+function feedCardTopic(item) {
+  return (item?.dataset.key || feedCardText(item).split('\n')[0] || '').trim();
+}
+function feedSetActLabel(btn, text) {
+  const lb = btn.querySelector('.feed-bact-lb');
+  if (lb) lb.textContent = text;
+}
+
+// ── Flip ─────────────────────────────────────────────────
+// Only ever one card is turned over: leaving old ones flipped means scrolling
+// back up lands you on a back face you didn't ask for.
+function feedUnflipAll() {
+  feedItems().forEach(el => el.classList.remove('flipped'));
+}
+
+function feedToggleFlip(item) {
+  const turningOn = !item.classList.contains('flipped');
+  feedUnflipAll();
+  if (turningOn) item.classList.add('flipped');
+}
+
+// A tap flips; a drag scrolls. Distinguished by movement + duration rather than
+// a plain click listener, because the snap track and the long-card .feed-body
+// scroller both fire click at the end of a drag.
+let feedTapEl = null, feedTapX = 0, feedTapY = 0, feedTapT = 0;
+
+function feedPointerDown(e) {
+  feedTapEl = e.target.closest('.feed-item:not(.feed-loading)');
+  feedTapX = e.clientX;
+  feedTapY = e.clientY;
+  feedTapT = Date.now();
+}
+
+function feedPointerUp(e) {
+  const item = feedTapEl;
+  feedTapEl = null;
+  if (!item || !item.isConnected) return;
+  if (Math.abs(e.clientX - feedTapX) > 10 || Math.abs(e.clientY - feedTapY) > 10) return;
+  if (Date.now() - feedTapT > 600) return;
+  // Anything with its own tap target (the chip, every back-face action, links
+  // inside a rendered card) handles itself.
+  if (e.target.closest('button, a, input, textarea, select, [data-no-flip]')) return;
+  feedToggleFlip(item);
 }
 
 // Pull the next card out of the buffer, preferring one whose activity hasn't
@@ -7909,9 +8098,11 @@ function feedTake() {
 }
 
 function feedShowHint(el) {
-  if (localStorage.getItem('feed_hinted')) return;
-  el.insertAdjacentHTML('beforeend', '<div class="feed-hint">swipe up for the next one</div>');
-  localStorage.setItem('feed_hinted', '1');
+  // Key bumped from feed_hinted: the hint now teaches tap-to-flip too, so
+  // everyone who already dismissed the old one still needs to see this.
+  if (localStorage.getItem('feed_hinted2')) return;
+  el.insertAdjacentHTML('beforeend', '<div class="feed-hint">swipe up for the next one · tap the card for what to do with it</div>');
+  localStorage.setItem('feed_hinted2', '1');
 }
 
 // Mount from the buffer until FEED_AHEAD cards sit past the active one.
@@ -8005,6 +8196,9 @@ function feedSetActive(el) {
   const items = feedItems();
   const idx = items.indexOf(el);
   if (idx === -1 || idx === feedActiveIdx) return;
+  // Scrolling off a card puts it back face-up, so returning to it later shows
+  // the card and not the action list.
+  feedUnflipAll();
   feedScoreExit();
   feedActiveIdx = idx;
   feedActiveEl  = el;
@@ -8037,6 +8231,9 @@ function openFeed() {
 
   if (!feedScrollBound) {
     track.addEventListener('scroll', feedOnScroll, { passive: true });
+    track.addEventListener('pointerdown', feedPointerDown, { passive: true });
+    track.addEventListener('pointerup', feedPointerUp, { passive: true });
+    track.addEventListener('pointercancel', () => { feedTapEl = null; }, { passive: true });
     feedScrollBound = true;
   }
 
@@ -8127,18 +8324,66 @@ document.addEventListener('click', async e => {
     return;
   }
 
+  const unflipBtn = e.target.closest('[data-feed-unflip]');
+  if (unflipBtn) {
+    feedUnflipAll();
+    return;
+  }
+
   // Explicit ratings are a stronger signal than dwell. The global handler
   // already stored the rating; this only moves the feed's own weight.
-  const thumb = e.target.closest('.feed-rail [data-thumb]');
+  const thumb = e.target.closest('.feed-rate [data-thumb]');
   if (thumb) {
     feedNudge(thumb.dataset.slug, thumb.dataset.thumb === 'up' ? 1.5 : 0.6);
+    return;
+  }
+
+  // Escalate to a full Claude conversation, seeded with the card. Same shape as
+  // the single-activity "Push to Claude" action, sourced from the feed card.
+  const claudeBtn = e.target.closest('[data-feed-claude]');
+  if (claudeBtn) {
+    const text = feedCardText(claudeBtn.closest('.feed-item'));
+    if (!text) return;
+    const seed = 'I just came across this in my break app and want to go deeper:\n\n' + text
+      + '\n\nExplain it in more depth and point me to the most interesting threads to pull on.';
+    try { navigator.clipboard.writeText(seed); } catch(err) {}
+    window.open('https://claude.ai/new?q=' + encodeURIComponent(seed), '_blank', 'noopener');
+    return;
+  }
+
+  const googleBtn = e.target.closest('[data-feed-google]');
+  if (googleBtn) {
+    const q = feedCardTopic(googleBtn.closest('.feed-item'));
+    if (!q) return;
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(q), '_blank', 'noopener');
+    return;
+  }
+
+  // Heavy + later: enqueue into Deep Dives with the card as context, so the
+  // expanded read is already waiting the next time Break opens.
+  const diveBtn = e.target.closest('[data-feed-dive]');
+  if (diveBtn) {
+    const item = diveBtn.closest('.feed-item');
+    const topic = feedCardTopic(item);
+    if (!topic || diveBtn.disabled) return;
+    feedSetActLabel(diveBtn, 'Queueing…');
+    diveBtn.disabled = true;
+    try {
+      await ddFromLul(topic, feedCardText(item));
+      showToast('Deep dive queued — ready next time');
+      feedSetActLabel(diveBtn, 'Queued for Deep Dives');
+    } catch(err) {
+      showToast('Deep dive failed — ' + (err.message || 'try again'));
+      feedSetActLabel(diveBtn, 'Deep dive later');
+      diveBtn.disabled = false;
+    }
     return;
   }
 
   const shareBtn = e.target.closest('[data-feed-share]');
   if (shareBtn) {
     const item = shareBtn.closest('.feed-item');
-    const text = item?.querySelector('.feed-body')?.innerText.trim() || '';
+    const text = feedCardText(item);
     if (!text) return;
     if (navigator.share) navigator.share({ title: 'Break', text }).catch(() => {});
     else { try { await navigator.clipboard.writeText(text); showToast('Copied to clipboard'); } catch(err) {} }
@@ -8150,32 +8395,33 @@ document.addEventListener('click', async e => {
   const lulBtn = e.target.closest('[data-feed-lul]');
   if (lulBtn) {
     const item = lulBtn.closest('.feed-item');
-    const q = item?.dataset.key || '';
-    if (!q) return;
+    const q = feedCardTopic(item);
+    if (!q || lulBtn.disabled) return;
     lulBtn.disabled = true;
     try {
       await lulCreate(q);
       showToast('Added to Queue');
       updateLulBadge();
+      feedSetActLabel(lulBtn, 'Added to Queue');
     } catch(err) {
       showToast('Couldn\'t save — try again');
+      lulBtn.disabled = false;
     }
-    lulBtn.disabled = false;
     return;
   }
 
   const remBtn = e.target.closest('[data-feed-remember]');
   if (remBtn) {
     const item = remBtn.closest('.feed-item');
-    const body = item?.querySelector('.feed-body');
-    if (!body) return;
+    const text = feedCardText(item);
+    if (!text || remBtn.disabled) return;
     const source = {
       kind: FEED_NAMES[item.dataset.slug] || item.dataset.slug,
       rawFront: item.dataset.key || '',
-      rawBack: body.innerText.trim(),
+      rawBack: text,
       srsSource: item.dataset.slug,
     };
-    remBtn.textContent = '…';
+    feedSetActLabel(remBtn, 'Condensing…');
     remBtn.disabled = true;
     try {
       const card = await generateRememberCard(source, Math.floor(Math.random() * 900) + 100);
@@ -8184,7 +8430,7 @@ document.addEventListener('click', async e => {
       openRememberPreview(source, null);
       showToast('Couldn\'t condense — edit and save');
     }
-    remBtn.textContent = '☆';
+    feedSetActLabel(remBtn, 'Make a flashcard');
     remBtn.disabled = false;
     return;
   }
