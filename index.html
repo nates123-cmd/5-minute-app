@@ -1727,6 +1727,118 @@
     .feed-rate .feed-act.active-up   { background: #d4edda; border-color: #5cb85c; color: #256b30; }
     .feed-rate .feed-act.active-down { background: #f8d7da; border-color: #d9534f; color: #7a2525; }
 
+    /* ── Due work cards ──────────────────────────────────
+       Deliberately quiet. These are the only cards that ask something of you,
+       and the feed's whole appeal is that it doesn't — so they read as part of
+       the scroll, not as a chore list that ambushed you. */
+    .due-tag {
+      font-family: var(--font-sans);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-faint);
+      margin-bottom: 10px;
+    }
+    .due-prompt-lead {
+      font-family: var(--font-sans);
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+    .due-hint {
+      font-family: var(--font-sans);
+      font-size: 12px;
+      color: var(--text-faint);
+      margin-top: 18px;
+    }
+    .due-q {
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+    .due-a {
+      font-family: var(--font-serif);
+      font-size: clamp(19px, 4.8vw, 24px);
+      line-height: 1.4;
+      margin-bottom: 22px;
+    }
+    .due-points {
+      margin: 0 0 22px;
+      padding-left: 20px;
+      font-size: 15px;
+      line-height: 1.6;
+    }
+    .due-points li { margin-bottom: 8px; }
+
+    .due-rate { display: flex; gap: 8px; }
+    .due-btn {
+      flex: 1;
+      padding: 13px 6px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.15s;
+    }
+    .due-btn:active { transform: scale(0.97); }
+    .due-btn:disabled { opacity: 0.45; }
+    .due-miss { background: #e8d5d5; color: #7a2525; border-color: #e8d5d5; }
+    .due-hard { background: var(--surface); color: var(--text); }
+    .due-easy { background: #d5e8d8; color: #256b30; border-color: #d5e8d8; }
+
+    .due-opts { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
+    .due-opt {
+      width: 100%;
+      text-align: left;
+      padding: 13px 15px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: var(--surface);
+      font-family: var(--font-sans);
+      font-size: 14.5px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    }
+    .due-opt:active { transform: scale(0.985); }
+    /* Disabled must not read as "unavailable" here — every option greys out the
+       moment you answer, and the two that matter are coloured on top. */
+    .due-opt:disabled { cursor: default; }
+    .due-opt.is-correct { background: #d5e8d8; border-color: #5cb85c; color: #256b30; font-weight: 600; }
+    .due-opt.is-wrong   { background: #f8d7da; border-color: #d9534f; color: #7a2525; }
+    .due-verdict:not(:empty) {
+      font-family: var(--font-sans);
+      font-size: 13.5px;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+    .due-keep {
+      display: block;
+      margin-top: 12px;
+      padding: 9px 15px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      background: transparent;
+      font-family: var(--font-sans);
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .due-keep:disabled { opacity: 0.6; cursor: default; }
+    .due-done {
+      font-family: var(--font-serif);
+      font-size: clamp(19px, 4.8vw, 23px);
+      line-height: 1.4;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
     .feed-back-close {
       display: block;
       width: 100%;
@@ -6272,7 +6384,14 @@ document.getElementById('ar-save-cards')?.addEventListener('click', arExtractTer
 // what happens to a dive that resurfaced out of the archive.
 async function ddApplyGrade(bucket, hitFrac) {
   if (!arState || !arState.dive || !arState.dive.id) return null;
-  const dive = arState.dive;
+  return ddApplyGradeTo(arState.dive, bucket, hitFrac);
+}
+
+// The scheduling half of ddApplyGrade, taking the dive explicitly instead of
+// reading the Active Recall session global — so the Scroll feed can drill a
+// dive through exactly the same archive/leash/SM-2 rules.
+async function ddApplyGradeTo(dive, bucket, hitFrac) {
+  if (!dive || !dive.id) return null;
   const wasArchived = dive.status === 'archived';
   const fields = ddSchedule(dive, bucket);
   fields.last_reviewed_at = new Date().toISOString();
@@ -6360,6 +6479,15 @@ async function lulUpdate(id, answer, tl_dr, links) {
   return sbFetch('look_up_later?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ answer, tl_dr, links }) });
 }
 async function lulDelete(id) { return sbFetch('look_up_later?id=eq.' + id, { method: 'DELETE' }); }
+// Take a question out of the pending queue without losing it. lulFetch() and
+// the home pillar both read status=pending, so this is what actually moves the
+// number — lulUpdate alone stores the answer and leaves it queued forever.
+async function lulResolve(id, fields) {
+  return sbFetch('look_up_later?id=eq.' + id, {
+    method: 'PATCH', prefer: 'return=minimal',
+    body: JSON.stringify({ status: 'answered', ...(fields || {}) }),
+  });
+}
 async function lulSetFollowups(id, arr) {
   return sbFetch('look_up_later?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ followups: arr }) });
 }
@@ -7946,6 +8074,9 @@ CARD_SPECS['stoic'] = {
 // exclusion list and dedupe work the same as everywhere else.
 function feedKey(slug, d) {
   if (slug === 'stoic' && d && d.passage) return d.author + ' — ' + d.passage.slice(0, 60);
+  // Due items are rows, not generated content — key on the row so the same
+  // card can't be served twice in a session, and can still come back tomorrow.
+  if (DUE_SLUGS.includes(slug)) return slug + ':' + (d && d.id ? d.id : cardKey(d));
   return cardKey(d);
 }
 
@@ -7958,6 +8089,10 @@ const FEED_NAMES = ACTIVITY_REGISTRY.reduce((m, a) => {
 FEED_NAMES.stoic = FEED_NAMES.stoic || 'Stoic Passage';
 FEED_NAMES.potd  = FEED_NAMES.potd  || 'Picture of the Day';
 FEED_NAMES.apod  = FEED_NAMES.apod  || 'Astronomy Photo';
+FEED_NAMES['due-card'] = 'Review';
+FEED_NAMES['due-quiz'] = 'Quiz';
+FEED_NAMES['due-lul']  = 'Your Queue';
+FEED_NAMES['due-dive'] = 'Deep Dive';
 
 // ── Activity weights (the ranking signal) ────────────────
 function feedWeights() {
@@ -7994,7 +8129,9 @@ function feedEligible() {
     : (DURATION_ACTIVITIES[feedBucket] || Object.keys(CARD_SPECS))
         .concat(FEED_EXTRA_BY_BUCKET[feedBucket] || []);
   // Quiz slugs live in the buckets too but have no card spec — filtered here.
-  let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s));
+  // Due slugs DO have specs but must never come out of the weighted draw:
+  // they're mounted on their own cadence by feedDueTopUp/feedFill.
+  let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s) && !isDueSlug(s));
   // Signed out (or offline), the Claude proxy is closed — but bundled-data
   // cards still work, so the feed degrades to those instead of dying.
   if (!hasSession()) list = list.filter(s => CARD_SOURCES[s]);
@@ -8178,27 +8315,36 @@ function feedItemNode(item) {
       '</div>' +
       '<div class="feed-face feed-face-back feed-back-face">' +
         '<div class="feed-back-inner">' +
-          '<div class="feed-back-kind">' + kind + '</div>' +
-          '<div class="feed-back-topic">' + esc(item.key) + '</div>' +
-          '<div class="feed-back-acts">' +
-            feedActBtn('data-feed-remember="1"', '☆', 'Make a flashcard') +
-            feedActBtn('data-feed-claude="1"',   '✳', 'Ask Claude') +
-            feedActBtn('data-feed-google="1"',   '⌕', 'Google it') +
-            feedActBtn('data-feed-dive="1"',     '◎', 'Deep dive later') +
-            feedActBtn('data-feed-lul="1"',      '↷', 'Look up later') +
-            feedActBtn('data-feed-share="1"',    '↑', 'Share') +
-            (hasScreen ? feedActBtn(openAttr, '›', 'Open ' + kindRaw) : '') +
-          '</div>' +
-          // Keeps .card-actions so the existing global thumbs handler (rating
-          // storage + active state) works unchanged; .feed-rate restyles it.
-          '<div class="card-actions feed-rate">' +
-            '<button class="feed-act' + (liked ? ' active-up' : '') + '" data-thumb="up" ' + idAttr + '>▲ More like this</button>' +
-            '<button class="feed-act' + (disliked ? ' active-down' : '') + '" data-thumb="down" ' + idAttr + '>▼ Less like this</button>' +
-          '</div>' +
+          // A due card owns its own reverse side: the answer and the grading,
+          // not the generic "what could I do with this" list. Everything else
+          // falls through to the default.
+          (spec.renderBack ? spec.renderBack(item.data) :
+            '<div class="feed-back-kind">' + kind + '</div>' +
+            '<div class="feed-back-topic">' + esc(item.key) + '</div>' +
+            '<div class="feed-back-acts">' +
+              feedActBtn('data-feed-remember="1"', '☆', 'Make a flashcard') +
+              feedActBtn('data-feed-claude="1"',   '✳', 'Ask Claude') +
+              feedActBtn('data-feed-google="1"',   '⌕', 'Google it') +
+              feedActBtn('data-feed-dive="1"',     '◎', 'Deep dive later') +
+              feedActBtn('data-feed-lul="1"',      '↷', 'Look up later') +
+              feedActBtn('data-feed-share="1"',    '↑', 'Share') +
+              (hasScreen ? feedActBtn(openAttr, '›', 'Open ' + kindRaw) : '') +
+            '</div>' +
+            // Keeps .card-actions so the existing global thumbs handler (rating
+            // storage + active state) works unchanged; .feed-rate restyles it.
+            '<div class="card-actions feed-rate">' +
+              '<button class="feed-act' + (liked ? ' active-up' : '') + '" data-thumb="up" ' + idAttr + '>▲ More like this</button>' +
+              '<button class="feed-act' + (disliked ? ' active-down' : '') + '" data-thumb="down" ' + idAttr + '>▼ Less like this</button>' +
+            '</div>'
+          ) +
           '<button class="feed-back-close" data-feed-unflip="1">tap anywhere to flip back</button>' +
         '</div>' +
       '</div>' +
     '</div>';
+  // Due cards are backed by a real database row (a flashcard with its own
+  // interval and ease factor, a dive with its schedule). Keep the row on the
+  // node rather than serialising it into data attributes.
+  if (isDueSlug(item.slug)) el._due = item.data;
   // Pictures that arrive on a second hop. Safe to fire against the still
   // detached node: every hydrator re-checks isConnected before it writes, and
   // feedFill appends synchronously right after this returns.
@@ -8336,15 +8482,259 @@ function feedShowHint(el) {
 }
 
 // Mount from the buffer until FEED_AHEAD cards sit past the active one.
+// ══ Due work in the feed ═════════════════════════════════════════════════
+// Flashcards you owe, questions you parked, dives you haven't drilled — woven
+// into the scroll instead of waiting behind a number on the home screen.
+//
+// The whole design rests on one decision: an in-feed answer writes the SAME
+// record the dedicated screen would. A real SM-2 grade, a real look-up-later
+// resolution, a real dive schedule. So engaging drops the home tally and
+// skipping leaves it, with no separate "skipped" ledger to keep in sync.
+// Scrolling past IS the skip.
+const DUE_SLUGS = ['due-card', 'due-quiz', 'due-lul', 'due-dive'];
+const FEED_DUE_EVERY = 6;    // one due card per this many mounted cards
+const FEED_DUE_LEAD  = 4;    // ...but never before this many, so the feed opens on content
+
+let feedDueBuffer  = [];     // {slug, data, key} ready to mount
+let feedDueLastPos = -99;    // feedMounted index the last due card landed at
+let feedDueCursor  = 0;      // rotates the four sources so they alternate
+let feedDueBusy    = false;
+// A sweep that finds nothing must not re-run on every scroll event — that's
+// four Supabase queries per frame of thumb movement. Back off instead.
+let feedDueQuietUntil = 0;
+const FEED_DUE_BACKOFF_MS = 90000;
+// Served this session. A due item you scrolled past stays due — it just
+// shouldn't come back four times in one sitting.
+let feedDueSeen = new Set();
+
+const isDueSlug = (s) => DUE_SLUGS.includes(s);
+
+// Is a due card both available and at the right position to mount now?
+function feedDueReady() {
+  if (!feedDueBuffer.length) return false;
+  const pos = feedMounted.length;
+  if (pos < FEED_DUE_LEAD) return false;
+  return pos - feedDueLastPos >= FEED_DUE_EVERY;
+}
+
+// Keep one due item ready. Rotates through the four sources rather than
+// draining flashcards first, so a scroll doesn't turn into a review session.
+async function feedDueTopUp() {
+  if (!feedOpen || feedDueBusy || feedDueBuffer.length) return;
+  if (!hasSession()) return;                 // all four are Supabase-backed
+  if (feedMounted.length + FEED_AHEAD < FEED_DUE_LEAD) return;
+  if (Date.now() < feedDueQuietUntil) return;
+  feedDueBusy = true;
+  let found = false;
+  try {
+    for (let i = 0; i < DUE_SLUGS.length; i++) {
+      const slug = DUE_SLUGS[(feedDueCursor + i) % DUE_SLUGS.length];
+      let items = null;
+      try { items = await CARD_SOURCES[slug](1); } catch(e) { items = null; }
+      if (items && items.length) {
+        const d = items[0];
+        const key = feedKey(slug, d);
+        feedDueSeen.add(key);
+        feedDueBuffer.push({ slug, data: d, key });
+        feedDueCursor = (feedDueCursor + i + 1) % DUE_SLUGS.length;
+        found = true;
+        break;
+      }
+    }
+    // Nothing owed anywhere (or everything owed has already been served this
+    // session). Stop asking for a bit.
+    if (!found) feedDueQuietUntil = Date.now() + FEED_DUE_BACKOFF_MS;
+  } finally {
+    feedDueBusy = false;
+    // Nothing else drives a re-render once this lands, and the mount gate
+    // may now be satisfied.
+    feedFill();
+  }
+}
+
+// The feed's trivia keeps its own rolling window and its own quiz_performance
+// row. Mirrors advanceQuiz's last-20 logic without touching the topics the
+// quiz screens use to pick difficulty for an actual session.
+function feedQuizRecord(correct) {
+  let recent = [];
+  try { recent = JSON.parse(localStorage.getItem('feed_quiz_recent') || '[]'); } catch(e) {}
+  if (!Array.isArray(recent)) recent = [];
+  recent.push(!!correct);
+  if (recent.length > 20) recent.shift();
+  try { localStorage.setItem('feed_quiz_recent', JSON.stringify(recent)); } catch(e) {}
+  const hitRate = recent.filter(Boolean).length / recent.length;
+  qpUpsert('feed-trivia', { hit_rate: hitRate }).catch(() => {});
+}
+
+// Remove a mounted due card once it's been dealt with, so the feed closes
+// over it rather than leaving a spent card in the scroll.
+function feedRetireDue(item, note) {
+  const body = item.querySelector('.feed-body');
+  if (body) body.innerHTML = '<div class="ai-single"><div class="due-done">' + esc(note) + '</div></div>';
+  // Blank the back too, or flipping the card again hands back live buttons
+  // for work that's already been written.
+  const back = item.querySelector('.feed-back-inner');
+  if (back) back.innerHTML = '<div class="due-done">' + esc(note) + '</div>' +
+    '<button class="feed-back-close" data-feed-unflip="1">tap anywhere to flip back</button>';
+  item.classList.remove('flipped');
+  item.dataset.dueDone = '1';
+}
+
+// --- 1. A flashcard you owe -------------------------------------------
+// Front is the question, back is the answer and the three SM-2 buttons. This
+// is the same card the Review screen would show you, so grading it here is
+// the same grade — same sm2(), same srsUpdate(), same last_missed_at stamp
+// feeding cluster ripeness.
+CARD_SOURCES['due-card'] = async (n) => {
+  const due = await srsGetDue();
+  const fresh = (due || []).filter(c => c && c.id && c.front && !feedDueSeen.has('due-card:' + c.id));
+  return fresh.length ? fresh.slice(0, n) : null;
+};
+
+CARD_SPECS['due-card'] = {
+  slug: 'due-card',
+  sourceOnly: true,
+  render: (d) => '<div class="ai-single">' +
+      '<div class="main-text">' + esc(d.front) + '</div>' +
+      '<div class="due-hint">tap for the answer</div>' +
+    '</div>',
+  renderBack: (d) => '<div class="feed-back-kind">Due flashcard</div>' +
+    '<div class="due-q">' + esc(d.front) + '</div>' +
+    '<div class="due-a">' + esc(d.back) + '</div>' +
+    '<div class="due-rate">' +
+      '<button class="due-btn due-miss" data-due-rate="0">Miss</button>' +
+      '<button class="due-btn due-hard" data-due-rate="1">Hard</button>' +
+      '<button class="due-btn due-easy" data-due-rate="2">Easy</button>' +
+    '</div>',
+};
+
+// --- 2. A quiz question -------------------------------------------------
+// Open Trivia DB, keyless and free. Graded on the front (tapping an option is
+// the answer — a flip would just be a second tap between you and the result).
+//
+// This records under its own 'feed-trivia' topic rather than folding into the
+// quiz screens' rows: quiz_performance drives adaptive difficulty from a
+// rolling last-20 plus a streak counter, and a single card answered mid-scroll
+// isn't a session. Its own topic means the feed's trivia still gets harder as
+// you get better, without dragging the real quiz's difficulty around.
+let feedQuizPool = [];
+
+CARD_SOURCES['due-quiz'] = async (n) => {
+  if (!feedQuizPool.length) {
+    let res;
+    try { res = await fetchWithTimeout('https://opentdb.com/api.php?amount=10&type=multiple', {}, 4000); }
+    catch(e) { return null; }
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.response_code !== 0 || !Array.isArray(data.results)) return null;
+    feedQuizPool = data.results.map(r => {
+      const correct = decodeHtml(r.correct_answer);
+      const options = [correct, ...(r.incorrect_answers || []).map(decodeHtml)];
+      // Fisher-Yates, so the answer isn't always first.
+      for (let i = options.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [options[i], options[j]] = [options[j], options[i]];
+      }
+      return { id: decodeHtml(r.question), question: decodeHtml(r.question), correct, options, category: decodeHtml(r.category || '') };
+    });
+  }
+  const fresh = feedQuizPool.filter(q => !feedDueSeen.has('due-quiz:' + q.id));
+  if (!fresh.length) return null;
+  const picked = fresh.slice(0, n);
+  feedQuizPool = feedQuizPool.filter(q => !picked.includes(q));
+  return picked;
+};
+
+CARD_SPECS['due-quiz'] = {
+  slug: 'due-quiz',
+  sourceOnly: true,
+  render: (d) => '<div class="ai-single">' +
+      '<div class="due-tag">' + esc(d.category || 'Quiz') + '</div>' +
+      '<div class="due-q">' + esc(d.question) + '</div>' +
+      '<div class="due-opts">' +
+        d.options.map(o => '<button class="due-opt" data-due-opt="' + esc(o) + '">' + esc(o) + '</button>').join('') +
+      '</div>' +
+      '<div class="due-verdict" data-due-verdict></div>' +
+    '</div>',
+};
+
+// --- 3. A question you parked -------------------------------------------
+// "Look it up now" runs the same research call the Queue screen runs, then
+// marks the row answered — which is what actually drops it out of lulFetch()
+// (pending-only) and off the home pillar, while keeping the answer.
+CARD_SOURCES['due-lul'] = async (n) => {
+  const items = await lulFetch();
+  const fresh = (items || []).filter(x => x && x.id && x.question && !feedDueSeen.has('due-lul:' + x.id));
+  return fresh.length ? fresh.slice(0, n) : null;
+};
+
+CARD_SPECS['due-lul'] = {
+  slug: 'due-lul',
+  sourceOnly: true,
+  render: (d) => '<div class="ai-single">' +
+      '<div class="main-text">' + esc(d.question) + '</div>' +
+      '<div class="due-hint">tap for what to do with it</div>' +
+    '</div>',
+  renderBack: (d) => '<div class="feed-back-kind">From your Queue</div>' +
+    '<div class="feed-back-topic">' + esc(d.question) + '</div>' +
+    '<div class="feed-back-acts">' +
+      feedActBtn('data-due-lul-research="1"', '✳', 'Look it up now') +
+      feedActBtn('data-due-lul-dive="1"',     '◎', 'Make it a deep dive') +
+      feedActBtn('data-due-lul-done="1"',     '✓', 'Done — clear it') +
+    '</div>',
+};
+
+// --- 4. A dive you haven't drilled --------------------------------------
+// Explain-from-memory, then reveal the key points and take a self-rating. The
+// full Active Recall flow grades your written answer with Claude; that needs a
+// typing surface and a round trip, which is not a scroll. The self-rating goes
+// through the same ddSchedule()/archive logic, so a dive drilled here is
+// genuinely scheduled and genuinely leaves the "to drill" count.
+CARD_SOURCES['due-dive'] = async (n) => {
+  const dives = await sbFetch('deep_dives?select=*');
+  const calling = (dives || []).filter(d =>
+    d && d.id && d.title && (ddIsDue(d) || ddIsResurfaced(d)) && !feedDueSeen.has('due-dive:' + d.id));
+  return calling.length ? calling.slice(0, n) : null;
+};
+
+CARD_SPECS['due-dive'] = {
+  slug: 'due-dive',
+  sourceOnly: true,
+  render: (d) => '<div class="ai-single">' +
+      '<div class="due-tag">' + (d.status === 'archived' ? 'Back from the archive' : 'Deep dive due') + '</div>' +
+      '<div class="due-prompt-lead">Explain from memory</div>' +
+      '<div class="main-text">' + esc(d.title) + '</div>' +
+      (d.prompt ? '<div class="sub-text">' + esc(d.prompt) + '</div>' : '') +
+      '<div class="due-hint">tap when you\'ve had a go</div>' +
+    '</div>',
+  renderBack: (d) => {
+    const pts = Array.isArray(d.key_points) ? d.key_points : [];
+    return '<div class="feed-back-kind">Did you get these?</div>' +
+      '<div class="feed-back-topic">' + esc(d.title) + '</div>' +
+      (pts.length
+        ? '<ul class="due-points">' + pts.map(p => '<li>' + esc(typeof p === 'string' ? p : (p && p.point) || '') + '</li>').join('') + '</ul>'
+        : '<div class="due-a">' + esc(d.summary || 'No key points recorded for this one.') + '</div>') +
+      '<div class="due-rate">' +
+        '<button class="due-btn due-miss" data-due-dive="miss">Missed it</button>' +
+        '<button class="due-btn due-hard" data-due-dive="hard">Patchy</button>' +
+        '<button class="due-btn due-easy" data-due-dive="easy">Solid</button>' +
+      '</div>';
+  },
+};
+
 function feedFill() {
   const track = document.getElementById('feed-track');
   if (!feedOpen || !track) return;
   const sentinel = track.querySelector('.feed-loading');
   const wasCold = feedActiveIdx === -1;
   let ahead = feedItems().length - 1 - feedActiveIdx;
-  while (feedBuffer.length && ahead < FEED_AHEAD) {
-    const item = feedTake();
+  while ((feedBuffer.length || feedDueReady()) && ahead < FEED_AHEAD) {
+    // Cadence is measured here, at mount, not at generation: generation runs
+    // ahead by an unpredictable amount, so "every 6th card" only means
+    // anything at the position a card actually lands in.
+    const item = feedDueReady() ? feedDueBuffer.shift() : feedTake();
     if (!item) break;              // holding for variety; refills on next batch
+    if (isDueSlug(item.slug)) feedDueLastPos = feedMounted.length;
     const node = feedItemNode(item);
     if (sentinel) track.insertBefore(node, sentinel); else track.appendChild(node);
     feedMounted.push(item.slug);
@@ -8408,6 +8798,7 @@ function feedOnScroll() {
   // single slow or failed generation killed it permanently.
   feedFill();
   feedTopUp();
+  feedDueTopUp();
 }
 
 // ── Signals ──────────────────────────────────────────────
@@ -8415,7 +8806,9 @@ function feedScoreExit() {
   if (!feedActiveEl || !feedEnterTs) return;
   const dwell = Date.now() - feedEnterTs;
   const slug = feedActiveEl.dataset.slug;
-  if (slug) {
+  // Due cards aren't drawn from the weighted pool, so dwell on them would only
+  // pollute the weights map with entries nothing ever reads.
+  if (slug && !isDueSlug(slug)) {
     if (dwell < FEED_DWELL_SHORT)     feedNudge(slug, 0.88);
     else if (dwell > FEED_DWELL_LONG) feedNudge(slug, 1.18);
   }
@@ -8475,6 +8868,11 @@ function openFeed() {
   feedActiveEl = null;
   feedEnterTs = 0;
   track.scrollTop = 0;
+  // Due state is per-session: a card skipped last time is fair game again.
+  feedDueBuffer = [];
+  feedDueLastPos = -99;
+  feedDueSeen = new Set();
+  feedDueQuietUntil = 0;
 
   // Layout has to settle before --feed-h is measurable.
   // Synchronous, not rAF: showScreen() already laid the track out, and rAF
@@ -8482,6 +8880,7 @@ function openFeed() {
   feedSizeTrack();
   feedFill();          // instant if the buffer is warm; activates card 0
   feedTopUp();
+  feedDueTopUp();
   feedRenderSentinel();
   feedStartWatchdog();
   // One re-measure after paint, for the safe-area/URL-bar settle on iOS.
@@ -8494,6 +8893,11 @@ function closeFeed() {
   feedOpen = false;
   feedActiveEl = null;
   feedStopWatchdog();
+  // Anything answered in the feed wrote a real record, so the home pillars are
+  // now stale. This is the moment the user sees the number move.
+  updateDueBadge();
+  updateLulBadge();
+  updateDeepDiveBadge();
 }
 
 // Quietly refill the buffer while the user is on the home screen, so the
@@ -8557,6 +8961,178 @@ document.addEventListener('click', async e => {
   const unflipBtn = e.target.closest('[data-feed-unflip]');
   if (unflipBtn) {
     feedUnflipAll();
+    return;
+  }
+
+  // ── Due work ───────────────────────────────────────────
+  // Every branch below writes the record the dedicated screen would write.
+  // That is the whole point: the home tally moves because the work was
+  // actually done, not because the feed kept a second set of books.
+
+  // A flashcard, graded. Same sm2() and same last_missed_at stamp the Review
+  // screen uses, so cluster ripeness sees this too.
+  const rateBtn = e.target.closest('[data-due-rate]');
+  if (rateBtn) {
+    const item = rateBtn.closest('.feed-item');
+    const card = item && item._due;
+    if (!card || item.dataset.dueDone) return;
+    const rating = Number(rateBtn.dataset.dueRate);
+    const btns = [...item.querySelectorAll('[data-due-rate]')];
+    btns.forEach(b => { b.disabled = true; });
+    const updates = sm2(card, rating);
+    if (rating === 0) updates.last_missed_at = new Date().toISOString();
+    try {
+      await srsUpdate(card.id, updates);
+      feedRetireDue(item, rating === 0
+        ? 'Noted — back tomorrow.'
+        : 'Back in ' + updates.interval + ' day' + (updates.interval === 1 ? '' : 's') + '.');
+      updateDueBadge();
+    } catch(err) {
+      showToast('Couldn\'t save that grade');
+      btns.forEach(b => { b.disabled = false; });
+    }
+    return;
+  }
+
+  // A deep dive, self-rated. Routed through the same ddSchedule/archive rules
+  // as Active Recall — including pulling a resurfaced dive back to active when
+  // you clearly still need it.
+  const diveRate = e.target.closest('[data-due-dive]');
+  if (diveRate) {
+    const item = diveRate.closest('.feed-item');
+    const dive = item && item._due;
+    if (!dive || item.dataset.dueDone) return;
+    const btns = [...item.querySelectorAll('[data-due-dive]')];
+    btns.forEach(b => { b.disabled = true; });
+    try {
+      const r = await ddApplyGradeTo(dive, diveRate.dataset.dueDive, null);
+      feedRetireDue(item, r && r.status === 'archived'
+        ? 'Still solid — kept in the archive.'
+        : 'Back in ' + ((r && r.interval) || 1) + ' day' + (r && r.interval === 1 ? '' : 's') + '.');
+    } catch(err) {
+      showToast('Couldn\'t save that');
+      btns.forEach(b => { b.disabled = false; });
+    }
+    return;
+  }
+
+  // A quiz option. Graded on the front — a flip would only put a second tap
+  // between the answer and the result.
+  const opt = e.target.closest('[data-due-opt]');
+  if (opt) {
+    const item = opt.closest('.feed-item');
+    const q = item && item._due;
+    if (!q || item.dataset.dueAnswered) return;
+    item.dataset.dueAnswered = '1';
+    const right = opt.dataset.dueOpt === q.correct;
+    item.querySelectorAll('[data-due-opt]').forEach(b => {
+      b.disabled = true;
+      if (b.dataset.dueOpt === q.correct) b.classList.add('is-correct');
+      else if (b === opt) b.classList.add('is-wrong');
+    });
+    const v = item.querySelector('[data-due-verdict]');
+    if (v) {
+      v.textContent = right ? 'Correct.' : 'Answer: ' + q.correct;
+      // A miss is the best moment to offer the card — you just found the gap.
+      if (!right) v.insertAdjacentHTML('beforeend',
+        '<button class="due-keep" data-due-keep="1">Keep this as a flashcard</button>');
+    }
+    feedQuizRecord(right);
+    return;
+  }
+
+  const keepBtn = e.target.closest('[data-due-keep]');
+  if (keepBtn) {
+    const q = keepBtn.closest('.feed-item')?._due;
+    if (!q || keepBtn.disabled) return;
+    keepBtn.disabled = true;
+    keepBtn.textContent = 'Saving…';
+    try {
+      if (await cardExists(q.question)) { keepBtn.textContent = 'Already in your deck'; return; }
+      await srsCreate(q.question, q.correct, 'feed-trivia');
+      keepBtn.textContent = 'Saved to your deck';
+      updateDueBadge();
+    } catch(err) {
+      keepBtn.textContent = 'Couldn\'t save';
+      keepBtn.disabled = false;
+    }
+    return;
+  }
+
+  // A parked question: research it now, hand it to Deep Dives, or clear it.
+  // All three take it out of status=pending, which is what the Queue counts.
+  const lulResearch = e.target.closest('[data-due-lul-research]');
+  if (lulResearch) {
+    const item = lulResearch.closest('.feed-item');
+    const row = item && item._due;
+    if (!row || lulResearch.disabled) return;
+    lulResearch.disabled = true;
+    feedSetActLabel(lulResearch, 'Looking it up…');
+    try {
+      const data = await callClaude(
+        'Answer this question thoroughly in 3–4 paragraphs for a curious non-expert. Be specific and factual. Also write a single punchy TL;DR sentence that captures the most surprising or interesting answer. For links, prefer specific Wikipedia articles about particular events, incidents, operations, or people — not broad overview pages (e.g. link the U-2 incident, not "Cold War"). Include 2–4 such links. Question: "' + row.question + '" Return JSON: {"tl_dr":"...","summary":"...","links":[{"title":"...","url":"..."}]}',
+        { max_tokens: 2000 }
+      );
+      const tl = typeof data.tl_dr === 'string' && !data.tl_dr.startsWith('[') && !data.tl_dr.startsWith('{') ? data.tl_dr : '';
+      await lulResolve(row.id, { answer: data.summary, tl_dr: tl, links: data.links || [] });
+      updateLulBadge();
+      // The answer replaces the card rather than retiring it — you asked to
+      // read this, so it should be readable where you are.
+      const body = item.querySelector('.feed-body');
+      if (body) body.innerHTML = '<div class="ai-single">' +
+        '<div class="due-tag">Answered</div>' +
+        '<div class="due-q">' + esc(row.question) + '</div>' +
+        (tl ? '<div class="main-text">' + esc(tl) + '</div>' : '') +
+        '<div class="sub-text">' + esc(trimTo(data.summary, 460)) + '</div>' +
+      '</div>';
+      const back = item.querySelector('.feed-back-inner');
+      if (back) back.innerHTML = '<div class="due-done">Answered and cleared from your Queue.</div>' +
+        '<button class="feed-back-close" data-feed-unflip="1">tap anywhere to flip back</button>';
+      item.classList.remove('flipped');
+      item.dataset.dueDone = '1';
+    } catch(err) {
+      showToast('Research failed: ' + (err.message || 'try again'));
+      feedSetActLabel(lulResearch, 'Look it up now');
+      lulResearch.disabled = false;
+    }
+    return;
+  }
+
+  const lulDive = e.target.closest('[data-due-lul-dive]');
+  if (lulDive) {
+    const item = lulDive.closest('.feed-item');
+    const row = item && item._due;
+    if (!row || lulDive.disabled) return;
+    lulDive.disabled = true;
+    feedSetActLabel(lulDive, 'Queueing…');
+    try {
+      await ddFromLul(row.question);
+      await lulResolve(row.id);
+      updateLulBadge();
+      updateDeepDiveBadge();
+      feedRetireDue(item, 'Moved to Deep Dives.');
+    } catch(err) {
+      showToast('Couldn\'t move that — ' + (err.message || 'try again'));
+      feedSetActLabel(lulDive, 'Make it a deep dive');
+      lulDive.disabled = false;
+    }
+    return;
+  }
+
+  const lulDone = e.target.closest('[data-due-lul-done]');
+  if (lulDone) {
+    const item = lulDone.closest('.feed-item');
+    const row = item && item._due;
+    if (!row || lulDone.disabled) return;
+    lulDone.disabled = true;
+    try {
+      await lulResolve(row.id);
+      updateLulBadge();
+      feedRetireDue(item, 'Cleared from your Queue.');
+    } catch(err) {
+      showToast('Couldn\'t clear that');
+      lulDone.disabled = false;
+    }
     return;
   }
 
