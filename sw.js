@@ -1,4 +1,4 @@
-const CACHE_NAME = '5min-break-v109';
+const CACHE_NAME = '5min-break-v110';
 const STATIC_ASSETS = [
   './',
   './index.html',

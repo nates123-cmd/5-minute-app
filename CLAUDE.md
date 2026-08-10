@@ -36,7 +36,7 @@ SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // anon key, safe to commit
 ### Tables
 | Table | Key columns |
 |---|---|
-| `flashcards` | id, front, back, source, interval, ease_factor, next_review, status, created_at, context ('fun'), cluster_id (FK→clusters, nullable), last_missed_at |
+| `flashcards` | id, front, back, source, interval, ease_factor, next_review, status, created_at, context ('fun'), cluster_id (FK→clusters, nullable), last_missed_at, **ladder_level** (0–4), **ladder_streak**, **mastered_at** (high-water mark, never cleared), **variants** (jsonb pack — nullable with NO default), **variants_src** (fingerprint of front+back) |
 | `deep_dives` | id, user_id, title, prompt, key_points (jsonb), summary, context, source, cluster_id (FK→clusters, nullable), created_at, last_reviewed_at, **status** ('active'\|'archived'), **archived_at**, **resurface_at** (date), **next_review** (date), **interval**, **ease_factor**, **last_bucket** ('miss'\|'hard'\|'easy'), **review_count**, **last_score** (0–1 key-point hit fraction) |
 | `clusters` | id, user_id, name, context, created_at — lazy groupings of flashcards; created when active recall assembles a concept "from my cards" (`ddGenerateFromCards`). Per-user RLS. |
 | `quiz_performance` | id, topic, difficulty (1–5), hit_rate, asked_questions (jsonb), updated_at |
@@ -76,7 +76,19 @@ Quiz-specific Claude fetch — same pattern, used for quiz question generation a
 Saves flashcard to Supabase. Supports offline queuing via `localStorage['offline_card_queue']` — syncs on `window online` event.
 
 ### `sm2(card, rating)`
-SM-2 spaced repetition: rating 0 = miss (interval→1), 1 = hard (interval×1.2, ease−0.15), 2 = easy (interval×ease, ease+0.1). A miss (review flow + AR write-back) also stamps `last_missed_at` for cluster ripeness.
+SM-2 spaced repetition: rating 0 = miss (interval→1), 1 = hard (interval×1.2, ease−0.15), 2 = easy (interval×ease, ease+0.1). A miss (review flow + AR write-back) also stamps `last_missed_at` for cluster ripeness. **Nothing calls `sm2` directly for a flashcard grade any more — go through `ladderApply` below.**
+
+### Mastery ladder — `sm2` decides WHEN, the ladder decides HOW
+Knowing a flashcard and knowing the thing are different, so a card climbs through five framings as you keep getting it right. Rungs: **0 Recognize** (front→back flip), **1 Reversed** (back→produce the front), **2 Reworded** (paraphrase or cloze), **3 Discriminate** (near-miss usages, one right), **4 Produce** (write or speak it, Claude grades). Rungs 0 and 1 cost nothing; 2 and up need a generated pack.
+
+- **`ladderApply(card, rating, shown)`** — the single write-shape, used by BOTH the review screen and the scroll feed so they can't drift. Wraps `sm2`, applies the mastery multiplier (×1.3, clamped to `LADDER_MAX_INTERVAL=365` — the clamp lives here, NOT in `sm2`, so the SM-2 tests stay a clean canary), recomputes `next_review`, sets `mastered_at`, stamps `last_missed_at`.
+- **`ladderNext`** — Easy → streak++, promote at 2 (`LADDER_PROMOTE_STREAK`); Hard → hold, streak 0; Miss → drop one rung (floor 0). **`shown < level` earns nothing** — an Easy at a framing easier than the card's rung buys no promotion, which is what makes the feed's cap honest.
+- **`ladderRung(card, cap)`** — walks DOWN from the stored level to one the card can support right now (rung 4 needs a live session; 3 needs ≥3 options with exactly one correct; 2 needs a reworded prompt; 1 needs a `back`). Nothing errors offline — it degrades.
+- **`ladderPack(card)` / `ladderFingerprint`** — the cache is **self-healing**: the pack stores the fingerprint of the `front+back` it was built from, so an edit by ANY route (edit modal, MCP, another device) invalidates it with no explicit call. `variants` must stay **nullable with no default** — a `'{}'` default makes the "is it cached" test true for every row.
+- **`ladderEnsurePack(card)`** — one call generates all four rungs' content, lazily, the first time a card needs rung 2+. **Haiku first, Sonnet retried once** when the validator rejects the `discriminate` block (near-miss distractors are what the cheap model fumbles). Never throws — returns null and the caller degrades. Deduped through `ladderPending`. `ladderPrefetchNext()` warms exactly ONE card ahead; widening that fans out into real spend.
+- **`ladderNormalizePack`** — the validator, and it does real work: rejects a reworded prompt that leaks the answer, a discriminate block without exactly one correct option, and a distractor equal to `back` (which would render two right answers).
+- **UI** — `#srs-rung` is one quiet line (dots + rung name, sage "Mastered" at the top); the mode toggle is `Ladder | Flip | MC`, where Flip/MC are an **override** that pins rung 0 and earns nothing. `renderSrsProduce` reuses Active Recall's recogniser via `arUseRecTargets` — `arSetupSpeak()` reclaims the default targets on every AR session.
+- **Scroll feed caps at rung 2** (`FEED_LADDER_CAP`) and **never calls `ladderEnsurePack`** — a model call mid-thumb is the wrong trade and would stall the scroll. An uncached card degrades to Reversed, which is free.
 
 ### Deep Dives: archive, resurfacing, drill cadence
 A dive is no longer a flat on-demand shelf — it carries a **miss / hard / easy status** that sets how often it comes back.
@@ -119,7 +131,7 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 - Adaptive difficulty 1–5, streak±3 shifts difficulty, rolling hit rate over last 20
 
 ### Special screens
-`srs-review` — Spaced repetition flashcard review (flip or multiple-choice mode)
+`srs-review` — Spaced repetition flashcard review. Default mode is **Ladder** (presentation follows the card's `ladder_level`, see Mastery ladder above); Flip and MC are manual overrides that pin rung 0.
 `anki-input` — Add Flashcard (3 modes: both sides / I have front / I have back, Claude generates missing side)
 `recs` — Recs screen: horizontal tab strip (Listen, Books, Articles, Movies, TV, Music, Other; active tab in `localStorage['recs_active_tab']`). Listen tab = the existing Listen feature, logic unchanged (`#screen-listen` now nested as the Listen pane, no longer a routed `.screen`). Other tabs render from `recommendations` filtered by media_type. Long-press / right-click a row → action sheet (Mark consumed / Skip / Delete). Podcasts captured as recs land in the Other tab.
 `rec-add` — Recommendation capture (reached from Add menu `data-add="rec"` and Recs `+ Add`). **Fire-and-forget** (like Listen Later): "Look it up" saves the raw entry immediately (`captureRec`), returns home with a toast, then `recEnrich` runs a two-pass Claude lookup in the background (pass 1 knowledge-only; pass 2 adds `web_search_20250305` only when pass 1 returns `needs_search`) and patches the row on a confident match. Ambiguous/no-match/error leaves the raw row — fix via the Recs action-sheet **Edit** modal (`openRecEditModal`). Dedicated fetch (NOT `callClaude`), model `claude-sonnet-4-5`. Media-type chip is an **authoritative** filter (movie↔tv the only allowed fuzziness; titles read literally, not expanded to famous superstrings). Region assumed **US** for streaming/links. Action sheet: Mark consumed / Edit / Skip / Delete.

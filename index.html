@@ -769,6 +769,16 @@
     .srs-done-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 20px; }
     .srs-done-stats { display: flex; gap: 20px; font-size: 0.85rem; font-weight: 600; }
     .srs-stat-easy { color: #256b30; } .srs-stat-hard { color: var(--muted); } .srs-stat-miss { color: #7a2525; }
+    /* Mastery ladder — one quiet line above the card. Filled dots are the rung
+       you're being asked at; sage means this card has reached the top. */
+    .srs-rung { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; margin: -10px 0 14px; min-height: 1em; opacity: 0.75; }
+    .srs-rung-dots { letter-spacing: 0.22em; margin-right: 8px; }
+    .srs-rung.mastered { color: var(--accent-3); opacity: 1; }
+    .srs-rate-suggest { outline: 2px solid currentColor; outline-offset: 2px; }
+    /* Produce rung */
+    .srs-prod { display: flex; flex-direction: column; }
+    .srs-prod-fb { background: var(--surface); border-radius: var(--radius); padding: 16px; line-height: 1.5; margin: 14px 0 12px; font-size: 0.92rem; }
+    .srs-prod-answer { line-height: 1.5; font-size: 0.92rem; padding: 0 2px 4px; }
     /* Mode toggle in header */
     .srs-mode-toggle { display: flex; gap: 4px; }
     .srs-mode-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 0.78rem; color: var(--muted); cursor: pointer; font-family: var(--font); }
@@ -2136,12 +2146,14 @@
     <button class="btn-back" data-back="home">←</button>
     <span class="activity-title">Flashcard Review</span>
     <div class="srs-mode-toggle">
-      <button class="srs-mode-btn active" data-srs-mode="flip">Flip</button>
+      <button class="srs-mode-btn active" data-srs-mode="ladder">Ladder</button>
+      <button class="srs-mode-btn" data-srs-mode="flip">Flip</button>
       <button class="srs-mode-btn" data-srs-mode="mc">MC</button>
     </div>
     <button class="btn-settings" id="srs-edit-btn" title="Edit this card" style="margin-left:4px;font-size:1.05rem;display:none">✎</button>
   </div>
   <div class="srs-progress" id="srs-progress"></div>
+  <div class="srs-rung" id="srs-rung"></div>
   <div class="srs-card-area" id="srs-card-area">
     <!-- card renders here -->
   </div>
@@ -5032,9 +5044,236 @@ function sm2(card, rating) {
   return { interval, ease_factor, next_review: localDateStr(next), status: 'review' };
 }
 
+// ── Mastery ladder ────────────────────────────────────────────────────────
+// Knowing a flashcard and knowing the thing are different. You can ace
+// "tendentious → expressing a strong opinion" forever without being able to
+// produce the word, recognise it reworded, or use it. So each card carries a
+// rung that decides HOW it is asked; sm2() above still decides WHEN.
+//
+//   0 Recognize     front → back, the plain flip
+//   1 Reversed      back → produce the front
+//   2 Reworded      a paraphrase, or a cloze sentence with the term blanked
+//   3 Discriminate  four near-miss usages, one right
+//   4 Produce       write or speak it; Claude grades hit / partial / miss
+//
+// Rungs 2 and up need generated content, cached on the row. Every path here
+// degrades DOWN to a rung the card can actually support rather than erroring,
+// so an offline or ungenerated card is always still reviewable.
+const LADDER_MAX = 4;
+const LADDER_PROMOTE_STREAK = 2;   // consecutive Easy at a rung before it climbs
+const LADDER_MASTERY_MULT = 1.3;   // interval bump once a card is at the top rung
+const LADDER_MAX_INTERVAL = 365;   // ceiling, so the multiplier can't retire a card
+const LADDER_PACK_V = 1;           // bump to force every pack to regenerate
+const LADDER_WAIT_MS = 2500;       // longest we hold the screen for a first-time pack
+const FEED_LADDER_CAP = 2;         // the scroll feed never asks above Reworded
+const LADDER_NAMES = ['Recognize', 'Reversed', 'Reworded', 'Discriminate', 'Produce'];
+
+function ladderLevel(card) {
+  const n = Number(card && card.ladder_level);
+  return Number.isFinite(n) ? Math.max(0, Math.min(LADDER_MAX, Math.trunc(n))) : 0;
+}
+function ladderStreak(card) {
+  const n = Number(card && card.ladder_streak);
+  return Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0;
+}
+
+// Cheap stable fingerprint (FNV-1a) of the card's text. If front or back
+// changes by ANY route — the edit modal, the MCP server, another device — the
+// cached pack no longer matches and is treated as absent. The cache heals
+// itself; the explicit invalidation on save is just tidiness on top.
+function ladderFingerprint(front, back) {
+  const s = String(front || '') + '␟' + String(back || '');
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return (h >>> 0).toString(36);
+}
+
+// The cached pack, or null. PostgREST hands jsonb back already parsed — the
+// string branch is only for a row that round-tripped through localStorage.
+function ladderPack(card) {
+  if (!card) return null;
+  let v = card.variants;
+  if (typeof v === 'string') { try { v = JSON.parse(v); } catch (e) { return null; } }
+  if (!v || typeof v !== 'object') return null;
+  if (v.v !== LADDER_PACK_V) return null;
+  if (card.variants_src && v.src && card.variants_src !== v.src) return null;
+  if (ladderFingerprint(card.front, card.back) !== v.src) return null;   // card was edited
+  return v;
+}
+
+// The rung to actually present. Walks DOWN from the stored level until it
+// finds one this card can support right now. `cap` is the ceiling a surface
+// imposes — the scroll feed passes FEED_LADDER_CAP.
+function ladderRung(card, cap) {
+  const ceiling = (cap === null || cap === undefined) ? LADDER_MAX : cap;
+  let lvl = Math.min(ladderLevel(card), ceiling);
+  const v = ladderPack(card);
+  const live = hasSession() && navigator.onLine;
+  if (lvl === 4 && !(live && v && v.produce && v.produce.prompt)) lvl = 3;
+  if (lvl === 3 && !(v && v.discriminate && Array.isArray(v.discriminate.options)
+                     && v.discriminate.options.length >= 3
+                     && v.discriminate.options.some(o => o && o.correct))) lvl = 2;
+  if (lvl === 2 && !(v && v.reworded && v.reworded.prompt)) lvl = 1;
+  if (lvl === 1 && !(card.back && String(card.back).trim())) lvl = 0;
+  return lvl;
+}
+
+// The transition. `shown` is the rung the user was actually asked at: an Easy
+// can never buy a rung you weren't tested on, which is what keeps the scroll
+// feed's rung-2 cap honest.
+function ladderNext(card, rating, shown) {
+  const lvl = ladderLevel(card), streak = ladderStreak(card);
+  if (rating === 0) return { ladder_level: Math.max(0, lvl - 1), ladder_streak: 0 };
+  if (rating === 1) return { ladder_level: lvl, ladder_streak: 0 };
+  if (shown !== null && shown !== undefined && shown < lvl)
+    return { ladder_level: lvl, ladder_streak: streak };   // easier framing, no credit
+  const s = streak + 1;
+  if (s >= LADDER_PROMOTE_STREAK && lvl < LADDER_MAX)
+    return { ladder_level: lvl + 1, ladder_streak: 0 };
+  return { ladder_level: lvl, ladder_streak: Math.min(s, LADDER_PROMOTE_STREAK) };
+}
+
+// The single write-shape for grading a flashcard, used by BOTH the review
+// screen and the scroll feed so the two can't drift. sm2() is untouched, and
+// the mastery multiplier lives here rather than in it, so the SM-2 tests stay
+// a clean regression canary.
+function ladderApply(card, rating, shown) {
+  const next = ladderNext(card, rating, shown);
+  const upd = sm2(card, rating);
+  if (next.ladder_level >= LADDER_MAX && rating === 2)
+    upd.interval = Math.round(upd.interval * LADDER_MASTERY_MULT);
+  upd.interval = Math.max(1, Math.min(LADDER_MAX_INTERVAL, upd.interval));
+  const d = new Date(); d.setDate(d.getDate() + upd.interval);
+  upd.next_review = localDateStr(d);
+  upd.ladder_level = next.ladder_level;
+  upd.ladder_streak = next.ladder_streak;
+  if (next.ladder_level >= LADDER_MAX && !card.mastered_at) upd.mastered_at = new Date().toISOString();
+  if (rating === 0) upd.last_missed_at = new Date().toISOString();  // fresh-gap signal for cluster ripeness
+  return upd;
+}
+
+// ── Variant pack: generated once per card, cached on the row ──────────────
+// One call produces every rung's content at once. It fires lazily, the first
+// time a card actually needs a rung above Reversed, and again only if the
+// card's text is edited. Nothing regenerates on render — the old MC path paid
+// for a Sonnet call on EVERY render and cached none of it.
+const ladderPending = new Map();   // card id → in-flight promise, so a prefetch and a render can't double-spend
+
+function ladderPackPrompt(card) {
+  return 'Build a practice pack for one flashcard, so it can be tested in harder ways than a plain flip.\n\n'
+    + 'FRONT (the cue): "' + card.front + '"\n'
+    + 'BACK (the answer): "' + card.back + '"\n\n'
+    + 'Return JSON with exactly these four keys:\n\n'
+    + '"reworded": {"kind":"cloze" or "paraphrase","prompt":"..."} — asks for the SAME thing as the back, worded differently. '
+    + 'If the front is a term or phrase, prefer "cloze": one natural sentence that uses the term correctly, with the term itself replaced by ____ . '
+    + 'Otherwise "paraphrase": the same question asked in genuinely different words. The prompt must never contain the answer.\n\n'
+    + '"discriminate": {"stem":"...","options":[{"text":"...","correct":true},{"text":"...","correct":false},{"text":"...","correct":false},{"text":"...","correct":false}],"why":"..."} — '
+    + 'four short sentences, exactly one of which uses or states it correctly. The three wrong ones must be NEAR misses: a neighbouring concept, '
+    + 'a common confusion, a subtly wrong scope or intensity. Nothing obviously silly. "why" is one sentence on what separates the right one.\n\n'
+    + '"produce": {"prompt":"...","criteria":["...","..."]} — an instruction to write or say one or two sentences that USE or EXPLAIN this in their own words. '
+    + '2 to 4 short criteria a good answer must satisfy.\n\n'
+    + '"mc_distractors": ["...","...","..."] — three wrong answers with the same shape and length as the back, for a plain multiple-choice version of the card.\n\n'
+    + 'Plain sentences. No markdown, no emoji, no preamble.';
+}
+
+// Validate hard. A half-formed sub-object is dropped entirely, and ladderRung
+// then degrades that rung away instead of rendering a broken question.
+function ladderNormalizePack(raw, card) {
+  if (!raw || typeof raw !== 'object') return null;
+  const src = ladderFingerprint(card.front, card.back);
+  const backNorm = String(card.back || '').trim().toLowerCase();
+  const pack = { v: LADDER_PACK_V, src, at: new Date().toISOString() };
+
+  const rw = raw.reworded;
+  if (rw && typeof rw.prompt === 'string' && rw.prompt.trim()
+      && !(backNorm && rw.prompt.toLowerCase().includes(backNorm))) {   // answer-leak guard
+    pack.reworded = { kind: rw.kind === 'cloze' ? 'cloze' : 'paraphrase', prompt: rw.prompt.trim() };
+  }
+
+  const dc = raw.discriminate;
+  if (dc && Array.isArray(dc.options)) {
+    const opts = dc.options
+      .filter(o => o && typeof o.text === 'string' && o.text.trim())
+      .slice(0, 5)
+      .map(o => ({ text: o.text.trim(), correct: !!o.correct }));
+    if (opts.length >= 3 && opts.filter(o => o.correct).length === 1) {
+      pack.discriminate = {
+        stem: (typeof dc.stem === 'string' && dc.stem.trim()) || 'Which one is right?',
+        options: opts,
+        why: typeof dc.why === 'string' ? dc.why.trim() : '',
+      };
+    }
+  }
+
+  const pr = raw.produce;
+  if (pr && typeof pr.prompt === 'string' && pr.prompt.trim()) {
+    pack.produce = {
+      prompt: pr.prompt.trim(),
+      criteria: Array.isArray(pr.criteria) ? pr.criteria.filter(c => typeof c === 'string' && c.trim()).slice(0, 4) : [],
+    };
+  }
+
+  // A distractor equal to the back would make two options correct.
+  const md = Array.isArray(raw.mc_distractors) ? raw.mc_distractors : [];
+  const dist = md.filter(s => typeof s === 'string' && s.trim() && s.trim().toLowerCase() !== backNorm)
+                 .map(s => s.trim()).slice(0, 3);
+  if (dist.length === 3) pack.mc = { distractors: dist };
+
+  return (pack.reworded || pack.discriminate || pack.produce || pack.mc) ? pack : null;
+}
+
+// Returns the pack, generating and persisting it if needed. Never throws:
+// offline, signed out, or a bad response all resolve to null and the caller
+// falls back to a lower rung.
+//
+// Haiku first, Sonnet only on retry. Near-miss distractors are the one thing
+// the cheap model reliably fumbles, so a missing `discriminate` after
+// validation is the signal to pay for the better one — which also means the
+// validator earns its keep instead of silently swallowing a weak pack.
+async function ladderEnsurePack(card) {
+  if (!card || !card.id) return null;
+  const have = ladderPack(card);
+  if (have) return have;
+  if (ladderPending.has(card.id)) return ladderPending.get(card.id);
+  if (!hasSession() || !navigator.onLine) return null;
+  const p = (async () => {
+    const prompt = ladderPackPrompt(card);
+    let pack = null;
+    try { pack = ladderNormalizePack(await callClaude(prompt, { model: FEED_MODEL, max_tokens: 900 }), card); } catch (e) {}
+    if (!pack || !pack.discriminate) {
+      try { pack = ladderNormalizePack(await callClaude(prompt, { model: CLAUDE_MODEL, max_tokens: 900 }), card) || pack; } catch (e) {}
+    }
+    if (!pack) return null;
+    card.variants = pack; card.variants_src = pack.src;   // optimistic: usable this session even if the write fails
+    try { await srsUpdate(card.id, { variants: pack, variants_src: pack.src }); } catch (e) {}
+    return pack;
+  })();
+  ladderPending.set(card.id, p);
+  p.finally(() => ladderPending.delete(card.id));
+  return p;
+}
+
+// One card ahead, fire-and-forget, so the pack is warm before you get there.
+// Strictly one — a fifty-card queue firing packs in parallel is real money.
+function ladderPrefetchNext() {
+  const next = srsQueue[srsCurrent + 1];
+  if (!next || srsMode !== 'ladder') return;
+  if (ladderLevel(next) < 2 || ladderPack(next)) return;
+  ladderEnsurePack(next).catch(() => {});
+}
+
 // Session state
-let srsQueue = [], srsCurrent = 0, srsStats = { easy:0, hard:0, miss:0 };
-let srsMode = localStorage.getItem('srsMode') || 'flip';
+let srsQueue = [], srsCurrent = 0, srsStats = { easy:0, hard:0, miss:0, promoted:0, mastered:0 };
+// The ladder becomes the default mode, but only for people who never chose
+// one. 'flip' is indistinguishable from "never touched the toggle", so a
+// one-time flag promotes flip → ladder and leaves a deliberate MC choice alone.
+if (!localStorage.getItem('srsModeV2')) {
+  localStorage.setItem('srsModeV2', '1');
+  if ((localStorage.getItem('srsMode') || 'flip') === 'flip') localStorage.setItem('srsMode', 'ladder');
+}
+let srsMode = localStorage.getItem('srsMode') || 'ladder';
+let srsShownLevel = 0;    // the rung actually presented for the current card
+let srsRenderToken = 0;   // guards an async render against the card changing under it
 // srsFlipped = which face is showing right now (a tap turns it either way).
 // srsRevealed = has the back ever been shown for this card — once it has, the
 // rate buttons stay put, so flipping back to re-read the prompt doesn't make
@@ -5060,11 +5299,16 @@ async function loadSrsReview() {
   const prog = document.getElementById('srs-progress');
   area.innerHTML = '<p style="text-align:center;color:var(--muted);padding:32px 0">Loading…</p>';
   prog.textContent = '';
+  document.getElementById('srs-rung').textContent = '';
   document.getElementById('srs-edit-btn').style.display = 'none';
   document.getElementById('srs-controls').innerHTML = '';
+  // A Produce rung abandoned mid-recording would leave the recogniser writing
+  // into a textarea that no longer exists.
+  if (arRecording) arStopRecording();
+  arUseRecTargets(AR_REC_DEFAULT);
   try {
     srsQueue = await srsGetDue();
-    srsCurrent = 0; srsStats = { easy:0, hard:0, miss:0 };
+    srsCurrent = 0; srsStats = { easy:0, hard:0, miss:0, promoted:0, mastered:0 };
     if (!srsQueue || !srsQueue.length) { renderSrsDone(); return; }
     renderSrsCard();
   } catch(e) {
@@ -5072,42 +5316,244 @@ async function loadSrsReview() {
   }
 }
 
-function renderSrsCard() {
+async function renderSrsCard() {
   if (srsCurrent >= srsQueue.length) { renderSrsDone(); return; }
+  const token = ++srsRenderToken;
   const card = srsQueue[srsCurrent];
   document.getElementById('srs-edit-btn').style.display = '';
   const prog = document.getElementById('srs-progress');
   prog.textContent = (srsCurrent + 1) + ' / ' + srsQueue.length;
   srsFlipped = false; srsRevealed = false;
-  if (srsMode === 'flip') renderSrsFlip(card);
-  else renderSrsMC(card);
+
+  // Flip and MC are an override, not a suggestion — picking one pins every
+  // card to that presentation, and srsShownLevel 0 means it earns no rung.
+  if (srsMode === 'flip') { srsRenderRung(card, 0); return; }
+  if (srsMode === 'mc')   { srsShownLevel = 0; srsRenderRungLine(card, 0); renderSrsMC(card); return; }
+
+  let rung = ladderRung(card);
+  // First time a card needs generated content, hold the screen briefly rather
+  // than dropping a rung. Every card after this one was prefetched.
+  if (ladderLevel(card) >= 2 && !ladderPack(card) && hasSession() && navigator.onLine) {
+    document.getElementById('srs-card-area').innerHTML =
+      '<p style="text-align:center;color:var(--muted);padding:32px 0">Preparing…</p>';
+    document.getElementById('srs-controls').innerHTML = '';
+    document.getElementById('srs-rung').textContent = '';
+    await Promise.race([ladderEnsurePack(card), new Promise(r => setTimeout(r, LADDER_WAIT_MS))]);
+    if (token !== srsRenderToken) return;   // user advanced while we waited
+    rung = ladderRung(card);
+  }
+  srsRenderRung(card, rung);
+  ladderPrefetchNext();
 }
 
-function renderSrsFlip(card) {
+function srsRenderRung(card, rung) {
+  srsShownLevel = rung;
+  srsRenderRungLine(card, rung);
+  const pack = ladderPack(card);
+  if (rung === 4)      renderSrsProduce(card, pack);
+  else if (rung === 3) renderSrsDiscriminate(card, pack);
+  else if (rung === 2) renderSrsReworded(card, pack);
+  else if (rung === 1) renderSrsReverse(card);
+  else                 renderSrsFlip(card);
+}
+
+// One quiet line. The dots are what you're being asked right now; the mastered
+// treatment is a property of the card, so it stays on even when the Produce
+// rung has degraded away because you're offline.
+function srsRenderRungLine(card, rung) {
+  const el = document.getElementById('srs-rung');
+  if (!el) return;
+  const stored = ladderLevel(card);
+  const dots = '●'.repeat(rung + 1) + '○'.repeat(LADDER_MAX - rung);
+  el.className = 'srs-rung' + (stored >= LADDER_MAX ? ' mastered' : '');
+  el.innerHTML = '<span class="srs-rung-dots">' + dots + '</span>'
+    + esc(stored >= LADDER_MAX ? 'Mastered' : LADDER_NAMES[rung]);
+}
+
+// Shared flip chrome, so rungs 0/1/2 all reuse toggleSrsCard() and the
+// keyboard path rather than growing three copies of the same markup.
+function srsFlipShell(frontHtml, frontHint, backHtml, backHint) {
   const area = document.getElementById('srs-card-area');
   const ctrl = document.getElementById('srs-controls');
   area.innerHTML =
     '<div class="srs-card-wrap" id="srs-flip-wrap">' +
       '<div class="srs-card" id="srs-flip-card">' +
-        '<div class="srs-card-face">' +
-          '<span class="srs-card-text">' + esc(card.front) + '</span>' +
-          '<span class="srs-card-hint">Tap to reveal</span>' +
+        '<div class="srs-card-face">' + frontHtml +
+          '<span class="srs-card-hint">' + esc(frontHint) + '</span>' +
         '</div>' +
-        '<div class="srs-card-face srs-card-back">' +
-          '<span class="srs-card-text">' + esc(card.back) + '</span>' +
-          '<span class="srs-card-hint">Tap to see the prompt</span>' +
+        '<div class="srs-card-face srs-card-back">' + backHtml +
+          '<span class="srs-card-hint">' + esc(backHint || 'Tap to see the prompt') + '</span>' +
         '</div>' +
       '</div>' +
     '</div>';
-  ctrl.innerHTML = '<div class="srs-rate-btns" id="srs-rate-btns" style="display:none">' +
-    '<button class="btn srs-btn-miss" data-rate="0">Miss</button>' +
-    '<button class="btn srs-btn-hard" data-rate="1">Hard</button>' +
-    '<button class="btn srs-btn-easy" data-rate="2">Easy</button>' +
-  '</div>';
+  ctrl.innerHTML = srsRateBtnsHtml(true);
   document.getElementById('srs-flip-wrap').addEventListener('click', toggleSrsCard);
-  ctrl.querySelectorAll('[data-rate]').forEach(btn => {
+  srsWireRateBtns();
+}
+
+function srsRateBtnsHtml(hidden, suggest) {
+  const cls = r => 'btn ' + ['srs-btn-miss', 'srs-btn-hard', 'srs-btn-easy'][r]
+    + (suggest === r ? ' srs-rate-suggest' : '');
+  return '<div class="srs-rate-btns" id="srs-rate-btns"' + (hidden ? ' style="display:none"' : '') + '>' +
+    '<button class="' + cls(0) + '" data-rate="0">Miss</button>' +
+    '<button class="' + cls(1) + '" data-rate="1">Hard</button>' +
+    '<button class="' + cls(2) + '" data-rate="2">Easy</button>' +
+  '</div>';
+}
+
+function srsWireRateBtns() {
+  document.getElementById('srs-controls').querySelectorAll('[data-rate]').forEach(btn => {
     btn.addEventListener('click', () => rateSrsCard(parseInt(btn.dataset.rate)));
   });
+}
+
+// Rung 0 — recognise it. The original card.
+function renderSrsFlip(card) {
+  srsFlipShell(
+    '<span class="srs-card-text">' + esc(card.front) + '</span>', 'Tap to reveal',
+    '<span class="srs-card-text">' + esc(card.back) + '</span>');
+}
+
+// Rung 1 — the definition, produce the term. Costs nothing: no Claude, no cache.
+function renderSrsReverse(card) {
+  srsFlipShell(
+    '<span class="srs-card-text">' + esc(card.back) + '</span>', 'Name it, then tap to check',
+    '<span class="srs-card-text">' + esc(card.front) + '</span>');
+}
+
+// Rung 2 — a paraphrase, or a cloze sentence with the term blanked. The reveal
+// shows BOTH sides, so a cloze (answer = the term) and a paraphrase (answer =
+// the back) need no branch and there's never a doubt about what was asked.
+function renderSrsReworded(card, pack) {
+  srsFlipShell(
+    '<span class="srs-card-text">' + esc(pack.reworded.prompt) + '</span>',
+    pack.reworded.kind === 'cloze' ? 'Fill the blank, then tap' : 'Answer, then tap',
+    '<span class="srs-card-text"><strong>' + esc(card.front) + '</strong></span>' +
+    '<span class="srs-card-text" style="margin-top:10px">' + esc(card.back) + '</span>');
+}
+
+// Rung 3 — near-miss usages. Correctness is by INDEX, never a string compare:
+// the options differ from each other by a word, and matching on esc()'d text in
+// a data attribute is exactly the wrong tool for that.
+function renderSrsDiscriminate(card, pack) {
+  const area = document.getElementById('srs-card-area');
+  const ctrl = document.getElementById('srs-controls');
+  const opts = pack.discriminate.options.map(o => ({ text: o.text, correct: o.correct }));
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
+  area.innerHTML =
+    '<div class="srs-card-mc"><span class="srs-card-text">' + esc(pack.discriminate.stem) + '</span></div>' +
+    '<div class="srs-mc-options" id="srs-mc-opts">' +
+      opts.map((o, n) => '<button class="srs-mc-btn" data-n="' + n + '">' + esc(o.text) + '</button>').join('') +
+    '</div>' +
+    '<div id="srs-disc-why" style="display:none;color:var(--muted);font-size:0.85rem;line-height:1.5;padding:4px 2px"></div>';
+  ctrl.innerHTML = '';
+  const optsEl = document.getElementById('srs-mc-opts');
+  let answered = false;
+  optsEl.addEventListener('click', e => {
+    const btn = e.target.closest('.srs-mc-btn');
+    if (!btn || answered) return;
+    answered = true;
+    const picked = opts[+btn.dataset.n];
+    btn.classList.add(picked.correct ? 'srs-mc-correct' : 'srs-mc-wrong');
+    optsEl.querySelectorAll('.srs-mc-btn').forEach((b, n) => {
+      if (opts[n].correct) b.classList.add('srs-mc-reveal');
+    });
+    const why = document.getElementById('srs-disc-why');
+    why.style.display = '';
+    why.textContent = (pack.discriminate.why ? pack.discriminate.why + ' ' : '') + card.back;
+    ctrl.innerHTML = srsRateBtnsHtml(false, picked.correct ? 2 : 0);
+    srsWireRateBtns();
+  });
+}
+
+// Rung 4 — produce it. Reuses Active Recall's speech recogniser wholesale;
+// only the prompt is card-scoped rather than dive-scoped. #srs-controls stays
+// empty until an answer is submitted, so there's no way to grade this rung
+// without actually attempting it.
+function renderSrsProduce(card, pack) {
+  const area = document.getElementById('srs-card-area');
+  const ctrl = document.getElementById('srs-controls');
+  const canSpeak = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  area.innerHTML =
+    '<div class="srs-card-mc"><span class="srs-card-text">' + esc(pack.produce.prompt) + '</span></div>' +
+    '<div class="srs-prod">' +
+      (canSpeak ? '<div class="srs-mode-toggle" id="srs-prod-modes" style="justify-content:center;margin-bottom:10px">' +
+        '<button class="srs-mode-btn active" data-prod-mode="type">Type</button>' +
+        '<button class="srs-mode-btn" data-prod-mode="speak">Speak</button>' +
+      '</div>' : '') +
+      '<textarea id="srs-prod-input" class="anki-textarea" rows="5" placeholder="In your own words…"></textarea>' +
+      '<div id="srs-prod-speak" style="display:none;margin-top:10px">' +
+        '<button class="btn btn-outline" id="srs-prod-record" style="width:100%">Start recording</button>' +
+        '<p class="framing" id="srs-prod-state" style="font-size:0.82rem;margin-top:8px"></p>' +
+      '</div>' +
+      '<button class="btn btn-primary" id="srs-prod-submit" style="width:100%;margin-top:12px">Submit</button>' +
+      '<div id="srs-prod-out"></div>' +
+    '</div>';
+  ctrl.innerHTML = '';
+  if (arRecording) arStopRecording();
+  arUseRecTargets({ transcript: 'srs-prod-input', btn: 'srs-prod-record', state: 'srs-prod-state' });
+
+  document.getElementById('srs-prod-modes')?.addEventListener('click', e => {
+    const b = e.target.closest('[data-prod-mode]');
+    if (!b) return;
+    document.querySelectorAll('#srs-prod-modes .srs-mode-btn').forEach(x => x.classList.toggle('active', x === b));
+    document.getElementById('srs-prod-speak').style.display = b.dataset.prodMode === 'speak' ? '' : 'none';
+    if (b.dataset.prodMode !== 'speak' && arRecording) arStopRecording();
+  });
+  document.getElementById('srs-prod-record')?.addEventListener('click', () => {
+    if (arRecording) arStopRecording(); else arStartRecording();
+  });
+  document.getElementById('srs-prod-submit').addEventListener('click', () => srsProduceSubmit(card, pack));
+}
+
+async function srsProduceSubmit(card, pack) {
+  if (arRecording) arStopRecording();
+  const input = document.getElementById('srs-prod-input');
+  const answer = input ? input.value.trim() : '';
+  if (!answer) { showToast('Say or write something first'); return; }
+  const token = srsRenderToken;
+  const btn = document.getElementById('srs-prod-submit');
+  btn.textContent = 'Grading…'; btn.disabled = true;
+  let graded = null;
+  try { graded = await ladderGradeProduce(card, pack, answer); } catch (e) {}
+  if (token !== srsRenderToken) return;   // rated or navigated away mid-grade
+  btn.style.display = 'none';
+  srsProduceShowResult(card, graded);
+}
+
+async function ladderGradeProduce(card, pack, answer) {
+  const crit = pack.produce.criteria || [];
+  return await callClaudeAR(
+    'You are grading one flashcard answered at the hardest level: the user had to produce the idea in their own words.\n\n'
+    + 'The card:\nFRONT: "' + card.front + '"\nBACK: "' + card.back + '"\n\n'
+    + 'They were asked: "' + pack.produce.prompt + '"\n'
+    + (crit.length ? 'A good answer satisfies:\n' + crit.map((c, i) => (i + 1) + '. ' + c).join('\n') + '\n' : '')
+    + '\nTheir answer:\n"' + answer + '"\n\n'
+    + 'Be honest but encouraging. Wording does not have to match — meaning does. Do not penalise brevity if the meaning is right.\n'
+    + 'Return JSON only with exactly two fields: "verdict" (one of "hit", "partial", "miss") and '
+    + '"feedback" (1 to 2 sentences, second person, naming exactly what landed and what was missing — no score, grade, number, letter, or percentage).',
+    500);
+}
+
+// Claude proposes the grade, you confirm it. One tap, and the rating still
+// flows through the single rateSrsCard write path — no second set of books.
+// A failed or unavailable grade lands here too, just without the prose.
+function srsProduceShowResult(card, graded) {
+  const RATING_FOR = { hit: 2, partial: 1, miss: 0 };
+  const suggest = graded && RATING_FOR[graded.verdict] !== undefined ? RATING_FOR[graded.verdict] : undefined;
+  const out = document.getElementById('srs-prod-out');
+  if (!out) return;
+  out.innerHTML =
+    '<div class="srs-prod-fb">' +
+      esc(graded && graded.feedback ? graded.feedback : 'Could not grade that one — rate it yourself.') +
+    '</div>' +
+    '<div class="srs-prod-answer">' +
+      '<strong>' + esc(card.front) + '</strong><br>' + esc(card.back) +
+    '</div>';
+  document.getElementById('srs-controls').innerHTML = srsRateBtnsHtml(false, suggest);
+  srsWireRateBtns();
 }
 
 // Shared flip — used by tap (srs-flip-wrap click) and the keyboard path (#14).
@@ -5122,12 +5568,13 @@ function toggleSrsCard() {
   if (srsRevealed) rateEl.style.display = 'flex';
 }
 
-// #14 — Space / Enter flips the flashcard, parity with a tap (both ways). Guarded
-// so it only fires on the SRS review screen in flip mode, with no modal/overlay
-// open and focus outside text inputs. preventDefault stops Space page-scroll.
+// #14 — Space / Enter flips the flashcard, parity with a tap (both ways).
+// Guarded to the SRS review screen with no modal/overlay open and focus outside
+// text inputs. preventDefault stops Space page-scroll. There's no mode check:
+// the #srs-flip-card test below is the real gate, and it's true for every rung
+// that has a flip surface (0, 1, 2) and false for the ones that don't (3, 4).
 document.addEventListener('keydown', e => {
   if (e.key !== ' ' && e.key !== 'Enter') return;
-  if (srsMode !== 'flip') return;
   const screen = document.getElementById('screen-srs-review');
   if (!screen || !screen.classList.contains('active')) return;
   if (!document.getElementById('srs-flip-card')) return;
@@ -5138,62 +5585,59 @@ document.addEventListener('keydown', e => {
   toggleSrsCard();
 });
 
+// Manual MC mode. Distractors come from the cached variant pack — the previous
+// version fired a Sonnet call on EVERY render, including a re-render after an
+// edit, and cached none of it. Correctness is by index now too: the old
+// `btn.dataset.answer === card.back` string compare on esc()'d text was already
+// fragile and would be actively wrong for options that differ by a word.
 async function renderSrsMC(card) {
   const area = document.getElementById('srs-card-area');
   const ctrl = document.getElementById('srs-controls');
   area.innerHTML = '<div class="srs-card-mc"><span class="srs-card-text">' + esc(card.front) + '</span></div>' +
-    '<div class="srs-mc-options" id="srs-mc-opts"><p style="color:var(--muted);font-size:0.85rem;text-align:center;padding:12px">Generating options…</p></div>';
+    '<div class="srs-mc-options" id="srs-mc-opts"><p style="color:var(--muted);font-size:0.85rem;text-align:center;padding:12px">Preparing options…</p></div>';
   ctrl.innerHTML = '';
-  // Generate 3 distractors via Claude
-  let options = [];
-  try {
-    const prompt = 'You are a quiz generator. Given this flashcard:\nFront: ' + card.front + '\nBack: ' + card.back + '\n\nGenerate exactly 3 plausible but WRONG answer options for a multiple-choice quiz. Return ONLY a JSON array of 3 strings, no other text. Example: ["wrong1","wrong2","wrong3"]';
-    const resp = await fetch(SB_URL + '/functions/v1/claude', {
-      method: 'POST',
-      headers: await claudeHeaders(),
-      body: JSON.stringify({ model: 'claude-sonnet-4-6', max_tokens: 200, messages: [{ role: 'user', content: prompt }] }),
-    });
-    const data = await resp.json();
-    const raw = data.content?.[0]?.text || '[]';
-    options = JSON.parse(raw.match(/\[[\s\S]*\]/)?.[0] || '[]');
-  } catch(e) {}
-  if (options.length < 3) options = ['(option A)', '(option B)', '(option C)'];
-  const all = [...options, card.back].sort(() => Math.random() - 0.5);
+  const token = srsRenderToken;
+  let pack = ladderPack(card);
+  if (!pack || !pack.mc) pack = await ladderEnsurePack(card);
+  if (token !== srsRenderToken) return;   // navigated away mid-flight
+  const distractors = (pack && pack.mc && pack.mc.distractors) || ['(option A)', '(option B)', '(option C)'];
+  const opts = [{ text: card.back, correct: true }, ...distractors.map(t => ({ text: t, correct: false }))];
+  for (let i = opts.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]];
+  }
   const optsEl = document.getElementById('srs-mc-opts');
   if (!optsEl) return; // navigated away
-  optsEl.innerHTML = all.map(opt =>
-    '<button class="srs-mc-btn" data-answer="' + esc(opt) + '">' + esc(opt) + '</button>'
+  optsEl.innerHTML = opts.map((o, n) =>
+    '<button class="srs-mc-btn" data-n="' + n + '">' + esc(o.text) + '</button>'
   ).join('');
   let answered = false;
-  optsEl.querySelectorAll('.srs-mc-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      if (answered) return;
-      answered = true;
-      const correct = btn.dataset.answer === card.back;
-      btn.classList.add(correct ? 'srs-mc-correct' : 'srs-mc-wrong');
-      optsEl.querySelectorAll('.srs-mc-btn').forEach(b => {
-        if (b.dataset.answer === card.back) b.classList.add('srs-mc-reveal');
-      });
-      // Show rate buttons
-      ctrl.innerHTML = '<div class="srs-rate-btns">' +
-        '<button class="btn srs-btn-miss" data-rate="0">Miss</button>' +
-        '<button class="btn srs-btn-hard" data-rate="1">Hard</button>' +
-        '<button class="btn srs-btn-easy" data-rate="2">Easy</button>' +
-      '</div>';
-      ctrl.querySelectorAll('[data-rate]').forEach(b => {
-        b.addEventListener('click', () => rateSrsCard(parseInt(b.dataset.rate)));
-      });
+  optsEl.addEventListener('click', e => {
+    const btn = e.target.closest('.srs-mc-btn');
+    if (!btn || answered) return;
+    answered = true;
+    const picked = opts[+btn.dataset.n];
+    btn.classList.add(picked.correct ? 'srs-mc-correct' : 'srs-mc-wrong');
+    optsEl.querySelectorAll('.srs-mc-btn').forEach((b, n) => {
+      if (opts[n].correct) b.classList.add('srs-mc-reveal');
     });
+    ctrl.innerHTML = srsRateBtnsHtml(false, picked.correct ? 2 : 0);
+    srsWireRateBtns();
   });
 }
 
 async function rateSrsCard(rating) {
   const card = srsQueue[srsCurrent];
+  if (!card) return;
   if (rating === 0) srsStats.miss++;
   else if (rating === 1) srsStats.hard++;
   else srsStats.easy++;
-  const updates = sm2(card, rating);
-  if (rating === 0) updates.last_missed_at = new Date().toISOString(); // fresh-gap signal for cluster ripeness
+  const before = ladderLevel(card);
+  // srsShownLevel, not the stored level: a rung you weren't actually asked at
+  // earns no credit.
+  const updates = ladderApply(card, rating, srsShownLevel);
+  if (updates.ladder_level > before) srsStats.promoted++;
+  if (updates.ladder_level >= LADDER_MAX && before < LADDER_MAX) srsStats.mastered++;
+  Object.assign(card, updates);   // after ladderApply, which reads the pre-update row
   try { await srsUpdate(card.id, updates); } catch(e) {}
   srsCurrent++;
   renderSrsCard();
@@ -5204,6 +5648,8 @@ function renderSrsDone() {
   const prog = document.getElementById('srs-progress');
   document.getElementById('srs-edit-btn').style.display = 'none';
   prog.textContent = '';
+  const rungEl = document.getElementById('srs-rung');
+  if (rungEl) { rungEl.textContent = ''; rungEl.className = 'srs-rung'; }
   document.getElementById('srs-controls').innerHTML = '';
   const total = srsStats.easy + srsStats.hard + srsStats.miss;
   area.innerHTML =
@@ -5216,6 +5662,12 @@ function renderSrsDone() {
         '<span class="srs-stat-hard">~ ' + srsStats.hard + '</span>' +
         '<span class="srs-stat-miss">✗ ' + srsStats.miss + '</span>' +
       '</div>' +
+      // The only place the ladder surfaces outside the review itself. No badge
+      // on home, no running total — just what moved, this session.
+      (srsStats.promoted ? '<div class="srs-done-sub" style="margin:16px 0 0">' +
+        srsStats.promoted + ' card' + (srsStats.promoted === 1 ? '' : 's') + ' moved up a rung.</div>' : '') +
+      (srsStats.mastered ? '<div class="srs-done-sub" style="margin:2px 0 0;color:var(--accent-3)">' +
+        srsStats.mastered + ' reached mastered.</div>' : '') +
     '</div>';
   updateDueBadge();
 }
@@ -5229,6 +5681,9 @@ document.querySelectorAll('[data-srs-mode]').forEach(btn => {
     if (srsQueue.length && srsCurrent < srsQueue.length) renderSrsCard();
   });
 });
+// The markup hardcodes Ladder as active; sync it to what's actually stored.
+document.querySelectorAll('[data-srs-mode]').forEach(b =>
+  b.classList.toggle('active', b.dataset.srsMode === srsMode));
 
 // FAB — add card modal
 document.getElementById('srs-fab').addEventListener('click', () => {
@@ -5349,16 +5804,26 @@ document.getElementById('srs-edit-save').addEventListener('click', async () => {
   saveBtn.textContent = 'Saving…'; saveBtn.disabled = true;
   // Optimistic: update the in-session card so the review reflects the edit
   // immediately even if the network write fails.
+  const changed = (card.front !== front) || (card.back !== back);
   card.front = front; card.back = back;
+  const patch = { front, back };
+  // Changed text means the cached variant pack quizzes you on wording that no
+  // longer exists. ladderPack's fingerprint check would already reject it, but
+  // clearing the column stops a stale blob sitting on the row forever and
+  // makes the next rung above Reversed regenerate from the new text.
+  if (changed) {
+    patch.variants = null; patch.variants_src = null;
+    card.variants = null; card.variants_src = null;
+  }
   try {
-    await srsUpdate(card.id, { front, back });
+    await srsUpdate(card.id, patch);
     showToast('Card updated ✓');
   } catch(e) {
     showToast('Updated for this session — sync failed (' + (e.message || 'offline') + ')');
   }
   saveBtn.textContent = 'Save'; saveBtn.disabled = false;
   closeSrsEdit();
-  renderSrsCard(); // re-render with new text (resets flip / regenerates MC)
+  renderSrsCard(); // re-render with new text (resets flip, rebuilds the rung)
 });
 
 // "Remember It" — condense long activity content into a flashcard via Claude,
@@ -6166,7 +6631,19 @@ document.getElementById('ar-type-submit')?.addEventListener('click', async () =>
 });
 
 // ── Speak ──
+// The recogniser writes into an editable textarea, so any surface that wants
+// speech input just points these ids at its own elements. Active Recall's
+// speak mode is the default; the ladder's Produce rung swaps them out and
+// arSetupSpeak() below reclaims them on every AR session.
+const AR_REC_DEFAULT = {
+  transcript: 'ar-speak-transcript', btn: 'ar-record',
+  state: 'ar-record-state', submit: 'ar-speak-submit',
+};
+let arRecTargets = AR_REC_DEFAULT;
+function arUseRecTargets(t) { arRecTargets = t || AR_REC_DEFAULT; }
+
 function arSetupSpeak() {
+  arUseRecTargets(AR_REC_DEFAULT);
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   const live = document.getElementById('ar-speak-live');
   const fb = document.getElementById('ar-speak-fallback');
@@ -6193,7 +6670,8 @@ document.getElementById('ar-record')?.addEventListener('click', () => {
 function arStartRecording() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) return;
-  const transcriptEl = document.getElementById('ar-speak-transcript');
+  const transcriptEl = document.getElementById(arRecTargets.transcript);
+  if (!transcriptEl) return;
   let finalText = transcriptEl.value ? transcriptEl.value.trim() + ' ' : '';
   arRecog = new SR();
   arRecog.continuous = true; arRecog.interimResults = true; arRecog.lang = 'en-US';
@@ -6206,22 +6684,25 @@ function arStartRecording() {
     transcriptEl.value = (finalText + interim).trim();
   };
   arRecog.onerror = ev => {
-    document.getElementById('ar-record-state').textContent = 'Mic error: ' + (ev.error || 'unknown');
+    const st = document.getElementById(arRecTargets.state);
+    if (st) st.textContent = 'Mic error: ' + (ev.error || 'unknown');
     arStopRecording();
   };
   try { arRecog.start(); } catch (e) {}
   arRecording = true;
-  document.getElementById('ar-record').textContent = 'Stop recording';
-  document.getElementById('ar-record-state').textContent = 'Listening…';
+  const rec = document.getElementById(arRecTargets.btn);
+  if (rec) rec.textContent = 'Stop recording';
+  const st = document.getElementById(arRecTargets.state);
+  if (st) st.textContent = 'Listening…';
 }
 function arStopRecording() {
   arRecording = false;
   try { arRecog && arRecog.stop(); } catch (e) {}
-  const rec = document.getElementById('ar-record');
+  const rec = document.getElementById(arRecTargets.btn);
   if (rec) rec.textContent = 'Start recording';
-  const state = document.getElementById('ar-record-state');
-  const transcript = document.getElementById('ar-speak-transcript');
-  const submit = document.getElementById('ar-speak-submit');
+  const state = document.getElementById(arRecTargets.state);
+  const transcript = document.getElementById(arRecTargets.transcript);
+  const submit = arRecTargets.submit ? document.getElementById(arRecTargets.submit) : null;
   if (transcript && transcript.value.trim()) {
     if (state) state.textContent = 'Recorded. Edit if needed, then submit.';
     if (submit) submit.style.display = '';
@@ -8736,21 +9217,35 @@ CARD_SOURCES['due-card'] = async (n) => {
   return fresh.length ? fresh.slice(0, n) : null;
 };
 
+// The feed honours the mastery ladder but caps at Reworded: rung 3 needs four
+// options and rung 4 needs a keyboard, and neither of those is a scroll. It
+// also never GENERATES a pack — paying for a model call mid-thumb is the wrong
+// trade and would stall the scroll — so an uncached rung-2 card quietly
+// degrades to Reversed, which costs nothing and is still a real rung.
 CARD_SPECS['due-card'] = {
   slug: 'due-card',
   sourceOnly: true,
-  render: (d) => '<div class="ai-single">' +
-      '<div class="main-text">' + esc(d.front) + '</div>' +
-      '<div class="due-hint">tap for the answer</div>' +
-    '</div>',
-  renderBack: (d) => '<div class="feed-back-kind">Due flashcard</div>' +
+  render: (d) => {
+    const rung = ladderRung(d, FEED_LADDER_CAP);
+    const prompt = rung === 2 ? ladderPack(d).reworded.prompt : (rung === 1 ? d.back : d.front);
+    return '<div class="ai-single">' +
+      '<div class="main-text">' + esc(prompt) + '</div>' +
+      '<div class="due-hint">' + (rung ? 'tap to check' : 'tap for the answer') + '</div>' +
+    '</div>';
+  },
+  // Always both sides, so a reversed or reworded front reveals unambiguously.
+  renderBack: (d) => {
+    const rung = ladderRung(d, FEED_LADDER_CAP);
+    return '<div class="feed-back-kind">Due flashcard' +
+      (rung ? ' · ' + esc(LADDER_NAMES[rung].toLowerCase()) : '') + '</div>' +
     '<div class="due-q">' + esc(d.front) + '</div>' +
     '<div class="due-a">' + esc(d.back) + '</div>' +
     '<div class="due-rate">' +
       '<button class="due-btn due-miss" data-due-rate="0">Miss</button>' +
       '<button class="due-btn due-hard" data-due-rate="1">Hard</button>' +
       '<button class="due-btn due-easy" data-due-rate="2">Easy</button>' +
-    '</div>',
+    '</div>';
+  },
 };
 
 // --- 2. A quiz question -------------------------------------------------
@@ -9137,8 +9632,8 @@ document.addEventListener('click', async e => {
   // That is the whole point: the home tally moves because the work was
   // actually done, not because the feed kept a second set of books.
 
-  // A flashcard, graded. Same sm2() and same last_missed_at stamp the Review
-  // screen uses, so cluster ripeness sees this too.
+  // A flashcard, graded. Same ladderApply() the Review screen uses — one write
+  // shape for both surfaces, so cluster ripeness and the ladder can't drift.
   const rateBtn = e.target.closest('[data-due-rate]');
   if (rateBtn) {
     const item = rateBtn.closest('.feed-item');
@@ -9147,8 +9642,10 @@ document.addEventListener('click', async e => {
     const rating = Number(rateBtn.dataset.dueRate);
     const btns = [...item.querySelectorAll('[data-due-rate]')];
     btns.forEach(b => { b.disabled = true; });
-    const updates = sm2(card, rating);
-    if (rating === 0) updates.last_missed_at = new Date().toISOString();
+    // ladderRung is deterministic given the row, so the rung the user actually
+    // saw is recomputed rather than stashed on the element. Capped, so an Easy
+    // here can never promote a card past what the feed is willing to ask.
+    const updates = ladderApply(card, rating, ladderRung(card, FEED_LADDER_CAP));
     try {
       await srsUpdate(card.id, updates);
       feedRetireDue(item, rating === 0
