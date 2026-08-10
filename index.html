@@ -5035,7 +5035,11 @@ function sm2(card, rating) {
 // Session state
 let srsQueue = [], srsCurrent = 0, srsStats = { easy:0, hard:0, miss:0 };
 let srsMode = localStorage.getItem('srsMode') || 'flip';
-let srsFlipped = false;
+// srsFlipped = which face is showing right now (a tap turns it either way).
+// srsRevealed = has the back ever been shown for this card — once it has, the
+// rate buttons stay put, so flipping back to re-read the prompt doesn't make
+// the controls jump in and out under your thumb.
+let srsFlipped = false, srsRevealed = false;
 
 async function updateDueBadge() {
   const numEl = document.getElementById('srs-due-count');
@@ -5074,7 +5078,7 @@ function renderSrsCard() {
   document.getElementById('srs-edit-btn').style.display = '';
   const prog = document.getElementById('srs-progress');
   prog.textContent = (srsCurrent + 1) + ' / ' + srsQueue.length;
-  srsFlipped = false;
+  srsFlipped = false; srsRevealed = false;
   if (srsMode === 'flip') renderSrsFlip(card);
   else renderSrsMC(card);
 }
@@ -5091,6 +5095,7 @@ function renderSrsFlip(card) {
         '</div>' +
         '<div class="srs-card-face srs-card-back">' +
           '<span class="srs-card-text">' + esc(card.back) + '</span>' +
+          '<span class="srs-card-hint">Tap to see the prompt</span>' +
         '</div>' +
       '</div>' +
     '</div>';
@@ -5099,29 +5104,30 @@ function renderSrsFlip(card) {
     '<button class="btn srs-btn-hard" data-rate="1">Hard</button>' +
     '<button class="btn srs-btn-easy" data-rate="2">Easy</button>' +
   '</div>';
-  document.getElementById('srs-flip-wrap').addEventListener('click', revealSrsCard);
+  document.getElementById('srs-flip-wrap').addEventListener('click', toggleSrsCard);
   ctrl.querySelectorAll('[data-rate]').forEach(btn => {
     btn.addEventListener('click', () => rateSrsCard(parseInt(btn.dataset.rate)));
   });
 }
 
-// Shared reveal — used by tap (srs-flip-wrap click) and the keyboard path (#14).
-function revealSrsCard() {
-  if (srsFlipped) return;
+// Shared flip — used by tap (srs-flip-wrap click) and the keyboard path (#14).
+// Turns both ways: tap once for the answer, tap again to re-read the prompt.
+function toggleSrsCard() {
   const cardEl = document.getElementById('srs-flip-card');
   const rateEl = document.getElementById('srs-rate-btns');
   if (!cardEl || !rateEl) return;
-  srsFlipped = true;
-  cardEl.classList.add('flipped');
-  rateEl.style.display = 'flex';
+  srsFlipped = !srsFlipped;
+  cardEl.classList.toggle('flipped', srsFlipped);
+  if (srsFlipped) srsRevealed = true;
+  if (srsRevealed) rateEl.style.display = 'flex';
 }
 
-// #14 — Space / Enter reveals the flashcard back, parity with a tap. Guarded so
-// it only fires on the SRS review screen in flip mode, with no modal/overlay
+// #14 — Space / Enter flips the flashcard, parity with a tap (both ways). Guarded
+// so it only fires on the SRS review screen in flip mode, with no modal/overlay
 // open and focus outside text inputs. preventDefault stops Space page-scroll.
 document.addEventListener('keydown', e => {
   if (e.key !== ' ' && e.key !== 'Enter') return;
-  if (srsFlipped || srsMode !== 'flip') return;
+  if (srsMode !== 'flip') return;
   const screen = document.getElementById('screen-srs-review');
   if (!screen || !screen.classList.contains('active')) return;
   if (!document.getElementById('srs-flip-card')) return;
@@ -5129,7 +5135,7 @@ document.addEventListener('keydown', e => {
   const t = e.target;
   if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
   e.preventDefault();
-  revealSrsCard();
+  toggleSrsCard();
 });
 
 async function renderSrsMC(card) {
