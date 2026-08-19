@@ -16,13 +16,16 @@ test.describe('ladderNext transitions', () => {
     page.evaluate(([l, s, r, sh]) => ladderNext({ ladder_level: l, ladder_streak: s }, r, sh),
       [level, streak, rating, shown]);
 
-  test('easy at streak 0 banks a streak, does not promote', async ({ page }) => {
-    expect(await next(page, 0, 0, 2)).toEqual({ ladder_level: 0, ladder_streak: 1 });
+  // LADDER_PROMOTE_STREAK is 1: one clean Easy at the rung you were asked at
+  // climbs. It was 2, and two Easy meant two SM-2 rounds — a rung per quarter
+  // on a deck whose median interval is three weeks.
+  test('one easy at the asked rung promotes and resets the streak', async ({ page }) => {
+    expect(await next(page, 0, 0, 2)).toEqual({ ladder_level: 1, ladder_streak: 0 });
+    expect(await next(page, 2, 0, 2)).toEqual({ ladder_level: 3, ladder_streak: 0 });
   });
 
-  test('second consecutive easy promotes and resets the streak', async ({ page }) => {
+  test('a banked streak still promotes rather than overflowing', async ({ page }) => {
     expect(await next(page, 0, 1, 2)).toEqual({ ladder_level: 1, ladder_streak: 0 });
-    expect(await next(page, 2, 1, 2)).toEqual({ ladder_level: 3, ladder_streak: 0 });
   });
 
   test('hard holds the rung and clears the streak', async ({ page }) => {
@@ -39,19 +42,19 @@ test.describe('ladderNext transitions', () => {
   });
 
   test('promotion ceilings at rung 4, streak caps instead of overflowing', async ({ page }) => {
-    expect(await next(page, 4, 1, 2)).toEqual({ ladder_level: 4, ladder_streak: 2 });
-    expect(await next(page, 4, 2, 2)).toEqual({ ladder_level: 4, ladder_streak: 2 });
+    expect(await next(page, 4, 1, 2)).toEqual({ ladder_level: 4, ladder_streak: 1 });
+    expect(await next(page, 4, 2, 2)).toEqual({ ladder_level: 4, ladder_streak: 1 });
   });
 
   // This is what keeps the scroll feed's rung-2 cap honest: an Easy at a
   // framing easier than the card's rung must not buy a promotion.
   test('easy at a rung below the stored level earns nothing', async ({ page }) => {
     expect(await next(page, 3, 1, 2, 2)).toEqual({ ladder_level: 3, ladder_streak: 1 });
-    expect(await next(page, 4, 1, 2, 2)).toEqual({ ladder_level: 4, ladder_streak: 1 });
+    expect(await next(page, 4, 0, 2, 2)).toEqual({ ladder_level: 4, ladder_streak: 0 });
   });
 
   test('easy AT the stored level still counts', async ({ page }) => {
-    expect(await next(page, 2, 1, 2, 2)).toEqual({ ladder_level: 3, ladder_streak: 0 });
+    expect(await next(page, 2, 0, 2, 2)).toEqual({ ladder_level: 3, ladder_streak: 0 });
   });
 
   test('a miss at a capped framing still demotes', async ({ page }) => {
@@ -60,7 +63,7 @@ test.describe('ladderNext transitions', () => {
 
   test('missing/garbage level and streak read as 0', async ({ page }) => {
     const r = await page.evaluate(() => ladderNext({}, 2));
-    expect(r).toEqual({ ladder_level: 0, ladder_streak: 1 });
+    expect(r).toEqual({ ladder_level: 1, ladder_streak: 0 });
     expect(await page.evaluate(() => ladderLevel({ ladder_level: 'x' }))).toBe(0);
     expect(await page.evaluate(() => ladderLevel({ ladder_level: 99 }))).toBe(4);
     expect(await page.evaluate(() => ladderStreak({ ladder_streak: -3 }))).toBe(0);
@@ -72,17 +75,34 @@ test.describe('ladderApply', () => {
   const apply = (page, card, rating, shown) =>
     page.evaluate(([c, r, s]) => ladderApply(c, r, s), [card, rating, shown]);
 
-  test('leaves sm2 alone below the top rung', async ({ page }) => {
+  test('caps the interval while the card is still climbing', async ({ page }) => {
+    // sm2 says 25 (10 * 2.5). A card that has only ever been recognised is not
+    // learned, whatever the interval says, so it comes back inside two weeks.
     const r = await apply(page, { interval: 10, ease_factor: 2.5, ladder_level: 0, ladder_streak: 0 }, 2, 0);
-    expect(r.interval).toBe(25);              // 10 * 2.5, no multiplier
-    expect(r.ladder_level).toBe(0);
-    expect(r.ladder_streak).toBe(1);
+    expect(r.interval).toBe(14);
+    expect(r.ladder_level).toBe(1);
+    expect(r.ladder_streak).toBe(0);
   });
 
+  test('the climb cap never touches ease_factor', async ({ page }) => {
+    // Coming back sooner must not re-teach the card as if it were hard, or the
+    // ladder would quietly unwind a long-mature card's ease.
+    const r = await apply(page, { interval: 83, ease_factor: 2.5, ladder_level: 1, ladder_streak: 0 }, 2, 1);
+    expect(r.interval).toBe(14);
+    expect(r.ease_factor).toBe(2.5);
+  });
+
+  test('an sm2 interval already under the climb cap is left alone', async ({ page }) => {
+    const r = await apply(page, { interval: 2, ease_factor: 2.5, ladder_level: 0, ladder_streak: 0 }, 2, 0);
+    expect(r.interval).toBe(5);               // 2 * 2.5, under the cap
+  });
+
+  // Reaching rung 4 is also what LIFTS the climb cap — the multiplier and the
+  // full 365-day ceiling only exist above it.
   test('applies the mastery multiplier on the easy that reaches rung 4', async ({ page }) => {
-    const r = await apply(page, { interval: 10, ease_factor: 2.5, ladder_level: 3, ladder_streak: 1 }, 2, 3);
+    const r = await apply(page, { interval: 10, ease_factor: 2.5, ladder_level: 3, ladder_streak: 0 }, 2, 3);
     expect(r.ladder_level).toBe(4);
-    expect(r.interval).toBe(33);              // round(round(10 * 2.5) * 1.3)
+    expect(r.interval).toBe(33);              // round(round(10 * 2.5) * 1.3), uncapped
     expect(r.mastered_at).toBeTruthy();
   });
 
@@ -107,7 +127,7 @@ test.describe('ladderApply', () => {
   });
 
   test('a miss stamps last_missed_at for cluster ripeness', async ({ page }) => {
-    const r = await apply(page, { interval: 40, ease_factor: 2.3, ladder_level: 2, ladder_streak: 1 }, 0, 2);
+    const r = await apply(page, { interval: 40, ease_factor: 2.3, ladder_level: 2, ladder_streak: 0 }, 0, 2);
     expect(r.interval).toBe(1);
     expect(r.ladder_level).toBe(1);
     expect(r.last_missed_at).toBeTruthy();

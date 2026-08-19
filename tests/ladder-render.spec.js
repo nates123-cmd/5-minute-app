@@ -123,6 +123,31 @@ test('an ungenerated high rung degrades to Reversed and never errors', async ({ 
   await expect(page.locator('#srs-rung')).toContainText('Reversed');
 });
 
+// A degrade must not read as lost ground. The dots keep the earned rungs as
+// ghosts and the label says what is being held back.
+test('a degraded card still shows the rungs it has earned', async ({ page }) => {
+  await showCardAt(page, 3, { withPack: false });   // stored 3, presented 1
+  await expect(page.locator('#srs-rung')).toContainText('holding Discriminate');
+  const { solid, ghost, empty } = await page.evaluate(() => {
+    const dots = document.querySelector('.srs-rung-dots');
+    const g = dots.querySelector('.srs-rung-ghost');
+    return {
+      solid: dots.textContent.replace(/○/g, '').length - (g ? g.textContent.length : 0),
+      ghost: g ? g.textContent.length : 0,
+      empty: (dots.textContent.match(/○/g) || []).length,
+    };
+  });
+  expect(solid).toBe(2);    // rungs 0-1, what it is actually asking
+  expect(ghost).toBe(2);    // rungs 2-3, earned but degraded away
+  expect(empty).toBe(1);    // rung 4, not earned
+});
+
+test('an undegraded card shows no ghost dots', async ({ page }) => {
+  await showCardAt(page, 1);
+  await expect(page.locator('#srs-rung')).not.toContainText('holding');
+  await expect(page.locator('.srs-rung-ghost')).toHaveCount(0);
+});
+
 test('Flip mode pins to rung 0 regardless of the stored level', async ({ page }) => {
   await showCardAt(page, 3, { mode: 'flip' });
   await expect(page.locator('#srs-flip-card .srs-card-face').first()).toContainText(FRONT);
