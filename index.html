@@ -5753,6 +5753,8 @@ function openSrsEdit() {
   if (!card) { showToast('No card to edit'); return; }
   document.getElementById('srs-edit-front').value = card.front || '';
   document.getElementById('srs-edit-back').value  = card.back  || '';
+  const delBtn = document.getElementById('srs-edit-delete');
+  delBtn.textContent = 'Delete card'; delBtn.disabled = false;
   document.getElementById('srs-edit-modal').classList.remove('hidden');
 }
 function closeSrsEdit() { document.getElementById('srs-edit-modal').classList.add('hidden'); }
