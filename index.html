@@ -5033,7 +5033,19 @@ async function srsUpdate(id, fields) {
 }
 
 async function srsDelete(id) {
-  return sbFetch('flashcards?id=eq.' + id, { method: 'DELETE' });
+  // A delete with no ceiling is what leaves the button sitting on 'Deleting…'
+  // forever on a flaky phone connection. Bound it so the UI always gets an
+  // answer, even if that answer is a failure.
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 12000);
+  try {
+    return await sbFetch('flashcards?id=eq.' + id, { method: 'DELETE', signal: ctl.signal });
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('timed out');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // SM-2
@@ -5753,8 +5765,7 @@ function openSrsEdit() {
   if (!card) { showToast('No card to edit'); return; }
   document.getElementById('srs-edit-front').value = card.front || '';
   document.getElementById('srs-edit-back').value  = card.back  || '';
-  const delBtn = document.getElementById('srs-edit-delete');
-  delBtn.textContent = 'Delete card'; delBtn.disabled = false;
+  resetSrsDeleteBtn();
   document.getElementById('srs-edit-modal').classList.remove('hidden');
 }
 function closeSrsEdit() { document.getElementById('srs-edit-modal').classList.add('hidden'); }
@@ -5763,22 +5774,43 @@ document.getElementById('srs-edit-btn').addEventListener('click', openSrsEdit);
 document.getElementById('srs-edit-close').addEventListener('click', closeSrsEdit);
 document.getElementById('srs-edit-cancel').addEventListener('click', closeSrsEdit);
 
+// The edit modal is one reused element, so the delete button has to come back
+// to rest on EVERY path — success included. Leaving it on 'Deleting…' disabled
+// meant the next card's delete looked dead.
+function resetSrsDeleteBtn() {
+  const btn = document.getElementById('srs-edit-delete');
+  if (!btn) return;
+  btn.textContent = 'Delete card';
+  btn.disabled = false;
+}
+
+let srsDeleting = false;
 document.getElementById('srs-edit-delete').addEventListener('click', async () => {
+  if (srsDeleting) return;               // a second tap must not start a second delete
   const card = srsEditableCard();
-  if (!card) { closeSrsEdit(); return; }
+  if (!card) { resetSrsDeleteBtn(); closeSrsEdit(); return; }
   if (!confirm('Delete this card permanently?')) return;
   const btn = document.getElementById('srs-edit-delete');
+  srsDeleting = true;
   btn.textContent = 'Deleting…'; btn.disabled = true;
   try {
     await srsDelete(card.id);
-    srsQueue.splice(srsCurrent, 1);
+    // Remove by id, not by srsCurrent: a slow delete can land after the round
+    // has already moved on, and an index splice would drop the wrong card.
+    const i = srsQueue.findIndex(c => c.id === card.id);
+    if (i !== -1) {
+      srsQueue.splice(i, 1);
+      if (i < srsCurrent) srsCurrent--;
+    }
     closeSrsEdit();
     if (srsQueue.length === 0 || srsCurrent >= srsQueue.length) renderSrsDone();
     else renderSrsCard();
     showToast('Card deleted');
   } catch(e) {
     showToast('Delete failed (' + (e.message || 'offline') + ')');
-    btn.textContent = 'Delete card'; btn.disabled = false;
+  } finally {
+    srsDeleting = false;
+    resetSrsDeleteBtn();
   }
 });
 
