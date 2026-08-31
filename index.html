@@ -10564,7 +10564,10 @@ async function cuFinish(bucket, feedback, verdicts) {
     review_count: (Number(u.review_count) || 0) + 1,
   });
   Object.assign(u, fields);
-  cuUpdate(u.id, fields).catch(() => {});
+  // Awaited on purpose. This IS the record of the grade — fire-and-forget loses
+  // it silently on a flaky connection, and a later read races the write.
+  try { await cuUpdate(u.id, fields); }
+  catch (e) { showToast('Saved locally — the grade did not reach the server'); }
   const minted = await cuMintCards(u);
   const pts = (u.key_points || []).map((k, i) => {
     const v = (verdicts || []).find(x => x && x.index === i);
@@ -10604,7 +10607,9 @@ async function cuMintCards(unit) {
   }
   if (ids.length) {
     unit.card_ids = ids;
-    cuUpdate(unit.id, { card_ids: ids }).catch(() => {});
+    // Awaited: if this write is lost the next visit re-mints the same cards,
+    // and only cardExists() stands between that and a duplicated deck.
+    try { await cuUpdate(unit.id, { card_ids: ids }); } catch (e) { /* dedupe still guards */ }
     updateDueBadge();
   }
   return ids.length;
