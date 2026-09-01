@@ -1978,6 +1978,16 @@
   .cu-src a { color: inherit; }
   .co-plan-row { display: flex; align-items: center; gap: 10px; background: var(--surface); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 7px; }
   .co-plan-row .co-plan-x { margin-left: auto; background: none; border: none; color: var(--text-faint); font-size: 1.1rem; cursor: pointer; padding: 0 4px; }
+
+  .co-today { background: var(--surface); border-radius: var(--radius-md); padding: 13px 15px; margin-bottom: 14px; }
+  .co-today-head { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--text-faint); margin-bottom: 8px; }
+  .co-today-line { font-family: var(--font-serif); font-size: 1.05rem; margin-bottom: 10px; }
+  .co-q { background: var(--surface); border-radius: var(--radius-sm); padding: 11px 13px; margin-bottom: 10px; font-size: .9rem; }
+  .co-q-a { color: var(--text-muted); margin-top: 6px; line-height: 1.55; }
+  .cu-ask { display: flex; gap: 8px; margin-top: 12px; }
+  .cu-ask .anki-textarea { flex: 1; }
+  .co-steer { margin-top: 18px; }
+  .cu-callback { border-left: 2px solid var(--accent-2); padding-left: 12px; margin-bottom: 16px; }
   </style>
 </head>
 <body>
@@ -2217,7 +2227,8 @@
     <span class="activity-title">Courses</span>
     <button class="btn-settings" id="co-add-btn" title="Build a course" style="margin-left:auto;font-size:1.4rem;line-height:1">+</button>
   </div>
-  <p class="framing">A topic broken into short units. Each unit is one guess, one short read, and one explanation — then it hands the facts to your flashcards.</p>
+  <p class="framing">A topic broken into short units. Each unit is one guess, one short read, and one explanation — then you choose what's worth keeping as a flashcard.</p>
+  <div id="co-today" class="co-today" hidden></div>
   <div id="co-list"></div>
 </div>
 
@@ -2230,6 +2241,25 @@
   <div class="co-bar"><div class="co-bar-fill" id="co-bar-fill" style="width:0"></div></div>
   <div class="cu-note" id="co-progress"></div>
   <div id="co-units" style="margin-top:14px"></div>
+  <div class="co-steer">
+    <label class="srs-label">Steer this course</label>
+    <textarea id="co-guidance" class="anki-textarea" rows="3" placeholder="Too basic. More on the mechanics, less history. Drop anything about pricing models."></textarea>
+    <div id="co-guidance-current" class="cu-note"></div>
+    <button class="btn btn-outline" id="co-guidance-save" style="margin-top:8px">Apply to the rest of the course</button>
+  </div>
+</div>
+
+<div id="screen-course-intake" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" id="co-intake-back">←</button>
+    <span class="activity-title">Before we plan it</span>
+  </div>
+  <p class="framing">Three questions. Getting the scope right here is much cheaper than fixing it later.</p>
+  <div id="co-intake-qs"></div>
+  <div class="activity-actions" style="margin-top:16px">
+    <button class="btn btn-primary" id="co-intake-go">Plan it</button>
+    <button class="btn btn-outline" id="co-intake-skip">Skip — just plan it</button>
+  </div>
 </div>
 
 <div id="screen-course-plan" class="screen">
@@ -10219,7 +10249,28 @@ async function coPlan(title, brief) {
   };
 }
 
-async function coCommitPlan(plan, brief) {
+// A checkpoint every CO_CHECKPOINT_EVERY units. It carries no new material —
+// its whole job is the span behind it, which is where interleaving pays.
+const CO_CHECKPOINT_EVERY = 5;
+
+function coWithCheckpoints(units) {
+  const out = [];
+  units.forEach((u, i) => {
+    out.push(Object.assign({ kind: 'unit' }, u));
+    const n = i + 1;
+    if (n % CO_CHECKPOINT_EVERY === 0 && n < units.length) {
+      out.push({
+        kind: 'checkpoint',
+        title: 'Checkpoint: everything so far',
+        one_line: 'No new material — just the ' + n + ' units behind this one.',
+        facts: units.slice(0, n).reduce((a, x) => a.concat(x.facts || []), []),
+      });
+    }
+  });
+  return out;
+}
+
+async function coCommitPlan(plan, brief, intake, guidance) {
   const created = await coCreate({
     title: plan.title,
     brief: brief || null,
@@ -10227,14 +10278,17 @@ async function coCommitPlan(plan, brief) {
     summary: plan.summary,
     capstone_prompt: plan.capstonePrompt,
     source: plan.canonical ? 'canonical' : 'model',
+    intake: intake && intake.length ? intake : null,
+    guidance: guidance || null,
   });
   const course = Array.isArray(created) ? created[0] : created;
-  const rows = plan.units.map((u, i) => ({
+  const rows = coWithCheckpoints(plan.units).map((u, i) => ({
     course_id: course.id,
     position: i + 1,
+    kind: u.kind || 'unit',
     title: u.title,
     one_line: u.one_line || null,
-    facts: u.facts || null,
+    facts: u.facts && u.facts.length ? u.facts : null,
     sources: plan.source ? [plan.source] : null,
   }));
   await cuCreateMany(rows);
@@ -10259,6 +10313,8 @@ async function coBuildUnit(course, unit) {
       + 'Course: "' + course.title + '" (shape: ' + (course.shape || 'process') + ')\n'
       + 'Unit ' + unit.position + ': "' + unit.title + '"' + (unit.one_line ? ' — ' + unit.one_line : '') + '\n'
       + (course.brief ? 'What the learner asked for overall: "' + String(course.brief).slice(0, 600) + '"\n' : '')
+      + coGuidanceBlock(course.guidance)
+      + coPriorBlock(unit)
       + facts
       + '\nWrite four things:\n'
       + '1. "hook" — a question asked BEFORE they read anything, to make them guess. Being wrong is the point, '
@@ -10269,8 +10325,13 @@ async function coBuildUnit(course, unit) {
       + '3. "why" — one question inviting them to explain WHY it is this way, not just what happened.\n'
       + '4. "keyPoints" — 3 to 5 short checkable points a good explanation must hit. Name what must be covered; do NOT reveal the answer in the point itself.\n'
       + '5. "cards" — 2 to 4 atomic flashcards from this unit. Front: a clean cue. Back: 1-2 punchy sentences. Facts only, nothing motivational.\n\n'
-      + 'Return JSON only: {"hook":{...},"body":"...","why":"...","keyPoints":[{"text":"..."}],"cards":[{"front":"...","back":"..."}]}',
-      2200
+      + (coPriorUnits(unit).length
+          ? '6. "callback" — one question drawn ONLY from the earlier units listed above, to retrieve something they '
+            + 'learned before, not from this unit: {"question":"...","answer":"...","fromPositions":[<earlier unit numbers>]}.\n'
+          : '')
+      + '\nReturn JSON only: {"hook":{...},"body":"...","why":"...","keyPoints":[{"text":"..."}],"cards":[{"front":"...","back":"..."}]'
+      + (coPriorUnits(unit).length ? ',"callback":{...}' : '') + '}',
+      2400
     );
     const hook = coNormalizeHook(out && out.hook);
     const fields = {
@@ -10281,6 +10342,7 @@ async function coBuildUnit(course, unit) {
         .filter(k => k && k.text).map(k => ({ text: String(k.text) })).slice(0, 5),
       cards: (out && Array.isArray(out.cards) ? out.cards : [])
         .filter(c => c && c.front && c.back).map(c => ({ front: String(c.front), back: String(c.back) })).slice(0, 4),
+      callback: coNormalizeCallback(out && out.callback),
       built_at: new Date().toISOString(),
     };
     if (!fields.body || !fields.key_points.length) throw new Error('unit came back empty');
@@ -10290,6 +10352,59 @@ async function coBuildUnit(course, unit) {
   })();
   coBuilding.set(unit.id, p);
   try { return await p; } finally { coBuilding.delete(unit.id); }
+}
+
+// Standing steer, replayed into every later build. Without this a correction is
+// forgotten the moment it runs and has to be argued again — the same reason
+// deep dives carry `guidance`.
+function coGuidanceBlock(g) {
+  return (g && g.trim())
+    ? '\nHOW THEY HAVE TOLD YOU TO SHAPE THIS COURSE (standing instructions — follow them):\n' + g.trim() + '\n'
+    : '';
+}
+
+function coPriorUnits(unit) {
+  return (coUnits || []).filter(u => u.position < unit.position && u.built_at);
+}
+
+function coPriorBlock(unit) {
+  const prior = coPriorUnits(unit);
+  if (!prior.length) return '';
+  return '\nEarlier units they have already been taught (for the callback question only — do NOT re-teach these):\n'
+    + prior.map(u => u.position + '. ' + u.title
+        + ((u.key_points || []).length ? ' — ' + u.key_points.map(k => k.text).join('; ') : '')).join('\n') + '\n';
+}
+
+function coNormalizeCallback(c) {
+  if (!c || !c.question || !c.answer) return null;
+  return {
+    question: String(c.question),
+    answer: String(c.answer),
+    fromPositions: (Array.isArray(c.fromPositions) ? c.fromPositions : []).map(Number).filter(Boolean),
+  };
+}
+
+// For a canonical course the callback costs nothing and cannot be wrong: the
+// facts are already on the earlier unit rows. Pick from the STALEST seen unit,
+// so callbacks do the spacing work instead of just decorating the page.
+function coCanonicalCallback(unit) {
+  const prior = (coUnits || []).filter(u =>
+    u.position < unit.position && u.state !== 'ready' && Array.isArray(u.facts) && u.facts.length);
+  if (!prior.length) return null;
+  const stalest = prior.slice().sort((a, b) =>
+    String(a.next_review || '') < String(b.next_review || '') ? -1 : 1)[0];
+  const facts = stalest.facts.filter(f => f && f.name && f.ordinal);
+  if (!facts.length) return null;
+  const f = facts[Math.floor(Math.random() * facts.length)];
+  const mid = f.start && f.end && Number(f.end) > Number(f.start)
+    ? Math.floor((Number(f.start) + Number(f.end)) / 2) : Number(f.start);
+  const useYear = !!mid && Math.random() < 0.5;
+  return {
+    question: useYear ? 'Who was president in ' + mid + '?' : 'Who was number ' + f.ordinal + '?',
+    answer: f.name + ' (#' + f.ordinal + ', ' + f.start + '–' + (f.end || 'present') + ')',
+    fromPositions: [stalest.position],
+    free: true,
+  };
 }
 
 // A choice hook with no correct option renders four wrong answers, so degrade
@@ -10364,7 +10479,30 @@ async function openCourse(course) {
   showScreen('course');
   coUnits = await cuFetch(course.id) || [];
   renderCourseMap();
+  renderCourseSteer();
 }
+
+function renderCourseSteer() {
+  const cur = document.getElementById('co-guidance-current');
+  if (!cur) return;
+  cur.textContent = coCurrent.guidance ? 'Currently steering: ' + coCurrent.guidance : '';
+  document.getElementById('co-guidance').value = '';
+}
+
+document.getElementById('co-guidance-save')?.addEventListener('click', async (e) => {
+  const box = document.getElementById('co-guidance');
+  const txt = (box.value || '').trim();
+  if (!txt) { showToast('Say what to change first'); return; }
+  const btn = e.currentTarget;
+  btn.textContent = 'Applying…'; btn.disabled = true;
+  await coAppendGuidance(coCurrent, '- ' + txt);
+  // Guidance only ever rewrites what has NOT been built. Nothing he has already
+  // read or been graded on gets edited underneath him.
+  const unbuilt = coUnits.filter(u => !u.built_at && u.kind !== 'checkpoint');
+  renderCourseSteer();
+  btn.textContent = 'Apply to the rest of the course'; btn.disabled = false;
+  showToast(unbuilt.length + ' unbuilt unit' + (unbuilt.length === 1 ? '' : 's') + ' will follow it');
+});
 
 function coStateLabel(u) {
   if (u.state === 'solid') return 'solid';
@@ -10399,6 +10537,7 @@ async function openUnit(unit) {
   cuState = { unit, course: coCurrent, guess: null, bucket: null };
   document.getElementById('cu-title').textContent = 'Unit ' + unit.position;
   showScreen('course-unit');
+  if (unit.kind === 'checkpoint') { cuRenderCheckpoint(unit); coPrefetchNext(unit); return; }
   if (!unit.built_at) {
     document.getElementById('cu-body').innerHTML =
       '<p class="framing">Writing this unit…</p>' + (skeletonCards ? skeletonCards(1) : '');
@@ -10412,7 +10551,9 @@ async function openUnit(unit) {
       return;
     }
   }
-  cuRenderHook();
+  cuState.callback = coCanonicalCallback(unit) || unit.callback || null;
+  if (cuState.callback && coPriorUnits(unit).length) cuRenderCallback();
+  else cuRenderHook();
   coPrefetchNext(unit);
 }
 
@@ -10422,6 +10563,30 @@ async function coPrefetchNext(unit) {
   if (next && !next.built_at && hasSession() && navigator.onLine) {
     coBuildUnit(coCurrent, next).catch(() => {});
   }
+}
+
+// Retrieval of something older, before new material. This is the spacing engine
+// of a course: by the time unit 6 runs, units 1-5 are exactly stale enough to
+// be worth pulling back.
+function cuRenderCallback() {
+  const cb = cuState.callback;
+  document.getElementById('cu-body').innerHTML =
+    '<div class="cu-beat-label">First — from earlier</div>'
+    + '<div class="cu-callback"><div class="cu-q">' + esc(cb.question) + '</div></div>'
+    + '<textarea id="cu-cb-answer" class="anki-textarea" rows="2" placeholder="From memory"></textarea>'
+    + '<button class="btn btn-primary" id="cu-cb-show" style="margin-top:12px">Show me</button>'
+    + '<button class="btn btn-outline" id="cu-cb-skip" style="margin-top:8px">Skip</button>';
+  document.getElementById('cu-cb-skip').addEventListener('click', cuRenderHook);
+  document.getElementById('cu-cb-show').addEventListener('click', () => {
+    const mine = (document.getElementById('cu-cb-answer').value || '').trim();
+    document.getElementById('cu-body').innerHTML =
+      '<div class="cu-beat-label">From earlier</div>'
+      + '<div class="cu-callback"><div class="cu-q">' + esc(cb.question) + '</div></div>'
+      + (mine ? '<div class="cu-opt">' + esc(mine) + '</div>' : '')
+      + '<div class="cu-note"><strong>Answer:</strong> ' + esc(cb.answer) + '</div>'
+      + '<button class="btn btn-primary" id="cu-cb-on" style="margin-top:16px">On to the new one</button>';
+    document.getElementById('cu-cb-on').addEventListener('click', cuRenderHook);
+  });
 }
 
 function cuRenderHook() {
@@ -10476,12 +10641,24 @@ function cuRenderTeach() {
     + '<div class="cu-body" id="cu-prose">' + paras + '</div>'
     + (u.why ? '<div class="cu-why"><strong>Why?</strong> ' + esc(u.why) + '</div>' : '')
     + src
+    + '<div id="cu-thread">' + cuThreadHtml(u) + '</div>'
+    + '<div class="cu-ask">'
+    + '<textarea id="cu-ask-input" class="anki-textarea" rows="2" placeholder="Ask about any of this — select text first to ask about that bit"></textarea>'
+    + '<button class="btn btn-outline" id="cu-ask-go">Ask</button>'
+    + '</div>'
     + '<button class="btn btn-outline" id="cu-select-card" style="margin-top:16px">Make a flashcard from this</button>'
-    + '<button class="btn btn-primary" id="cu-to-recall" style="margin-top:8px">Explain it back</button>';
+    + '<button class="btn btn-primary" id="cu-to-recall" style="margin-top:8px">Explain it back</button>'
+    + '<div class="cu-ask" style="margin-top:14px">'
+    + '<button class="btn btn-outline" data-cu-fb="basic" style="flex:1">Too basic</button>'
+    + '<button class="btn btn-outline" data-cu-fb="offtrack" style="flex:1">Not what I want</button>'
+    + '</div>';
   document.getElementById('cu-to-recall').addEventListener('click', () => {
     if (u.state === 'ready') { cuUpdate(u.id, { state: 'taught' }).catch(() => {}); u.state = 'taught'; }
     cuRenderRecall();
   });
+  document.getElementById('cu-ask-go').addEventListener('click', (e) => cuAsk(e.currentTarget));
+  document.querySelectorAll('[data-cu-fb]').forEach(b =>
+    b.addEventListener('click', () => cuQuickFeedback(b.dataset.cuFb, b)));
   document.getElementById('cu-select-card').addEventListener('click', async (e) => {
     const sel = String(window.getSelection ? window.getSelection().toString() : '').trim();
     const seed = sel || String(u.body || '').slice(0, 600);
@@ -10494,6 +10671,35 @@ function cuRenderTeach() {
     } catch (err) { showToast('Could not condense — try selecting less'); }
     btn.textContent = 'Make a flashcard from this'; btn.disabled = false;
   });
+}
+
+// A checkpoint teaches nothing. It asks for the whole span behind it, graded
+// against the key points of every unit it covers.
+function cuRenderCheckpoint(unit) {
+  const covered = (coUnits || []).filter(u => u.position < unit.position && u.kind !== 'checkpoint');
+  const seen = covered.filter(u => u.state !== 'ready');
+  if (!seen.length) {
+    document.getElementById('cu-body').innerHTML =
+      '<div class="cu-beat-label">Checkpoint</div>'
+      + '<p class="framing">Nothing to review yet — work through a few units first.</p>'
+      + '<button class="btn btn-outline" id="cu-map2">Back to the course</button>';
+    document.getElementById('cu-map2').addEventListener('click', () => { renderCourseMap(); showScreen('course'); });
+    return;
+  }
+  // Borrow the key points of everything it covers so the existing grader works
+  // unchanged — a checkpoint is just a recall beat over a wider span.
+  cuState.unit.key_points = seen.reduce((a, u) => a.concat(u.key_points || []), []).slice(0, 12);
+  const ask = (cuState.course.shape === 'chronology')
+    ? 'Take units ' + seen[0].position + '–' + seen[seen.length - 1].position + ' in order, from memory.'
+    : 'Tie units ' + seen[0].position + '–' + seen[seen.length - 1].position + ' together: what happens, in order, and why each step matters.';
+  document.getElementById('cu-body').innerHTML =
+    '<div class="cu-beat-label">Checkpoint — no new material</div>'
+    + '<div class="cu-q">' + esc(ask) + '</div>'
+    + '<textarea id="cu-answer" class="anki-textarea" rows="8" placeholder="From memory. No scrolling back."></textarea>'
+    + '<button class="btn btn-primary" id="cu-grade" style="margin-top:12px">Done</button>'
+    + '<button class="btn btn-outline" id="cu-self" style="margin-top:8px">Just show me the points</button>';
+  document.getElementById('cu-grade').addEventListener('click', cuGradeAndFinish);
+  document.getElementById('cu-self').addEventListener('click', cuSelfRate);
 }
 
 function cuRenderRecall() {
@@ -10610,6 +10816,65 @@ function cuCandidatesHtml(unit) {
     + '</div>';
 }
 
+// Questions asked while reading are kept on the unit. Not for re-reading — they
+// are the best available signal of what he actually cares about, and they feed
+// the course's standing guidance.
+function cuThreadHtml(unit) {
+  const qs = Array.isArray(unit.questions) ? unit.questions : [];
+  return qs.map(x =>
+    '<div class="co-q"><strong>' + esc(x.q) + '</strong><div class="co-q-a">' + esc(x.a) + '</div></div>'
+  ).join('');
+}
+
+async function cuAsk(btn) {
+  const input = document.getElementById('cu-ask-input');
+  const q = (input.value || '').trim();
+  if (!q) { showToast('Type a question first'); return; }
+  const u = cuState.unit;
+  const sel = String(window.getSelection ? window.getSelection().toString() : '').trim();
+  btn.textContent = 'Asking…'; btn.disabled = true;
+  try {
+    const out = await callClaudeAR(
+      'A learner is part-way through a unit of a course and has a question about it. '
+      + 'Answer it directly and concretely in 2-4 sentences. Do not restate the unit, do not pad, '
+      + 'do not add caveats they did not ask for. If the honest answer is "it depends", say what it depends on.\n\n'
+      + 'Course: "' + cuState.course.title + '"\nUnit: "' + u.title + '"\n'
+      + 'What the unit says:\n"' + String(u.body || '').slice(0, 1500) + '"\n'
+      + (sel ? '\nThey have highlighted this specific bit: "' + sel.slice(0, 400) + '"\n' : '')
+      + '\nTheir question: "' + q + '"\n\nReturn JSON only: {"answer":"..."}',
+      900
+    );
+    const a = (out && out.answer) ? String(out.answer) : 'No answer came back.';
+    const qs = (Array.isArray(u.questions) ? u.questions : []).concat([{ q, a, at: new Date().toISOString() }]);
+    u.questions = qs;
+    cuUpdate(u.id, { questions: qs }).catch(() => {});
+    document.getElementById('cu-thread').innerHTML = cuThreadHtml(u);
+    input.value = '';
+  } catch (e) {
+    showToast('Could not answer that');
+  }
+  btn.textContent = 'Ask'; btn.disabled = false;
+}
+
+// Two taps that append to the course's standing guidance. Cheap to give, and it
+// only ever changes units that have not been built yet.
+async function cuQuickFeedback(kind, btn) {
+  const line = kind === 'basic'
+    ? '- Too basic in "' + cuState.unit.title + '" — go deeper, assume more prior knowledge.'
+    : '- "' + cuState.unit.title + '" was not what they wanted — stay closer to what they asked for.';
+  btn.textContent = 'Noted'; btn.disabled = true;
+  await coAppendGuidance(cuState.course, line);
+}
+
+async function coAppendGuidance(course, line) {
+  const next = [course.guidance || '', line].filter(Boolean).join('\n').trim().slice(0, 2000);
+  course.guidance = next;
+  try {
+    await coUpdate(course.id, { guidance: next });
+    showToast('Noted — it will shape the units you have not started');
+  } catch (e) { showToast('Could not save that feedback'); }
+}
+
 async function cuKeepCard(unit, idx, btn) {
   const c = (Array.isArray(unit.cards) ? unit.cards : [])[idx];
   if (!c) return;
@@ -10639,22 +10904,70 @@ async function cuKeepCard(unit, idx, btn) {
 }
 
 // ── Wiring ────────────────────────────────────────────────────────────────
+// Two queues, deliberately not merged: DUE units are relearning and the
+// schedule picks them; NEW units are acquisition and are capped, because ten
+// units in one sitting is a cram and loses to the same ten spread out.
+// No streak, no penalty for a missed day — a skipped day just means the same
+// work is there tomorrow.
+async function coDailyPlan() {
+  const courses = await coFetch();
+  if (!courses || !courses.length) return { due: [], fresh: [], courses: [] };
+  const units = await sbFetch('course_units?select=id,course_id,position,title,kind,state,next_review,built_at&order=position.asc');
+  const today = localDateStr();
+  const byId = {};
+  courses.forEach(c => { byId[c.id] = c; });
+  const mine = (units || []).filter(u => byId[u.course_id]);
+  const due = mine.filter(u => u.state !== 'ready' && u.next_review && u.next_review <= today);
+  const fresh = [];
+  courses.forEach(c => {
+    const cap = Number(c.new_per_day) || 2;
+    fresh.push(...mine.filter(u => u.course_id === c.id && u.state === 'ready').slice(0, cap));
+  });
+  return { due, fresh, courses: byId };
+}
+
+function coQueueLine(plan) {
+  const n = plan.due.length + plan.fresh.length;
+  if (!n) return 'nothing queued — all caught up';
+  const bits = [];
+  if (plan.fresh.length) bits.push(plan.fresh.length + ' new');
+  if (plan.due.length) bits.push(plan.due.length + ' to revisit');
+  return bits.join(' · ');
+}
+
+async function renderCoursesToday() {
+  const box = document.getElementById('co-today');
+  if (!box) return;
+  const plan = await coDailyPlan();
+  const queue = plan.due.concat(plan.fresh);
+  if (!queue.length) { box.hidden = true; return; }
+  const first = queue[0];
+  const c = plan.courses[first.course_id];
+  box.hidden = false;
+  box.innerHTML = '<div class="co-today-head">Today</div>'
+    + '<div class="co-today-line">' + esc(coQueueLine(plan)) + '</div>'
+    + '<div class="cu-note">Next: ' + esc(c.title) + ' · unit ' + first.position + '</div>'
+    + '<button class="btn btn-primary" id="co-today-go" style="margin-top:10px">Start</button>';
+  document.getElementById('co-today-go').addEventListener('click', async () => {
+    await openCourse(c);
+    const full = coUnits.find(u => u.id === first.id);
+    if (full) openUnit(full);
+  });
+}
+
 async function updateCoursesBadge() {
   const sub = document.getElementById('courses-sub');
   if (!sub) return;
   try {
     const courses = await coFetch();
     if (!courses || !courses.length) { sub.textContent = 'break a topic into short units'; return; }
-    const units = await sbFetch('course_units?select=course_id,position,state&order=position.asc');
-    const next = (units || []).find(u => u.state === 'ready' || u.state === 'taught');
-    const c = next && courses.find(x => x.id === next.course_id);
-    sub.textContent = c ? 'next: ' + c.title + ', unit ' + next.position
-      : courses.length + ' course' + (courses.length === 1 ? '' : 's');
+    const plan = await coDailyPlan();
+    sub.textContent = coQueueLine(plan);
   } catch (e) { /* the home screen must never fail on a badge */ }
 }
 
-document.getElementById('btn-courses')?.addEventListener('click', () => { showScreen('courses'); loadCourses(); });
-document.getElementById('co-back')?.addEventListener('click', () => { showScreen('courses'); loadCourses(); });
+document.getElementById('btn-courses')?.addEventListener('click', () => { showScreen('courses'); loadCourses(); renderCoursesToday(); });
+document.getElementById('co-back')?.addEventListener('click', () => { showScreen('courses'); loadCourses(); renderCoursesToday(); });
 document.getElementById('cu-back')?.addEventListener('click', () => { renderCourseMap(); showScreen('course'); });
 document.getElementById('co-plan-back')?.addEventListener('click', () => showScreen('courses'));
 document.getElementById('co-plan-cancel')?.addEventListener('click', () => { coPlanDraft = null; showScreen('courses'); });
@@ -10666,15 +10979,59 @@ document.getElementById('co-add-btn')?.addEventListener('click', () => {
 document.getElementById('co-add-close')?.addEventListener('click', () =>
   document.getElementById('co-add-modal').classList.add('hidden'));
 
-document.getElementById('co-add-plan')?.addEventListener('click', async (e) => {
-  const title = (document.getElementById('co-add-title').value || '').trim();
-  const brief = (document.getElementById('co-add-brief').value || '').trim();
-  if (!title) { showToast('Name the topic first'); return; }
-  const btn = e.currentTarget;
+// ── Intake: three questions before anything is generated ──────────────────
+// "I want to learn about bonds" is a topic, not a course. The cheapest possible
+// quality gate is asking what they actually want BEFORE a syllabus exists —
+// fixing scope after generation costs a rebuild.
+let coIntakeDraft = null;
+
+async function coIntakeQuestions(title, brief) {
+  const out = await callClaudeAR(
+    'Someone wants to learn this: "' + title + '"\n'
+    + (brief ? 'They added: "' + brief + '"\n' : '')
+    + '\nAsk exactly 3 short questions whose answers would most change how you build them a course on it. '
+    + 'Ask about scope, depth, and what they already know or what they want to DO with it — never trivia. '
+    + 'Each question one sentence, plain, no preamble. Where useful, suggest an example answer.\n\n'
+    + 'Return JSON only: {"questions":[{"q":"...","hint":"<a short example answer, or empty>"}]}',
+    700
+  );
+  const qs = (out && Array.isArray(out.questions) ? out.questions : [])
+    .filter(x => x && x.q).slice(0, 3)
+    .map(x => ({ q: String(x.q), hint: String(x.hint || '') }));
+  if (!qs.length) throw new Error('no questions');
+  return qs;
+}
+
+function renderIntake(qs) {
+  document.getElementById('co-intake-qs').innerHTML = qs.map((x, i) =>
+    '<label class="srs-label">' + esc(x.q) + '</label>'
+    + '<textarea class="anki-textarea co-intake-a" rows="2" data-q="' + i + '" placeholder="'
+    + esc(x.hint || 'Anything, or leave it blank') + '"></textarea>'
+  ).join('');
+}
+
+function coIntakeAnswers() {
+  return [...document.querySelectorAll('.co-intake-a')].map((t, i) => ({
+    q: coIntakeDraft.qs[i].q,
+    a: (t.value || '').trim(),
+  })).filter(x => x.a);
+}
+
+// The intake answers become the course's FIRST standing guidance, so they steer
+// every unit built later, not just the syllabus.
+function coIntakeGuidance(intake) {
+  if (!intake || !intake.length) return '';
+  return intake.map(x => '- ' + x.q + ' → ' + x.a).join('\n');
+}
+
+async function coRunPlan(btn) {
+  const d = coIntakeDraft;
   btn.textContent = 'Planning…'; btn.disabled = true;
   try {
-    coPlanDraft = { plan: await coPlan(title, brief), brief: brief };
-    document.getElementById('co-add-modal').classList.add('hidden');
+    const intake = d.qs.length ? coIntakeAnswers() : [];
+    const guidance = coIntakeGuidance(intake);
+    const fullBrief = [d.brief, guidance].filter(Boolean).join('\n');
+    coPlanDraft = { plan: await coPlan(d.title, fullBrief), brief: d.brief, intake: intake, guidance: guidance };
     renderCoursePlan();
     showScreen('course-plan');
   } catch (err) {
@@ -10682,6 +11039,35 @@ document.getElementById('co-add-plan')?.addEventListener('click', async (e) => {
   } finally {
     btn.textContent = 'Plan it'; btn.disabled = false;
   }
+}
+
+document.getElementById('co-add-plan')?.addEventListener('click', async (e) => {
+  const title = (document.getElementById('co-add-title').value || '').trim();
+  const brief = (document.getElementById('co-add-brief').value || '').trim();
+  if (!title) { showToast('Name the topic first'); return; }
+  const btn = e.currentTarget;
+  btn.textContent = 'Thinking…'; btn.disabled = true;
+  coIntakeDraft = { title, brief, qs: [] };
+  document.getElementById('co-add-modal').classList.add('hidden');
+  try {
+    coIntakeDraft.qs = await coIntakeQuestions(title, brief);
+    renderIntake(coIntakeDraft.qs);
+    showScreen('course-intake');
+  } catch (err) {
+    // Intake is a nicety, not a gate — fall straight through to planning.
+    showScreen('course-intake');
+    document.getElementById('co-intake-qs').innerHTML = '<p class="framing">Could not think of questions — planning straight from the topic.</p>';
+  } finally {
+    btn.textContent = 'Plan it'; btn.disabled = false;
+  }
+});
+
+document.getElementById('co-intake-back')?.addEventListener('click', () => showScreen('courses'));
+document.getElementById('co-intake-go')?.addEventListener('click', (e) => coRunPlan(e.currentTarget));
+document.getElementById('co-intake-skip')?.addEventListener('click', (e) => {
+  coIntakeDraft.qs = [];
+  document.getElementById('co-intake-qs').innerHTML = '';
+  coRunPlan(e.currentTarget);
 });
 
 function renderCoursePlan() {
@@ -10708,7 +11094,7 @@ document.getElementById('co-plan-save')?.addEventListener('click', async (e) => 
   const btn = e.currentTarget;
   btn.textContent = 'Saving…'; btn.disabled = true;
   try {
-    const course = await coCommitPlan(coPlanDraft.plan, coPlanDraft.brief);
+    const course = await coCommitPlan(coPlanDraft.plan, coPlanDraft.brief, coPlanDraft.intake, coPlanDraft.guidance);
     coPlanDraft = null;
     showToast('Course saved');
     await openCourse(course);
