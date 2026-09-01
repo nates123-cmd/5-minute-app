@@ -1988,6 +1988,9 @@
   .cu-ask .anki-textarea { flex: 1; }
   .co-steer { margin-top: 18px; }
   .cu-callback { border-left: 2px solid var(--accent-2); padding-left: 12px; margin-bottom: 16px; }
+
+  .co-unit.co-locked { opacity: .5; cursor: default; }
+  .co-unit.co-capstone { border: 1px solid var(--accent-2); background: transparent; }
   </style>
 </head>
 <body>
@@ -10249,6 +10252,52 @@ async function coPlan(title, brief) {
   };
 }
 
+// ── Capstone ──────────────────────────────────────────────────────────────
+// The whole-course exam, and the bridge back to what a deep dive always was:
+// "explain the entire thing from memory". A dive asked that BEFORE teaching
+// anything, which is why they went undrilled. Here it lands after the units, so
+// it is a real test rather than a wall. It is stored as an ordinary unit row so
+// grading, scheduling, the map and the queue all work on it unchanged.
+function coCapstoneRow(course, position) {
+  return {
+    course_id: course.id,
+    position: position,
+    kind: 'capstone',
+    title: 'Capstone: the whole course',
+    one_line: course.capstone_prompt || ('Explain ' + course.title + ' from memory.'),
+  };
+}
+
+function coRealUnits(units) {
+  return (units || []).filter(u => u.kind === 'unit');
+}
+
+// Gated on every unit being RECALLED, not solid. Solid needs two easy passes on
+// all of them, which could take weeks to ever fire. Checkpoints do not gate —
+// they are reviews, and requiring them would add friction for no signal.
+function coCapstoneReady(units) {
+  const real = coRealUnits(units);
+  return real.length > 0 && real.every(u => u.state === 'recalled' || u.state === 'solid');
+}
+
+function coCapstoneProgress(units) {
+  const real = coRealUnits(units);
+  const done = real.filter(u => u.state === 'recalled' || u.state === 'solid').length;
+  return { done: done, total: real.length };
+}
+
+// Courses planned before capstones existed get their row on first open.
+async function coEnsureCapstone(course, units) {
+  if (units.some(u => u.kind === 'capstone')) return units;
+  const pos = units.reduce((m, u) => Math.max(m, u.position), 0) + 1;
+  try {
+    const made = await cuCreateMany([coCapstoneRow(course, pos)]);
+    const row = Array.isArray(made) ? made[0] : made;
+    if (row) units.push(row);
+  } catch (e) { /* a missing capstone row is not worth breaking the map over */ }
+  return units;
+}
+
 // A checkpoint every CO_CHECKPOINT_EVERY units. It carries no new material —
 // its whole job is the span behind it, which is where interleaving pays.
 const CO_CHECKPOINT_EVERY = 5;
@@ -10291,6 +10340,7 @@ async function coCommitPlan(plan, brief, intake, guidance) {
     facts: u.facts && u.facts.length ? u.facts : null,
     sources: plan.source ? [plan.source] : null,
   }));
+  rows.push(coCapstoneRow(course, rows.length + 1));
   await cuCreateMany(rows);
   return course;
 }
@@ -10445,11 +10495,11 @@ async function loadCourses() {
       list.innerHTML = '<p class="framing">No courses yet. Tap + and name something you want to actually know.</p>';
       return;
     }
-    const all = await sbFetch('course_units?select=course_id,state');
+    const all = await sbFetch('course_units?select=course_id,kind,state');
     const by = {};
     (all || []).forEach(u => { (by[u.course_id] = by[u.course_id] || []).push(u); });
     list.innerHTML = courses.map(c => {
-      const us = by[c.id] || [];
+      const us = coRealUnits(by[c.id] || []);
       const solid = us.filter(u => u.state === 'solid').length;
       const started = us.filter(u => u.state !== 'ready').length;
       const pct = us.length ? Math.round((solid / us.length) * 100) : 0;
@@ -10478,6 +10528,7 @@ async function openCourse(course) {
   document.getElementById('co-units').innerHTML = '';
   showScreen('course');
   coUnits = await cuFetch(course.id) || [];
+  coUnits = await coEnsureCapstone(course, coUnits);
   renderCourseMap();
   renderCourseSteer();
 }
@@ -10512,20 +10563,31 @@ function coStateLabel(u) {
 }
 
 function renderCourseMap() {
-  const solid = coUnits.filter(u => u.state === 'solid').length;
-  const pct = coUnits.length ? Math.round((solid / coUnits.length) * 100) : 0;
+  // Count real units only — the capstone and checkpoints are not material.
+  const real = coRealUnits(coUnits);
+  const solid = real.filter(u => u.state === 'solid').length;
+  const pct = real.length ? Math.round((solid / real.length) * 100) : 0;
   document.getElementById('co-bar-fill').style.width = pct + '%';
   document.getElementById('co-progress').textContent =
-    coUnits.length ? solid + ' of ' + coUnits.length + ' units solid' : '';
-  document.getElementById('co-units').innerHTML = coUnits.map(u =>
-    '<button class="co-unit" data-unit="' + u.id + '">'
-    + '<span class="co-unit-n">' + u.position + '</span>'
-    + '<span><span class="co-unit-title">' + esc(u.title) + '</span>'
-    + (u.one_line ? '<span class="co-unit-sub" style="display:block">' + esc(u.one_line) + '</span>' : '')
-    + '</span>'
-    + '<span class="co-state' + (u.state === 'solid' ? ' solid' : '') + '">' + coStateLabel(u) + '</span>'
-    + '</button>'
-  ).join('');
+    real.length ? solid + ' of ' + real.length + ' units solid' : '';
+  const ready = coCapstoneReady(coUnits);
+  const prog = coCapstoneProgress(coUnits);
+  document.getElementById('co-units').innerHTML = coUnits.map(u => {
+    const cap = u.kind === 'capstone';
+    const locked = cap && !ready;
+    // Locked, not hidden: a visible goal is the whole point of a progress map.
+    const label = cap
+      ? (locked ? prog.done + ' of ' + prog.total + ' units done' : coStateLabel(u) || 'ready')
+      : coStateLabel(u);
+    return '<button class="co-unit' + (cap ? ' co-capstone' : '') + (locked ? ' co-locked' : '') + '"'
+      + ' data-unit="' + u.id + '"' + (locked ? ' disabled' : '') + '>'
+      + '<span class="co-unit-n">' + (cap ? '★' : u.position) + '</span>'
+      + '<span><span class="co-unit-title">' + esc(u.title) + '</span>'
+      + (u.one_line ? '<span class="co-unit-sub" style="display:block">' + esc(u.one_line) + '</span>' : '')
+      + '</span>'
+      + '<span class="co-state' + (u.state === 'solid' ? ' solid' : '') + '">' + esc(label) + '</span>'
+      + '</button>';
+  }).join('');
   document.getElementById('co-units').querySelectorAll('[data-unit]').forEach(b => {
     b.addEventListener('click', () => openUnit(coUnits.find(u => u.id === b.dataset.unit)));
   });
@@ -10537,6 +10599,7 @@ async function openUnit(unit) {
   cuState = { unit, course: coCurrent, guess: null, bucket: null };
   document.getElementById('cu-title').textContent = 'Unit ' + unit.position;
   showScreen('course-unit');
+  if (unit.kind === 'capstone') { cuRenderCapstone(unit); return; }
   if (unit.kind === 'checkpoint') { cuRenderCheckpoint(unit); coPrefetchNext(unit); return; }
   if (!unit.built_at) {
     document.getElementById('cu-body').innerHTML =
@@ -10671,6 +10734,33 @@ function cuRenderTeach() {
     } catch (err) { showToast('Could not condense — try selecting less'); }
     btn.textContent = 'Make a flashcard from this'; btn.disabled = false;
   });
+}
+
+// The capstone borrows every unit's key points, so the existing grader handles
+// it with no special case — it is a recall beat over the whole course.
+function cuRenderCapstone(unit) {
+  if (!coCapstoneReady(coUnits)) {
+    const prog = coCapstoneProgress(coUnits);
+    document.getElementById('cu-body').innerHTML =
+      '<div class="cu-beat-label">Capstone — locked</div>'
+      + '<div class="cu-q">' + esc(unit.one_line || '') + '</div>'
+      + '<div class="cu-note">Unlocks when you have explained every unit at least once. '
+      + prog.done + ' of ' + prog.total + ' done.</div>'
+      + '<button class="btn btn-outline" id="cu-map3" style="margin-top:16px">Back to the course</button>';
+    document.getElementById('cu-map3').addEventListener('click', () => { renderCourseMap(); showScreen('course'); });
+    return;
+  }
+  const pts = coRealUnits(coUnits).reduce((a, u) => a.concat(u.key_points || []), []).slice(0, 15);
+  cuState.unit.key_points = pts;
+  document.getElementById('cu-title').textContent = 'Capstone';
+  document.getElementById('cu-body').innerHTML =
+    '<div class="cu-beat-label">Capstone — the whole course</div>'
+    + '<div class="cu-q">' + esc(cuState.course.capstone_prompt || unit.one_line || '') + '</div>'
+    + '<textarea id="cu-answer" class="anki-textarea" rows="10" placeholder="From memory. Take your time."></textarea>'
+    + '<button class="btn btn-primary" id="cu-grade" style="margin-top:12px">Done</button>'
+    + '<button class="btn btn-outline" id="cu-self" style="margin-top:8px">Just show me the points</button>';
+  document.getElementById('cu-grade').addEventListener('click', cuGradeAndFinish);
+  document.getElementById('cu-self').addEventListener('click', cuSelfRate);
 }
 
 // A checkpoint teaches nothing. It asks for the whole span behind it, graded
@@ -10913,15 +11003,19 @@ async function coDailyPlan() {
   const courses = await coFetch();
   if (!courses || !courses.length) return { due: [], fresh: [], courses: [] };
   const units = await sbFetch('course_units?select=id,course_id,position,title,kind,state,next_review,built_at&order=position.asc');
+  // coCapstoneReady() reads .kind and .state, which this projection carries.
   const today = localDateStr();
   const byId = {};
   courses.forEach(c => { byId[c.id] = c; });
   const mine = (units || []).filter(u => byId[u.course_id]);
-  const due = mine.filter(u => u.state !== 'ready' && u.next_review && u.next_review <= today);
+  const unlocked = {};
+  courses.forEach(c => { unlocked[c.id] = coCapstoneReady(mine.filter(u => u.course_id === c.id)); });
+  const offerable = mine.filter(u => u.kind !== 'capstone' || unlocked[u.course_id]);
+  const due = offerable.filter(u => u.state !== 'ready' && u.next_review && u.next_review <= today);
   const fresh = [];
   courses.forEach(c => {
     const cap = Number(c.new_per_day) || 2;
-    fresh.push(...mine.filter(u => u.course_id === c.id && u.state === 'ready').slice(0, cap));
+    fresh.push(...offerable.filter(u => u.course_id === c.id && u.state === 'ready').slice(0, cap));
   });
   return { due, fresh, courses: byId };
 }
