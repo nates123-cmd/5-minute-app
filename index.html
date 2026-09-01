@@ -10568,7 +10568,6 @@ async function cuFinish(bucket, feedback, verdicts) {
   // it silently on a flaky connection, and a later read races the write.
   try { await cuUpdate(u.id, fields); }
   catch (e) { showToast('Saved locally — the grade did not reach the server'); }
-  const minted = await cuMintCards(u);
   const pts = (u.key_points || []).map((k, i) => {
     const v = (verdicts || []).find(x => x && x.index === i);
     const tag = !v ? '' : (v.hit ? ' ✓' : ' — missed');
@@ -10578,10 +10577,13 @@ async function cuFinish(bucket, feedback, verdicts) {
     '<div class="cu-beat-label">' + (state === 'solid' ? 'Solid' : 'Logged') + '</div>'
     + (feedback ? '<div class="cu-q" style="font-size:1rem">' + esc(feedback) + '</div>' : '')
     + '<ul>' + pts + '</ul>'
-    + '<div class="cu-note">' + (minted ? minted + ' flashcard' + (minted === 1 ? '' : 's') + ' added — your review deck takes it from here. ' : '')
-    + 'Back in ' + sched.interval + ' day' + (sched.interval === 1 ? '' : 's') + '.</div>'
+    + '<div class="cu-note">Back in ' + sched.interval + ' day' + (sched.interval === 1 ? '' : 's') + '.</div>'
+    + cuCandidatesHtml(u)
     + '<button class="btn btn-primary" id="cu-next" style="margin-top:16px">Next unit</button>'
     + '<button class="btn btn-outline" id="cu-map" style="margin-top:8px">Back to the course</button>';
+  document.querySelectorAll('[data-cu-keep]').forEach(b => {
+    b.addEventListener('click', () => cuKeepCard(u, Number(b.dataset.cuKeep), b));
+  });
   document.getElementById('cu-map').addEventListener('click', () => { renderCourseMap(); showScreen('course'); });
   document.getElementById('cu-next').addEventListener('click', () => {
     const next = coUnits.find(x => x.position === u.position + 1);
@@ -10591,28 +10593,49 @@ async function cuFinish(bucket, feedback, verdicts) {
   updateCoursesBadge();
 }
 
-// Mint the unit's atomic cards and hand them to SM-2 + the ladder. This is the
-// handoff the whole design rests on: the course teaches once, the cards keep it.
-async function cuMintCards(unit) {
-  if (!Array.isArray(unit.cards) || !unit.cards.length) return 0;
-  if (Array.isArray(unit.card_ids) && unit.card_ids.length) return 0;   // already minted
-  const ids = [];
-  for (const c of unit.cards) {
-    try {
-      if (await cardExists(c.front)) continue;
-      const r = await srsCreate(c.front, c.back, 'Course: ' + (cuState && cuState.course ? cuState.course.title : ''));
-      const row = Array.isArray(r) ? r[0] : r;
-      if (row && row.id) ids.push(row.id);
-    } catch (e) { /* one bad card must not sink the unit */ }
-  }
-  if (ids.length) {
-    unit.card_ids = ids;
-    // Awaited: if this write is lost the next visit re-mints the same cards,
-    // and only cardExists() stands between that and a duplicated deck.
-    try { await cuUpdate(unit.id, { card_ids: ids }); } catch (e) { /* dedupe still guards */ }
+// Cards are OFFERED, never minted for you. A course that silently fills the
+// review deck decides what you are obliged to remember for years; that call is
+// the user's. Same one-tap keep shape as proposeReadCandidates().
+function cuCandidatesHtml(unit) {
+  const cards = Array.isArray(unit.cards) ? unit.cards : [];
+  if (!cards.length) return '';
+  return '<div class="read-capture">'
+    + '<div class="read-capture-head">Worth keeping as flashcards?</div>'
+    + cards.map((c, i) =>
+        '<div class="read-cand">'
+        + '<div class="read-cand-body"><strong>' + esc(c.front) + '</strong>'
+        + '<div class="read-cand-back">' + esc(c.back) + '</div></div>'
+        + '<button class="btn btn-outline" data-cu-keep="' + i + '">Keep</button>'
+        + '</div>').join('')
+    + '</div>';
+}
+
+async function cuKeepCard(unit, idx, btn) {
+  const c = (Array.isArray(unit.cards) ? unit.cards : [])[idx];
+  if (!c) return;
+  const row = btn.closest('.read-cand');
+  btn.textContent = 'Saving…'; btn.disabled = true;
+  try {
+    if (await cardExists(c.front)) {
+      btn.textContent = 'Already saved';
+      if (row) row.classList.add('kept');
+      return;
+    }
+    const r = await srsCreate(c.front, c.back, 'Course: ' + (cuState && cuState.course ? cuState.course.title : ''));
+    const created = Array.isArray(r) ? r[0] : r;
+    if (created && created.id) {
+      const ids = (Array.isArray(unit.card_ids) ? unit.card_ids : []).slice();
+      ids.push(created.id);
+      unit.card_ids = ids;
+      try { await cuUpdate(unit.id, { card_ids: ids }); } catch (e) { /* cardExists still guards a re-keep */ }
+    }
+    btn.textContent = created && created.offline ? 'Queued' : 'Kept';
+    if (row) row.classList.add('kept');
     updateDueBadge();
+  } catch (e) {
+    btn.textContent = 'Keep'; btn.disabled = false;
+    showToast('Could not save that card');
   }
-  return ids.length;
 }
 
 // ── Wiring ────────────────────────────────────────────────────────────────
