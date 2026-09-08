@@ -575,6 +575,26 @@
     }
     .anki-textarea:focus { border-color: var(--accent); }
 
+
+    /* ── Crux ─────────────────────────────────────────────
+       The five moves are revealed one at a time, so the styling has to make a
+       single move feel like the whole screen rather than one row in a list. */
+    .crux-dots { display: flex; gap: 6px; justify-content: center; margin: 2px 0 18px; }
+    .crux-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-strong, var(--border)); opacity: 0.45; transition: opacity 0.2s, background 0.2s; }
+    .crux-dot.done { opacity: 0.75; }
+    .crux-dot.active { opacity: 1; background: var(--accent); transform: scale(1.35); }
+    .crux-kicker { font-size: 0.72rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--text-faint, var(--muted)); margin-bottom: 10px; }
+    .crux-head { font-family: var(--font-serif); font-size: 1.28rem; line-height: 1.32; margin-bottom: 12px; }
+    .crux-body { font-size: 0.95rem; line-height: 1.55; color: var(--text); }
+    .crux-body p { margin: 0 0 10px; }
+    .crux-body p:last-child { margin-bottom: 0; }
+    .crux-panel { background: var(--surface); border-radius: var(--radius-md, 14px); padding: 20px; }
+    /* Their own words, quoted back. Deliberately looks like a pull-quote and not
+       like app copy — the whole move is recognising that you said this. */
+    .crux-quote { border-left: 3px solid var(--accent); padding: 2px 0 2px 14px; margin: 14px 0; font-family: var(--font-serif); font-size: 1.05rem; line-height: 1.4; color: var(--text); }
+    .crux-push { margin-top: 14px; font-size: 0.95rem; line-height: 1.5; font-weight: 500; }
+    .crux-tag { display: inline-block; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 4px 9px; border-radius: 999px; background: var(--surface-2, var(--surface)); color: var(--text-muted, var(--muted)); margin-bottom: 12px; }
+
     .spacer { flex: 1; }
 
     .activity-actions {
@@ -2063,6 +2083,10 @@
     <span class="btn-scroll-label">Courses</span>
     <span class="btn-scroll-sub" id="courses-sub">break a topic into short units</span>
   </button>
+  <button class="btn-scroll" id="btn-crux">
+    <span class="btn-scroll-label">Crux</span>
+    <span class="btn-scroll-sub">for something you only sort of get</span>
+  </button>
 
   <button id="state-line" class="state-line" hidden></button>
 
@@ -2221,6 +2245,70 @@
     <button class="dd-seg-btn" data-dd-view="archived">Archived</button>
   </div>
   <div id="dd-list"></div>
+</div>
+
+<!-- CRUX — for a topic you already half-understand. The point is not to be
+     told the answer; it is to find the exact sentence where your understanding
+     stops. So you explain FIRST, and nothing is shown until you have. -->
+<div id="screen-crux" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Crux</span>
+  </div>
+
+  <!-- Phase: setup -->
+  <div id="crux-setup">
+    <p class="framing">Name something you only sort of understand. You'll explain it out loud first — the gap is always one specific sentence, and finding it is most of the work.</p>
+    <label class="srs-label" style="margin-top:14px">What do you sort of get?</label>
+    <input id="crux-topic" class="anki-textarea" type="text" placeholder="e.g. why a sonic boom happens" autocomplete="off">
+    <label class="srs-label" style="margin-top:14px">Anything to narrow it? (optional)</label>
+    <textarea id="crux-context" class="anki-textarea" rows="2" placeholder="e.g. I care about the mechanism, not the history"></textarea>
+    <button class="btn btn-primary" id="crux-start" style="width:100%;margin-top:18px">Start</button>
+  </div>
+
+  <!-- Phase: explain -->
+  <div id="crux-explain" style="display:none">
+    <div id="crux-explain-topic" style="font-family:var(--font-serif);font-size:1.3rem;line-height:1.3;margin:4px 0 10px"></div>
+    <div id="crux-explain-prompt" style="background:var(--surface);border-radius:var(--radius-md,14px);padding:18px;font-family:var(--font-serif);font-size:1.05rem;line-height:1.4;margin-bottom:16px">
+      Explain it. Say everything you know, including the parts you're fuzzy on. Don't tidy it up — the hand-wave is the whole point.
+    </div>
+    <div class="srs-half-toggle" id="crux-mode-toggle">
+      <button class="srs-mode-btn active" data-crux-mode="speak">Speak</button>
+      <button class="srs-mode-btn" data-crux-mode="type">Type</button>
+    </div>
+
+    <div id="crux-speak" style="margin-top:14px">
+      <div id="crux-speak-live" style="text-align:center">
+        <!-- Outline, not primary: unlike Active Recall's speak mode the submit
+             button is visible from the start here, and two filled buttons on one
+             screen leaves no answer to "what am I meant to press". -->
+        <button class="btn btn-outline" id="crux-record" style="width:100%">Start recording</button>
+        <p class="framing" id="crux-record-state" style="font-size:0.82rem;margin-top:8px"></p>
+      </div>
+      <p class="framing" id="crux-speak-fallback" style="display:none;color:var(--accent);margin-top:12px"></p>
+    </div>
+
+    <textarea id="crux-transcript" class="anki-textarea" rows="7" placeholder="Your words appear here…" style="margin-top:12px"></textarea>
+    <button class="btn btn-primary" id="crux-submit" style="width:100%;margin-top:12px">Find the crux</button>
+  </div>
+
+  <!-- Phase: loading -->
+  <div id="crux-loading" style="display:none;text-align:center;padding:48px 0">
+    <p class="framing" id="crux-loading-msg">Reading your explanation for the seam…</p>
+  </div>
+
+  <!-- Phase: result — revealed one move at a time. Dumping all five at once
+       turns this straight back into an explanation card. -->
+  <div id="crux-result" style="display:none">
+    <div id="crux-step-dots" class="crux-dots"></div>
+    <div id="crux-step"></div>
+    <button class="btn btn-primary" id="crux-next" style="width:100%;margin-top:18px">Continue</button>
+    <div id="crux-save" style="display:none;margin-top:18px">
+      <button class="btn btn-primary" id="crux-save-dive" style="width:100%">Save as a deep dive</button>
+      <button class="btn btn-outline" id="crux-save-cards" style="width:100%;margin-top:10px">Keep the constraint + the number as cards</button>
+      <button class="btn btn-outline" id="crux-done" style="width:100%;margin-top:10px">Done</button>
+    </div>
+  </div>
 </div>
 
 <!-- COURSES (Deep Dives v2) — see break-courses-spec.md -->
@@ -2612,6 +2700,7 @@
   <div id="ar-setup">
     <div id="ar-dive-title" style="font-family:var(--font-serif);font-size:1.3rem;line-height:1.3;margin:4px 0 6px"></div>
     <div id="ar-guidance-badge" style="display:none;margin:0 0 8px"></div>
+    <div id="ar-crux-prediction" class="crux-panel" style="display:none;margin:0 0 12px"></div>
     <p class="framing">Explain this from memory. Pick how you want to answer.</p>
     <label class="srs-label" style="margin-top:12px">Mode</label>
     <div class="srs-half-toggle" id="ar-mode-toggle">
@@ -6553,6 +6642,359 @@ async function ddFromLul(title, contextText) {
   updateDeepDiveBadge();
 }
 
+// ── Crux ───────────────────────────────────────────────────────────
+// For a topic you already half-understand. Every other surface in this app
+// assumes you know nothing and hands you a finished explanation; that is
+// exactly the wrong move when the problem is that you "sort of get it".
+//
+// "Sort of get it" is three different failures wearing the same clothes:
+// picturing an object where there is a process, holding a cartoon model that
+// feels sufficient and therefore blocks the real one, or knowing the outcome
+// without the engine that produces it. Different failures need different
+// fixes, which is why one explanation never works on all three.
+//
+// So: you explain FIRST, before anything is shown. The model reads your own
+// words for the sentence that goes circular — that sentence is where your
+// understanding actually stops, and locating it is most of the work. Then four
+// moves (the number, the constraint, the killer case, the bottleneck), each on
+// its own screen, and a prediction you can check against the world.
+//
+// The reveal is stepped on purpose. Showing all five at once collapses this
+// back into a card you read and forget.
+
+let cruxState = null;
+
+const CRUX_REC_TARGETS = {
+  transcript: 'crux-transcript', btn: 'crux-record',
+  state: 'crux-record-state', submit: null,
+};
+
+function cruxPhase(name) {
+  ['setup', 'explain', 'loading', 'result'].forEach(p => {
+    const el = document.getElementById('crux-' + p);
+    if (el) el.style.display = p === name ? '' : 'none';
+  });
+}
+
+function cruxSetMode(m) {
+  if (!cruxState) return;
+  cruxState.mode = m;
+  localStorage.setItem('crux_mode', m);
+  document.querySelectorAll('#crux-mode-toggle .srs-mode-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.cruxMode === m));
+  const speak = document.getElementById('crux-speak');
+  if (speak) speak.style.display = m === 'speak' ? '' : 'none';
+  const ta = document.getElementById('crux-transcript');
+  if (ta) ta.placeholder = m === 'speak' ? 'Your words appear here…' : 'Say what you know — fuzzy parts included…';
+}
+
+// Entry point from home. Always starts clean: a half-finished crux from an
+// earlier sitting is worse than none, because the explanation it was reading
+// is no longer the one in your head.
+function startCrux() {
+  if (typeof arRecording !== 'undefined' && arRecording) arStopRecording();
+  cruxState = { mode: localStorage.getItem('crux_mode') || 'speak' };
+  document.getElementById('crux-topic').value = '';
+  document.getElementById('crux-context').value = '';
+  document.getElementById('crux-transcript').value = '';
+  showScreen('crux');
+  cruxPhase('setup');
+}
+
+function cruxSetupSpeak() {
+  arUseRecTargets(CRUX_REC_TARGETS);
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const live = document.getElementById('crux-speak-live');
+  const fb = document.getElementById('crux-speak-fallback');
+  if (!SR) {
+    live.style.display = 'none';
+    fb.style.display = '';
+    fb.textContent = 'Speech recognition is not available in this browser. Type it instead — say it out loud anyway as you go.';
+    cruxSetMode('type');
+    return;
+  }
+  live.style.display = '';
+  fb.style.display = 'none';
+  document.getElementById('crux-record').textContent = 'Start recording';
+  document.getElementById('crux-record-state').textContent = '';
+  arRecording = false; arRecog = null;
+}
+
+document.getElementById('btn-crux')?.addEventListener('click', startCrux);
+
+document.getElementById('crux-mode-toggle')?.addEventListener('click', e => {
+  const b = e.target.closest('[data-crux-mode]'); if (!b) return;
+  if (b.dataset.cruxMode === 'speak' && !(window.SpeechRecognition || window.webkitSpeechRecognition)) {
+    showToast('No speech recognition in this browser'); return;
+  }
+  cruxSetMode(b.dataset.cruxMode);
+});
+
+document.getElementById('crux-record')?.addEventListener('click', () => {
+  arUseRecTargets(CRUX_REC_TARGETS);
+  if (arRecording) arStopRecording(); else arStartRecording();
+});
+
+document.getElementById('crux-start')?.addEventListener('click', () => {
+  const topic = document.getElementById('crux-topic').value.trim();
+  if (!topic) { showToast('Name the thing first'); return; }
+  cruxState.topic = topic;
+  cruxState.context = document.getElementById('crux-context').value.trim();
+  document.getElementById('crux-explain-topic').textContent = topic;
+  cruxPhase('explain');
+  cruxSetupSpeak();
+  cruxSetMode(cruxState.mode);
+});
+
+document.getElementById('crux-submit')?.addEventListener('click', async () => {
+  if (arRecording) arStopRecording();
+  const explanation = document.getElementById('crux-transcript').value.trim();
+  // A one-line answer has no seam to find. The whole method needs enough of
+  // your own reasoning to catch it going in a circle.
+  if (explanation.split(/\s+/).filter(Boolean).length < 15) {
+    showToast('Say more — it needs your actual reasoning to find the gap');
+    return;
+  }
+  const btn = document.getElementById('crux-submit');
+  cruxState.explanation = explanation;
+  cruxPhase('loading');
+  try {
+    cruxState.result = await cruxAnalyze(cruxState.topic, cruxState.context, explanation);
+  } catch (e) {
+    cruxPhase('explain');
+    btn.disabled = false;
+    showToast('Could not read that — ' + (e.message || 'try again'));
+    return;
+  }
+  cruxState.step = 0;
+  cruxState.saved = false;
+  cruxPhase('result');
+  cruxRenderStep();
+});
+
+// ── The analysis ──
+// One call, because the diagnosis and the four moves have to be consistent with
+// each other: the number you get told matters only if it is the number that
+// settles the constraint the diagnosis said you were missing.
+const CRUX_FAILURES = {
+  'object-for-process':      'You are picturing an object where there is a process',
+  'cartoon-model':           'A cartoon model is standing in the way of the real one',
+  'outcome-without-engine':  'You have the outcome without the engine',
+};
+
+async function cruxAnalyze(topic, context, explanation) {
+  const out = await callClaude(
+    'A person says they "sort of understand" a topic. Below is their own explanation of it, unedited.\n'
+    + 'Your job is NOT to explain the topic well. It is to find where their understanding actually stops, and then '
+    + 'give them exactly the five things that close it.\n\n'
+    + 'TOPIC: "' + topic + '"\n'
+    + (context ? 'WHAT THEY CARE ABOUT: "' + context + '"\n' : '')
+    + '\nTHEIR EXPLANATION (verbatim, possibly a rough speech transcript — read past the disfluency):\n"'
+    + explanation + '"\n\n'
+    + 'Work through this:\n\n'
+    + '1. DIAGNOSE which of three failures this is. Exactly one:\n'
+    + '   - "object-for-process": they are picturing a thing, where the reality is a process or an equilibrium.\n'
+    + '   - "cartoon-model": they hold a simplified picture that feels sufficient, and it is actively blocking the real mechanism.\n'
+    + '   - "outcome-without-engine": they can state what happens and in what order, but not what makes it happen.\n\n'
+    + '2. HAND-WAVE. Quote the single sentence or clause from THEIR OWN WORDS where the explanation goes circular, '
+    + 'stops, or restates itself instead of explaining. Use their words, lightly cleaned of filler — do not invent a '
+    + 'sentence they did not say. Then write the one question that pushes on it. The question must ask what a specific '
+    + 'phrase in that sentence means physically or mechanically. Do not answer it.\n\n'
+    + '3. THE NUMBER. Give the magnitude that makes this click. It MUST be a comparison of two quantities, not one '
+    + 'bare figure — the aha is the ratio, because it is what tells you which effects matter and which are rounding '
+    + 'errors. State real numbers with units.\n\n'
+    + '4. THE CONSTRAINT. Say why it could not have been otherwise. Not a fact about the topic — the constraint that '
+    + 'leaves no alternative outcome. If the answer could be flipped without contradiction, it is not the constraint.\n\n'
+    + '5. THE KILLER CASE. One vivid, real, specific case that is flatly impossible under the wrong model you '
+    + 'diagnosed in step 1, and ordinary under the right one. Name a real example, not a hypothetical.\n\n'
+    + '6. THE BOTTLENECK. What is the rate-limiting step — the one thing that, if you changed it, changes everything, '
+    + 'and which everything else is waiting on.\n\n'
+    + '7. THE PREDICTION. Something they can compute or observe in ordinary life within a week that comes out one way '
+    + 'if they now understand this and another way if they do not. Give the rule concretely enough to run '
+    + '(a formula, a number to look up, a thing to watch for), plus how to check it.\n\n'
+    + '8. KEY POINTS: 3 to 5 things a strong from-memory explanation of this must hit, given everything above.\n\n'
+    + '9. CARDS: exactly two flashcards — one on the constraint, one on the number. Never a definition, never a '
+    + 'mindset or a piece of advice. Each front must be a question with one specific, checkable answer.\n\n'
+    + 'Write in plain second person. Be concrete and specific. No preamble, no encouragement, no restating the task.\n\n'
+    + 'Return JSON only:\n'
+    + '{"failure":"object-for-process|cartoon-model|outcome-without-engine",'
+    + '"failureWhy":"1-2 sentences on what in their explanation shows this",'
+    + '"handWave":"their sentence, quoted","handWavePush":"the question that pushes on it",'
+    + '"number":{"headline":"the comparison in one line","detail":"2-3 sentences on why that ratio decides it"},'
+    + '"constraint":{"headline":"the constraint in one line","detail":"2-3 sentences on why no other outcome was available"},'
+    + '"killerCase":{"headline":"the case in one line","detail":"2-3 sentences on why it is impossible under the wrong model"},'
+    + '"bottleneck":{"headline":"the rate-limiting step in one line","detail":"2-3 sentences"},'
+    + '"prediction":{"text":"what to predict, concretely","how":"how to check it"},'
+    + '"keyPoints":[{"text":"..."}],'
+    + '"cards":[{"front":"...","back":"..."},{"front":"...","back":"..."}]}',
+    { max_tokens: 2600 }
+  );
+  const move = m => ({
+    headline: (m && m.headline) || '',
+    detail:   (m && m.detail)   || '',
+  });
+  return {
+    topic,
+    failure:    CRUX_FAILURES[out.failure] ? out.failure : 'cartoon-model',
+    failureWhy: out.failureWhy || '',
+    handWave:   out.handWave || '',
+    handWavePush: out.handWavePush || '',
+    number:     move(out.number),
+    constraint: move(out.constraint),
+    killerCase: move(out.killerCase),
+    bottleneck: move(out.bottleneck),
+    prediction: { text: (out.prediction && out.prediction.text) || '', how: (out.prediction && out.prediction.how) || '' },
+    keyPoints:  Array.isArray(out.keyPoints) ? out.keyPoints.filter(k => k && k.text) : [],
+    cards:      Array.isArray(out.cards) ? out.cards.filter(c => c && c.front && c.back) : [],
+  };
+}
+
+// ── Stepped reveal ──
+// Order is not decorative. The diagnosis has to land before the number, or the
+// number is just trivia; the constraint has to land before the killer case, or
+// the case is just a curiosity.
+function cruxSteps() {
+  const r = cruxState.result;
+  const steps = [{
+    kicker: 'Where it stops',
+    render: () =>
+      '<div class="crux-panel">'
+      + '<div class="crux-tag">' + esc(CRUX_FAILURES[r.failure]) + '</div>'
+      + (r.failureWhy ? '<div class="crux-body"><p>' + esc(r.failureWhy) + '</p></div>' : '')
+      + (r.handWave ? '<div class="crux-quote">“' + esc(r.handWave) + '”</div>' : '')
+      + (r.handWavePush ? '<div class="crux-push">' + esc(r.handWavePush) + '</div>' : '')
+      + '</div>'
+      + '<p class="framing" style="margin-top:14px">Sit with that before you continue. Everything after this is the answer to it.</p>',
+  }];
+  const moves = [
+    ['The number',      r.number],
+    ['Why it could not be otherwise', r.constraint],
+    ['The case that kills the wrong model', r.killerCase],
+    ['The bottleneck',  r.bottleneck],
+  ];
+  moves.forEach(([kicker, m]) => {
+    if (!m.headline && !m.detail) return;
+    steps.push({
+      kicker,
+      render: () =>
+        '<div class="crux-panel">'
+        + (m.headline ? '<div class="crux-head">' + esc(m.headline) + '</div>' : '')
+        + (m.detail ? '<div class="crux-body"><p>' + esc(m.detail) + '</p></div>' : '')
+        + '</div>',
+    });
+  });
+  if (r.prediction.text) {
+    steps.push({
+      kicker: 'Now make it checkable',
+      render: () =>
+        '<div class="crux-panel">'
+        + '<div class="crux-head">' + esc(r.prediction.text) + '</div>'
+        + (r.prediction.how ? '<div class="crux-body"><p>' + esc(r.prediction.how) + '</p></div>' : '')
+        + '</div>'
+        + '<p class="framing" style="margin-top:14px">Predicting something and having the world agree is what turns knowing into having.</p>',
+    });
+  }
+  return steps;
+}
+
+function cruxRenderStep() {
+  const steps = cruxSteps();
+  const i = Math.min(cruxState.step, steps.length - 1);
+  const s = steps[i];
+  document.getElementById('crux-step-dots').innerHTML = steps.map((_, n) =>
+    '<div class="crux-dot' + (n === i ? ' active' : (n < i ? ' done' : '')) + '"></div>').join('');
+  document.getElementById('crux-step').innerHTML =
+    '<div class="crux-kicker">' + esc(s.kicker) + '</div>' + s.render();
+  const last = i === steps.length - 1;
+  document.getElementById('crux-next').style.display = last ? 'none' : '';
+  document.getElementById('crux-save').style.display = last ? '' : 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+document.getElementById('crux-next')?.addEventListener('click', () => {
+  cruxState.step++;
+  cruxRenderStep();
+});
+
+// ── Saving ──
+// The dive is what makes this stick: it lands on the Deep Dives shelf and is
+// immediately drillable by Active Recall, so the explanation you could not give
+// at the start is the one you get asked for later.
+document.getElementById('crux-save-dive')?.addEventListener('click', async e => {
+  const btn = e.currentTarget;
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    await cruxSaveDive();
+    btn.textContent = 'Saved to Deep Dives';
+    showToast('On the shelf — drill it from the Deep Dives pillar');
+  } catch (err) {
+    btn.disabled = false; btn.textContent = label;
+    showToast('Save failed — ' + (err.message || 'try again'));
+  }
+});
+
+async function cruxSaveDive() {
+  const r = cruxState.result;
+  const keyPoints = r.keyPoints.length ? r.keyPoints : [
+    r.constraint.headline && { text: r.constraint.headline },
+    r.number.headline && { text: r.number.headline },
+    r.bottleneck.headline && { text: r.bottleneck.headline },
+  ].filter(Boolean);
+  const base = {
+    title: r.topic,
+    prompt: 'Explain ' + r.topic + ' from memory. Name the constraint that leaves no other outcome, and the number that settles it.',
+    summary: r.constraint.headline || r.bottleneck.headline || '',
+    key_points: keyPoints,
+    source: 'crux',
+  };
+  const payload = {
+    failure: r.failure, failureWhy: r.failureWhy,
+    handWave: r.handWave, handWavePush: r.handWavePush,
+    number: r.number, constraint: r.constraint,
+    killerCase: r.killerCase, bottleneck: r.bottleneck,
+    prediction: r.prediction,
+  };
+  // The crux column is the only new schema this feature needs. If the migration
+  // has not been applied yet the dive still has to save — losing the whole dive
+  // over the extra column would be the worse failure. Narrowly: only a missing
+  // column earns the retry. A 401 must NOT, or the retry just re-fails and
+  // buries the real reason ("sign in again") under a schema message.
+  try {
+    await ddCreate(Object.assign({}, base, { crux: payload }));
+  } catch (err) {
+    if (!/crux/.test(err.message || '')) throw err;
+    await ddCreate(base);
+    showToast('Saved, but the crux detail needs the migration');
+  }
+  cruxState.saved = true;
+  updateDeepDiveBadge();
+}
+
+document.getElementById('crux-save-cards')?.addEventListener('click', async e => {
+  const btn = e.currentTarget;
+  const label = btn.textContent;
+  const r = cruxState.result;
+  const cards = r.cards.length ? r.cards : [
+    r.constraint.headline && { front: 'What constraint makes ' + r.topic + ' come out the way it does?', back: r.constraint.headline },
+    r.number.headline && { front: 'What is the magnitude that settles ' + r.topic + '?', back: r.number.headline },
+  ].filter(Boolean);
+  if (!cards.length) { showToast('Nothing worth keeping as a card'); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  let n = 0;
+  for (const c of cards) {
+    try { await srsCreate(c.front, c.back, 'Crux'); n++; } catch (err) {}
+  }
+  btn.textContent = n ? 'Saved ' + n + (n === 1 ? ' card' : ' cards') : label;
+  if (!n) { btn.disabled = false; showToast('Card save failed'); }
+  else showToast(n + (n === 1 ? ' card' : ' cards') + ' added');
+});
+
+document.getElementById('crux-done')?.addEventListener('click', () => {
+  cruxState = null;
+  showScreen('home');
+});
+
 // ── Active Recall session (runs on a chosen dive) ──
 function arPhase(name) {
   ['setup','loading','answer','feedback'].forEach(p => {
@@ -6588,6 +7030,7 @@ function arStartSession(dive) {
   if (rToggle) rToggle.textContent = 'Revise key points';
   if (rInput) rInput.value = '';
   arRenderGuidanceBadge();
+  arRenderCruxPrediction(dive);
   arSetMode(arState.mode);
   arPhase('setup');
 }
@@ -6618,6 +7061,22 @@ function arGuidanceBlock(g) {
   return (g && g.trim())
     ? '\nHOW THEY HAVE TOLD YOU TO WEIGHT THIS TOPIC (standing instructions from earlier \u2014 follow them):\n' + g.trim() + '\n'
     : '';
+}
+
+// A dive that came out of Crux carries a prediction the user was supposed to
+// check against the world. Showing it here, at the top of the drill, is the
+// only thing that turns it from a stored sentence into a habit — the drill is
+// the next time they are guaranteed to be looking at this topic.
+function arRenderCruxPrediction(dive) {
+  const el = document.getElementById('ar-crux-prediction');
+  if (!el) return;
+  const pred = dive && dive.crux && dive.crux.prediction;
+  if (!pred || !pred.text) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = '<div class="crux-kicker">You said you would check this</div>'
+    + '<div class="crux-body"><p>' + esc(pred.text) + '</p>'
+    + (pred.how ? '<p style="color:var(--text-muted, var(--muted))">' + esc(pred.how) + '</p>' : '')
+    + '</div>';
 }
 
 // ── Revise key points (natural-language, persists to the dive) ──
