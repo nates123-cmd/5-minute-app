@@ -2302,9 +2302,30 @@
   <div id="crux-result" style="display:none">
     <div id="crux-step-dots" class="crux-dots"></div>
     <div id="crux-step"></div>
+
+    <!-- One thread, available on every card. A move that raises a question and
+         gives you nowhere to put it is worse than one that says less: the
+         question is the live end of your understanding, and it does not
+         survive being carried to the end of the flow. The thread persists
+         across steps because it is one conversation about one topic. -->
+    <div id="crux-followup-wrap" style="margin-top:12px">
+      <button class="btn btn-outline" id="crux-followup-toggle" style="width:100%">Ask about this</button>
+      <div id="crux-followup-panel" style="display:none;margin-top:12px">
+        <div id="crux-followup-thread" style="max-height:320px;overflow-y:auto;display:flex;flex-direction:column;gap:10px"></div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <textarea id="crux-followup-input" class="anki-textarea" rows="1" placeholder="Push on it…" style="flex:1;margin:0;min-height:44px;resize:none"></textarea>
+          <button class="btn btn-primary" id="crux-followup-send" style="width:auto;padding:0 18px;flex-shrink:0">Send</button>
+        </div>
+      </div>
+    </div>
+
     <button class="btn btn-primary" id="crux-next" style="width:100%;margin-top:18px">Continue</button>
     <div id="crux-save" style="display:none;margin-top:18px">
-      <button class="btn btn-primary" id="crux-save-dive" style="width:100%">Save as a deep dive</button>
+      <!-- Explaining it back is the actual move, so it is the primary action and
+           it saves on the way through. Saving without drilling stays available
+           for the times you are not up for it right now. -->
+      <button class="btn btn-primary" id="crux-regrade" style="width:100%">Explain it back to me</button>
+      <button class="btn btn-outline" id="crux-save-dive" style="width:100%;margin-top:10px">Just save it for later</button>
       <button class="btn btn-outline" id="crux-save-cards" style="width:100%;margin-top:10px">Keep the constraint + the number as cards</button>
       <button class="btn btn-outline" id="crux-done" style="width:100%;margin-top:10px">Done</button>
     </div>
@@ -6693,7 +6714,10 @@ function cruxSetMode(m) {
 // is no longer the one in your head.
 function startCrux() {
   if (typeof arRecording !== 'undefined' && arRecording) arStopRecording();
-  cruxState = { mode: localStorage.getItem('crux_mode') || 'speak' };
+  cruxState = {
+    mode: localStorage.getItem('crux_mode') || 'speak',
+    chat: [], chatOpen: false, dive: null, step: 0,
+  };
   document.getElementById('crux-topic').value = '';
   document.getElementById('crux-context').value = '';
   document.getElementById('crux-transcript').value = '';
@@ -6768,6 +6792,9 @@ document.getElementById('crux-submit')?.addEventListener('click', async () => {
   }
   cruxState.step = 0;
   cruxState.saved = false;
+  cruxState.dive = null;
+  cruxState.chat = [];        // a new analysis is a new conversation
+  cruxState.chatOpen = false;
   cruxPhase('result');
   cruxRenderStep();
 });
@@ -6857,6 +6884,11 @@ function cruxSteps() {
   const r = cruxState.result;
   const steps = [{
     kicker: 'Where it stops',
+    // Plain-text twin of what the card shows, so a follow-up can be grounded in
+    // the card actually on screen rather than the whole payload.
+    context: 'Diagnosis: ' + CRUX_FAILURES[r.failure] + '. ' + r.failureWhy
+      + (r.handWave ? '\nTheir hand-wave sentence: "' + r.handWave + '"' : '')
+      + (r.handWavePush ? '\nThe question put to them: ' + r.handWavePush : ''),
     render: () =>
       '<div class="crux-panel">'
       + '<div class="crux-tag">' + esc(CRUX_FAILURES[r.failure]) + '</div>'
@@ -6876,6 +6908,7 @@ function cruxSteps() {
     if (!m.headline && !m.detail) return;
     steps.push({
       kicker,
+      context: kicker + ': ' + m.headline + '\n' + m.detail,
       render: () =>
         '<div class="crux-panel">'
         + (m.headline ? '<div class="crux-head">' + esc(m.headline) + '</div>' : '')
@@ -6886,6 +6919,8 @@ function cruxSteps() {
   if (r.prediction.text) {
     steps.push({
       kicker: 'Now make it checkable',
+      context: 'The prediction they were given: ' + r.prediction.text
+        + (r.prediction.how ? '\nHow to check it: ' + r.prediction.how : ''),
       render: () =>
         '<div class="crux-panel">'
         + '<div class="crux-head">' + esc(r.prediction.text) + '</div>'
@@ -6908,6 +6943,7 @@ function cruxRenderStep() {
   const last = i === steps.length - 1;
   document.getElementById('crux-next').style.display = last ? 'none' : '';
   document.getElementById('crux-save').style.display = last ? '' : 'none';
+  cruxApplyChatOpen();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -6934,7 +6970,11 @@ document.getElementById('crux-save-dive')?.addEventListener('click', async e => 
   }
 });
 
+// Returns the created dive row. Idempotent: "Just save it for later" and
+// "Explain it back to me" both land here, and pressing both must not put two
+// copies of the same topic on the shelf.
 async function cruxSaveDive() {
+  if (cruxState.dive) return cruxState.dive;
   const r = cruxState.result;
   const keyPoints = r.keyPoints.length ? r.keyPoints : [
     r.constraint.headline && { text: r.constraint.headline },
@@ -6960,15 +7000,21 @@ async function cruxSaveDive() {
   // over the extra column would be the worse failure. Narrowly: only a missing
   // column earns the retry. A 401 must NOT, or the retry just re-fails and
   // buries the real reason ("sign in again") under a schema message.
+  let row;
   try {
-    await ddCreate(Object.assign({}, base, { crux: payload }));
+    row = await ddCreate(Object.assign({}, base, { crux: payload }));
   } catch (err) {
     if (!/crux/.test(err.message || '')) throw err;
-    await ddCreate(base);
+    row = await ddCreate(base);
     showToast('Saved, but the crux detail needs the migration');
   }
+  // ddCreate asks for return=representation, so this is a one-row array. Fall
+  // back to the object we sent if the row ever comes back empty — Active Recall
+  // only needs title/prompt/key_points, all of which are already in hand.
+  cruxState.dive = (Array.isArray(row) ? row[0] : row) || Object.assign({}, base, { crux: payload });
   cruxState.saved = true;
   updateDeepDiveBadge();
+  return cruxState.dive;
 }
 
 document.getElementById('crux-save-cards')?.addEventListener('click', async e => {
@@ -6994,6 +7040,132 @@ document.getElementById('crux-done')?.addEventListener('click', () => {
   cruxState = null;
   showScreen('home');
 });
+
+// ── Follow-up, on any card ──
+// Grounded in three things the generic study coach does not have: the topic,
+// the user's ORIGINAL explanation (so the answer can keep pointing at their
+// actual gap rather than explaining from scratch), and the card in front of
+// them right now.
+//
+// It is deliberately given only what has been revealed SO FAR. Handing the
+// model the whole payload on step one lets a follow-up spoil the constraint
+// before the number has landed, which is the one thing the stepped reveal
+// exists to prevent.
+function cruxChatSystem() {
+  const r = cruxState.result;
+  const steps = cruxSteps();
+  const i = Math.min(cruxState.step, steps.length - 1);
+  const revealed = steps.slice(0, i + 1).map(s => s.context).filter(Boolean).join('\n\n');
+  return 'You are a sharp tutor helping someone close a specific gap in their understanding. '
+    + 'Answer in plain prose, a short paragraph or two — no markdown headers, no bullet dumps. '
+    + 'Be concrete: prefer a number, a mechanism, or a case over a restatement.\n\n'
+    + 'TOPIC: ' + r.topic + '\n\n'
+    + 'HOW THEY EXPLAINED IT AT THE START (this is where their understanding actually was — keep '
+    + 'answering against it, and do not explain from scratch as if they knew nothing):\n"'
+    + cruxState.explanation + '"\n\n'
+    + 'WHAT THEY HAVE BEEN SHOWN SO FAR:\n' + revealed + '\n\n'
+    + 'They are currently looking at the card titled "' + steps[i].kicker + '". Assume their question '
+    + 'is about that card unless they clearly say otherwise.\n\n'
+    + 'CRITICAL: do NOT reveal any later part of this session that is not listed above. If their '
+    + 'question runs ahead into material they have not reached, say it is coming and answer only the '
+    + 'part that does not give it away.';
+}
+
+async function callClaudeCruxChat(history) {
+  if (!hasSession()) throw new Error('Sign in to use AI');
+  const res = await fetch(SB_URL + '/functions/v1/claude', {
+    method: 'POST',
+    headers: await claudeHeaders(),
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 700,
+      system: cruxChatSystem(),
+      messages: history,
+    }),
+  });
+  if (!res.ok) throw new Error('Claude proxy ' + res.status);
+  const data = await res.json();
+  return (typeof data.text === 'string' ? data.text : (data.content?.[0]?.text || '')).trim();
+}
+
+function cruxRenderChat() {
+  const thread = document.getElementById('crux-followup-thread');
+  if (!thread) return;
+  thread.innerHTML = cruxState.chat.map(m => arChatBubble(m.role, m.content)).join('');
+  thread.scrollTop = thread.scrollHeight;
+}
+
+// Panel open/closed is session state, not per-card state: someone who opened
+// the thread on the number should not have it slam shut when they hit Continue.
+function cruxApplyChatOpen() {
+  if (!cruxState) return;
+  const panel = document.getElementById('crux-followup-panel');
+  const btn = document.getElementById('crux-followup-toggle');
+  if (!panel || !btn) return;
+  panel.style.display = cruxState.chatOpen ? '' : 'none';
+  btn.textContent = cruxState.chatOpen
+    ? 'Hide'
+    : (cruxState.chat.length ? 'Ask about this (' + cruxState.chat.filter(m => m.role === 'user').length + ')' : 'Ask about this');
+  if (cruxState.chatOpen) cruxRenderChat();
+}
+
+document.getElementById('crux-followup-toggle')?.addEventListener('click', () => {
+  cruxState.chatOpen = !cruxState.chatOpen;
+  cruxApplyChatOpen();
+  if (cruxState.chatOpen) document.getElementById('crux-followup-input')?.focus();
+});
+
+async function cruxSendFollowup() {
+  const input = document.getElementById('crux-followup-input');
+  const send = document.getElementById('crux-followup-send');
+  const q = input.value.trim();
+  if (!q) return;
+  input.value = '';
+  cruxState.chat.push({ role: 'user', content: q });
+  cruxRenderChat();
+  const thread = document.getElementById('crux-followup-thread');
+  const typing = document.createElement('div');
+  typing.style.cssText = 'align-self:flex-start;color:var(--text-faint);font-size:0.9rem;padding:4px 2px';
+  typing.textContent = 'Thinking…';
+  thread.appendChild(typing); thread.scrollTop = thread.scrollHeight;
+  send.disabled = true; input.disabled = true;
+  try {
+    const reply = await callClaudeCruxChat(cruxState.chat);
+    cruxState.chat.push({ role: 'assistant', content: reply || '(no answer)' });
+    cruxRenderChat();
+  } catch (e) {
+    typing.remove();
+    cruxState.chat.pop(); // drop the unanswered question so a retry is clean
+    input.value = q;
+    showToast('Follow-up failed — ' + (e.message || 'try again'));
+    cruxRenderChat();
+  }
+  send.disabled = false; input.disabled = false; input.focus();
+}
+document.getElementById('crux-followup-send')?.addEventListener('click', cruxSendFollowup);
+document.getElementById('crux-followup-input')?.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); cruxSendFollowup(); }
+});
+
+// ── Explain it back ──
+// Hands the freshly-built dive straight to Active Recall, which already owns
+// grading, the key-point verdicts and the SM-2 cadence. The point of the whole
+// screen is that you could not explain this at the start; this is where you
+// find out whether you can now, while it is still in front of you.
+document.getElementById('crux-regrade')?.addEventListener('click', async e => {
+  const btn = e.currentTarget;
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Setting it up…';
+  try {
+    const dive = await cruxSaveDive();
+    btn.disabled = false; btn.textContent = label;
+    arStartSession(dive);
+  } catch (err) {
+    btn.disabled = false; btn.textContent = label;
+    showToast('Could not start it — ' + (err.message || 'try again'));
+  }
+});
+
 
 // ── Active Recall session (runs on a chosen dive) ──
 function arPhase(name) {
