@@ -11,6 +11,7 @@ A PWA (Progressive Web App) that serves up short, enriching activities during br
 ## File structure
 ```
 index.html       — entire app (HTML + CSS + JS, ~2600+ lines)
+suite-sync.js    — shared offline outbox + read snapshots (CANONICAL copy for the whole suite; vendored into other apps)
 sw.js            — service worker (cache name: 5min-break-vN, bump on deploy)
 manifest.json    — PWA manifest
 dev-config.js    — GITIGNORED — sets Anthropic API key in localStorage for local dev
@@ -23,7 +24,7 @@ dev-config.js    — GITIGNORED — sets Anthropic API key in localStorage for l
 - **No build step** — plain HTML/CSS/JS, edit and refresh
 - **Claude API** — `claude-sonnet-4-5`, direct browser fetch with `anthropic-dangerous-direct-browser-access: true`
 - **Supabase** — REST API (no SDK), anon key auth, used for flashcards + quiz performance + mantras
-- **Service worker** — cache-first for static assets, network-first for Anthropic + Supabase, bypass entirely on localhost. Only handles GET requests. Auto-updates on every page load (`updateViaCache: 'none'`, `reg.update()`, `controllerchange` → reload).
+- **Service worker** — cache-first for static assets, **API hosts (Anthropic + Supabase) bypass the worker entirely** so a dead network rejects with a TypeError (the signal the outbox keys on — never synthesise a 503 here again), bypass entirely on localhost. Only handles GET requests. Auto-updates on every page load (`updateViaCache: 'none'`, `reg.update()`, `controllerchange` → reload).
 
 ---
 
@@ -72,8 +73,11 @@ Shared Claude fetch — system prompt forces JSON-only output. Throws on error (
 ### `callClaudeQuiz(prompt)`
 Quiz-specific Claude fetch — same pattern, used for quiz question generation and distractor generation.
 
+### Offline — `suite-sync.js` (`sync`)
+Every Supabase REST call (`sbFetch`, `srsGetDueCount`, `sbCount`) goes through `sync.fetch`. Offline, or while anything is already pending, writes queue in `localStorage['break_outbox']` and replay FIFO on `online` / visibility / boot / `sync.resume()` after OTP. Offline POSTs get a client uuid and replay as upserts (`resolution=merge-duplicates`); trailing PATCHes to one row merge; 4xx dead-letters (`sync.dead()`), 5xx retries with backoff, 401 pauses and reopens the OTP gate. Successful GETs are snapshotted in IndexedDB (`suite-sync:break`) and served back offline with pending PATCH/DELETE overlaid — `srsGetDue` re-filters `next_review` client-side so a card graded offline is not re-asked. Banner `#offline-banner` is driven by `renderSyncState`. Claude proxy calls are NOT routed through it. `syncOfflineQueue()` is a legacy alias for `sync.flush()`; the old `offline_card_queue` is migrated into the outbox once on boot. Unit tests: `cd tests && npm run unit`.
+
 ### `srsCreate(front, back, source)`
-Saves flashcard to Supabase. Supports offline queuing via `localStorage['offline_card_queue']` — syncs on `window online` event.
+Saves flashcard to Supabase through `sbFetch`. When the outbox queued it, returns `{ offline: true, id }` (client-minted id) so callers keep the old contract.
 
 ### `sm2(card, rating)`
 SM-2 spaced repetition: rating 0 = miss (interval→1), 1 = hard (interval×1.2, ease−0.15), 2 = easy (interval×ease, ease+0.1). A miss (review flow + AR write-back) also stamps `last_missed_at` for cluster ripeness. **Nothing calls `sm2` directly for a flashcard grade any more — go through `ladderApply` below.**
@@ -85,7 +89,7 @@ Knowing a flashcard and knowing the thing are different, so a card climbs throug
 - **`ladderNext`** — Easy → streak++, promote at 2 (`LADDER_PROMOTE_STREAK`); Hard → hold, streak 0; Miss → drop one rung (floor 0). **`shown < level` earns nothing** — an Easy at a framing easier than the card's rung buys no promotion, which is what makes the feed's cap honest.
 - **`ladderRung(card, cap)`** — walks DOWN from the stored level to one the card can support right now (rung 4 needs a live session; 3 needs ≥3 options with exactly one correct; 2 needs a reworded prompt; 1 needs a `back`). Nothing errors offline — it degrades.
 - **`ladderPack(card)` / `ladderFingerprint`** — the cache is **self-healing**: the pack stores the fingerprint of the `front+back` it was built from, so an edit by ANY route (edit modal, MCP, another device) invalidates it with no explicit call. `variants` must stay **nullable with no default** — a `'{}'` default makes the "is it cached" test true for every row.
-- **`ladderEnsurePack(card)`** — one call generates all four rungs' content, lazily, the first time a card needs rung 2+. **Haiku first, Sonnet retried once** when the validator rejects the `discriminate` block (near-miss distractors are what the cheap model fumbles). Never throws — returns null and the caller degrades. Deduped through `ladderPending`. `ladderPrefetchNext()` warms exactly ONE card ahead; widening that fans out into real spend.
+- **`ladderEnsurePack(card)`** — one call generates all four rungs' content, lazily, the first time a card needs rung 2+. **Haiku first, Sonnet retried once** when the validator rejects the `discriminate` block (near-miss distractors are what the cheap model fumbles). Never throws — returns null and the caller degrades. Deduped through `ladderPending`. `ladderPrefetchNext()` warms exactly ONE card ahead. `ladderWarmQueue()` (on review load, online only) additionally warms every uncached rung-2+ card in today's queue **sequentially**, capped at `LADDER_WARM_MAX` = 20, so the packs are on the rows and in the read snapshot before you lose signal. Packs persist, so steady state is a handful of calls a day.
 - **`ladderNormalizePack`** — the validator, and it does real work: rejects a reworded prompt that leaks the answer, a discriminate block without exactly one correct option, and a distractor equal to `back` (which would render two right answers).
 - **UI** — `#srs-rung` is one quiet line (dots + rung name, sage "Mastered" at the top); the mode toggle is `Ladder | Flip | MC`, where Flip/MC are an **override** that pins rung 0 and earns nothing. `renderSrsProduce` reuses Active Recall's recogniser via `arUseRecTargets` — `arSetupSpeak()` reclaims the default targets on every AR session.
 - **Scroll feed caps at rung 2** (`FEED_LADDER_CAP`) and **never calls `ladderEnsurePack`** — a model call mid-thumb is the wrong trade and would stall the scroll. An uncached card degrades to Reversed, which is free.

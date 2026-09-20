@@ -4,4 +4,5 @@
 export const SB_AUTH_KEY = 'sb-xsmnfcmtbpeaccnyinkr-auth-token';
 export const API_KEY_KEY = 'anthropic_api_key';
 export const HIDDEN_KEY = 'hidden_activities';
-export const OFFLINE_CARD_QUEUE_KEY = 'offline_card_queue';
+export const OFFLINE_CARD_QUEUE_KEY = 'offline_card_queue'; // legacy, migrated on boot
+export const BREAK_OUTBOX_KEY = 'break_outbox';           // suite-sync.js outbox

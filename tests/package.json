@@ -5,6 +5,7 @@
   "description": "Playwright QA harness for the 5-Minute Break PWA (additive — does not touch the app).",
   "scripts": {
     "test": "playwright test",
+    "unit": "node --test suite-sync.unit.mjs",
     "test:headed": "playwright test --headed",
     "report": "playwright show-report"
   },

@@ -19,6 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2722%27%20fill%3D%27%23C97A60%27/%3E%3Cpath%20d%3D%27M38%2035%20C36%2029%2C40%2025%2C38%2019%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M50%2033%20C48%2027%2C52%2023%2C50%2017%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M62%2035%20C60%2029%2C64%2025%2C62%2019%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2722%27%20y%3D%2742%27%20width%3D%2744%27%20height%3D%2734%27%20rx%3D%277%27%20fill%3D%27%23F4ECDD%27/%3E%3Cpath%20d%3D%27M66%2050%20Q80%2050%2080%2059%20Q80%2068%2066%2068%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%276%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2716%27%20y%3D%2776%27%20width%3D%2756%27%20height%3D%277%27%20rx%3D%273.5%27%20fill%3D%27%23F4ECDD%27/%3E%3C/svg%3E" />
   <script src="./dev-config.js" onerror="void 0"></script>
+  <script src="./suite-sync.js"></script>
   <title>Break</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2016,7 +2017,7 @@
 <body>
 
 <!-- Offline banner -->
-<div id="offline-banner">Offline — cards will sync when reconnected</div>
+<div id="offline-banner">Offline — changes will sync when reconnected</div>
 
 <!-- API KEY SETUP -->
 <div id="screen-otp" class="screen">
@@ -4985,11 +4986,49 @@ function showOtpGate() {
 function boot() {
   if (!hasSession()) { showOtpGate(); return; }
   showScreen('home');
+  sync.resume();
+}
+
+// ── Offline outbox + read snapshots (shared suite-sync.js) ─────────────
+// Every Supabase REST call below goes through sync.fetch. Offline (or while
+// anything is still pending) writes queue in localStorage `break_outbox` and
+// replay FIFO; reads fall back to the last snapshot with pending edits
+// overlaid. See suite-sync.js for the rules. Claude proxy calls do NOT go
+// through it — there is nothing sensible to queue for a model call.
+const sync = SuiteSync.create({
+  name: 'break',
+  authHeaders: async () => ({ 'Authorization': 'Bearer ' + (await sbBearer()) }),
+  onAuthLost: () => { _setAuthSession(null); showOtpGate(); },
+  onChange: (st) => renderSyncState(st),
+  // Toast only for captures. A grade per card would toast every swipe; the
+  // banner already carries the pending count.
+  onQueued: (op) => { if (op.method === 'POST' && !op.collapsed) showToast('Saved offline — will sync', 1800); },
+  onFlushed: ({ synced, dropped }) => {
+    if (synced) showToast(synced + ' change' + (synced === 1 ? '' : 's') + ' synced ✓');
+    if (dropped) showToast(dropped + ' offline change' + (dropped === 1 ? '' : 's') + ' could not sync', 4000);
+    updateDueBadge();
+  },
+});
+// Legacy alias: older code and the smoke test know this name.
+function syncOfflineQueue() { return sync.flush(); }
+
+function renderSyncState(st) {
+  const banner = document.getElementById('offline-banner');
+  if (!banner) return;
+  const online = st.online;
+  const n = st.pending;
+  let text = '';
+  if (!online) text = n ? ('Offline — ' + n + ' change' + (n === 1 ? '' : 's') + ' will sync when reconnected') : 'Offline — changes will sync when reconnected';
+  else if (st.paused && n) text = n + ' change' + (n === 1 ? '' : 's') + ' waiting — sign in to sync';
+  else if (n) text = 'Syncing ' + n + ' change' + (n === 1 ? '' : 's') + '…';
+  banner.textContent = text;
+  banner.style.display = text ? 'block' : 'none';
+  document.body.classList.toggle('offline-active', !!text);
 }
 
 async function sbFetch(path, opts = {}) {
   const _bearer = await sbBearer();
-  const res = await fetch(SB_URL + '/rest/v1/' + path, {
+  const res = await sync.fetch(SB_URL + '/rest/v1/' + path, {
     ...opts,
     headers: {
       'apikey': SB_KEY,
@@ -5019,13 +5058,14 @@ function localDateStr(d = new Date()) {
 
 async function srsGetDue() {
   const today = localDateStr();
-  return sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=50');
+  const rows = await sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=50');
+  return (rows || []).filter(c => !c.next_review || c.next_review <= today);
 }
 
 async function srsGetDueCount() {
   const today = localDateStr();
   const _bearer = await sbBearer();
-  const res = await fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + '&select=id', {
+  const res = await sync.fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + '&select=id', {
     headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + _bearer, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
   });
   const count = res.headers.get('content-range');
@@ -5206,55 +5246,37 @@ async function proposeReadCandidates(mountEl, contentText, srsSource) {
 }
 
 // ── Offline queue ─────────────────────────────
-function getOfflineQueue() {
-  try { return JSON.parse(localStorage.getItem('offline_card_queue') || '[]'); } catch(e) { return []; }
-}
-function setOfflineQueue(q) { localStorage.setItem('offline_card_queue', JSON.stringify(q)); }
-
-async function syncOfflineQueue() {
-  const queue = getOfflineQueue();
-  if (!queue.length) return;
-  const failed = [];
-  let synced = 0;
-  for (const card of queue) {
-    try {
-      await sbFetch('flashcards', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(card) });
-      synced++;
-    } catch(e) { failed.push(card); }
+// The old creates-only queue (`offline_card_queue`) is drained into the shared
+// outbox once, then the key is removed. Grades, edits, deletes and Look Up
+// Later all ride the same outbox now — see suite-sync.js.
+function migrateLegacyOfflineQueue() {
+  let legacy = [];
+  try { legacy = JSON.parse(localStorage.getItem('offline_card_queue') || '[]'); } catch (e) { legacy = []; }
+  if (Array.isArray(legacy) && legacy.length) {
+    for (const card of legacy) {
+      sync.enqueue(SB_URL + '/rest/v1/flashcards', {
+        method: 'POST',
+        headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=representation' },
+        body: JSON.stringify(card),
+      });
+    }
   }
-  setOfflineQueue(failed);
-  if (!failed.length) showToast(synced + ' card' + (synced === 1 ? '' : 's') + ' synced ✓');
-  else showToast('Sync incomplete — will retry');
-  updateDueBadge();
+  localStorage.removeItem('offline_card_queue');
 }
-
-window.addEventListener('online', () => {
-  document.getElementById('offline-banner').style.display = 'none';
-  document.body.classList.remove('offline-active');
-  syncOfflineQueue();
-});
-window.addEventListener('offline', () => {
-  document.getElementById('offline-banner').style.display = 'block';
-  document.body.classList.add('offline-active');
-});
-if (!navigator.onLine) {
-  document.getElementById('offline-banner').style.display = 'block';
-  document.body.classList.add('offline-active');
-}
+migrateLegacyOfflineQueue();
+sync.attach();
 
 async function srsCreate(front, back, source) {
   const card = { front, back, source: source || 'Break', created_at: new Date().toISOString() };
-  if (!navigator.onLine) {
-    const q = getOfflineQueue();
-    q.push(card);
-    setOfflineQueue(q);
-    return { offline: true };
-  }
-  return sbFetch('flashcards', {
+  const res = await sbFetch('flashcards', {
     method: 'POST',
     prefer: 'return=representation',
     body: JSON.stringify(card),
   });
+  // Queued offline: keep the old `{offline:true}` contract for callers, plus
+  // the client-minted id so anything chained off this card links up.
+  if (sync.isQueued(res)) return { offline: true, id: res[0] && res[0].id };
+  return res;
 }
 
 async function srsUpdate(id, fields) {
@@ -5517,6 +5539,22 @@ async function ladderEnsurePack(card) {
   return p;
 }
 
+// Warm every uncached rung-2+ card in today's queue, ONE AT A TIME, so the
+// packs are on the rows (and in the read snapshot) before you lose signal.
+// Packs persist, so the steady state is a handful of calls a day — only cards
+// newly promoted to rung 2. Capped so a big import cannot fan out into spend.
+const LADDER_WARM_MAX = 20;
+let ladderWarmToken = 0;
+async function ladderWarmQueue() {
+  const token = ++ladderWarmToken;
+  if (!hasSession() || !navigator.onLine || srsMode !== 'ladder') return;
+  const todo = srsQueue.filter(c => ladderLevel(c) >= 2 && !ladderPack(c)).slice(0, LADDER_WARM_MAX);
+  for (const card of todo) {
+    if (token !== ladderWarmToken || !navigator.onLine) return;
+    try { await ladderEnsurePack(card); } catch (e) {}
+  }
+}
+
 // One card ahead, fire-and-forget, so the pack is warm before you get there.
 // Strictly one — a fifty-card queue firing packs in parallel is real money.
 function ladderPrefetchNext() {
@@ -5575,6 +5613,7 @@ async function loadSrsReview() {
     srsCurrent = 0; srsStats = { easy:0, hard:0, miss:0, promoted:0, mastered:0 };
     if (!srsQueue || !srsQueue.length) { renderSrsDone(); return; }
     renderSrsCard();
+    ladderWarmQueue();
   } catch(e) {
     area.innerHTML = '<p style="text-align:center;color:var(--muted);padding:32px 0">Couldn\'t load cards.<br><small>' + esc(e.message) + '</small></p>';
   }
@@ -8571,7 +8610,7 @@ document.querySelectorAll('.add-menu-opt').forEach(btn => {
 // Count without pulling rows (mirrors srsGetDueCount).
 async function sbCount(query) {
   const _bearer = await sbBearer();
-  const res = await fetch(SB_URL + '/rest/v1/' + query, {
+  const res = await sync.fetch(SB_URL + '/rest/v1/' + query, {
     headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + _bearer, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
   });
   const cr = res.headers.get('content-range');

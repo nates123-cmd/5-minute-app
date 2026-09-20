@@ -1,7 +1,8 @@
-const CACHE_NAME = '5min-break-v120';
+const CACHE_NAME = '5min-break-v121';
 const STATIC_ASSETS = [
   './',
   './index.html',
+  './suite-sync.js',
   './manifest.json',
   './icons/icon-180.png',
   './icons/icon-192.png',
@@ -31,11 +32,12 @@ self.addEventListener('fetch', (event) => {
   // Let localhost pass through natively (no respondWith needed)
   if (event.request.url.includes('localhost') || event.request.url.includes('127.0.0.1')) return;
 
-  // Network-first for API calls; fall back silently on failure
-  if (event.request.url.includes('api.anthropic.com') || event.request.url.includes('supabase.co')) {
-    event.respondWith(fetch(event.request).catch(() => new Response('', { status: 503 })));
-    return;
-  }
+  // API hosts bypass the worker entirely. Synthesising a 503 here (the old
+  // behaviour) made "offline" look like a server error to the app, so the
+  // outbox in suite-sync.js could not tell which writes to queue. Letting the
+  // browser fetch natively means a dead network rejects with a TypeError,
+  // which is the signal the outbox keys on.
+  if (event.request.url.includes('api.anthropic.com') || event.request.url.includes('supabase.co')) return;
 
   // Cache-first for static assets; fall back to cache on network failure
   event.respondWith(
