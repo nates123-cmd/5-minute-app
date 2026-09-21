@@ -148,7 +148,8 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 ## Home screen layout (post-Citrine redesign)
 - **Header**: "Break" wordmark + date; timer icon
 - **Capture button** (full-width, `--ink`) → opens the **Add menu** modal: Add Card / Recommendation / Look Up Later / Listen Later
-- **Scroll button** (outlined, below Capture) → `openFeed()`, the vertical card feed (see below)
+- **Flow button** (outlined, accent border, directly below Capture) → `openFlow()`. Same feed engine as Scroll in `feedMode = 'flow'`: drains `due-lul` → `due-card` → `due-dive` → `ground` (Ink mantras/insights + `reflections` tagged `book-review`, 3 per sitting, 14-day rest in `localStorage.flow_ground_seen`) → hands over to the ordinary scroll. No caps on the due phases. `flowTopUp()` replaces the every-6th due cadence; `feedTake()` returns nothing until Discover; `flow-mark` cards separate phases that served something; the rail (`flowRenderRail`) follows the on-screen card's `data-flow-phase`. `FLOW_ONLY` slugs never enter `feedEligible()`. Sub-line follows the Queue/Flashcards pillar numbers via a MutationObserver.
+- **Scroll button** (outlined, below Flow) → `openFeed()`, the vertical card feed (see below)
 - **Pillars row**: 3 equal columns — Review (`--accent`), Queue (`--accent-2`), Recs (`--accent-4`). Recs number = `listening_queue` unlistened + `recommendations` saved, via `updateRecsBadge()` (`updateListenBadge()` now just delegates to it; no home element of its own). Tapping Recs → `recs` screen.
 - **Filter pills** (Reflect / Informational / Activity / Random)
 - **Activity grid**: 2-column card grid

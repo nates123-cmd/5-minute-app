@@ -1972,6 +1972,43 @@
     }
     .btn-scroll-sub { font-size: 0.76rem; color: var(--text-muted); }
 
+    /* Flow: the guided sitting. Same shell as Scroll, but it carries the
+       accent because it is the thing to tap first. */
+    .btn-flow { border-color: var(--accent-3, var(--accent)); }
+    .btn-flow .btn-scroll-label::after {
+      content: 'in order';
+      margin-left: 8px;
+      font-family: var(--font-sans);
+      font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
+      color: var(--accent-3, var(--accent)); opacity: .85;
+    }
+
+    /* Flow rail: replaces the bucket pills while a Flow is running. */
+    .flow-step {
+      flex-shrink: 0;
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 5px 9px;
+      border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong);
+      background: transparent;
+      font-family: var(--font-sans); font-size: 11.5px; font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .flow-step.on { background: var(--accent-3, var(--accent)); border-color: var(--accent-3, var(--accent)); color: var(--ink-on); }
+    .flow-step.done { opacity: .45; cursor: default; }
+    .flow-step.done::before { content: '✓'; font-size: 10px; }
+    .flow-step .flow-n {
+      font-size: 10px; padding: 0 5px; border-radius: 999px;
+      background: rgba(0,0,0,.08); color: inherit;
+    }
+    .flow-step.on .flow-n { background: rgba(255,255,255,.22); }
+
+    /* Phase marker card */
+    .flow-mark .due-tag { margin-bottom: 18px; }
+    .flow-mark .main-text { font-family: var(--font-serif); font-size: 24px; line-height: 1.35; }
+    .flow-mark .flow-next { margin-top: 18px; font-size: 13.5px; color: var(--text-muted); }
+
 
   /* ── Courses (Deep Dives v2) ─────────────────────────────── */
   .co-item { background: var(--surface); border-radius: var(--radius-md); padding: 14px 16px; margin-bottom: 10px; cursor: pointer; border: none; width: 100%; text-align: left; display: block; font: inherit; color: inherit; }
@@ -2073,6 +2110,11 @@
   <button class="btn-capture" id="btn-add-menu">
     <span class="btn-capture-icon">+</span>
     <span>Capture</span>
+  </button>
+
+  <button class="btn-scroll btn-flow" id="btn-flow">
+    <span class="btn-scroll-label">Flow</span>
+    <span class="btn-scroll-sub" id="flow-sub">queue, cards, a dive, ground, then wander</span>
   </button>
 
   <button class="btn-scroll" id="btn-scroll">
@@ -9556,6 +9598,7 @@ function feedKey(slug, d) {
   // card can't be served twice in a session, and can still come back tomorrow.
   if (DUE_SLUGS.includes(slug)) return slug + ':' + (d && d.id ? d.id : cardKey(d));
   if (slug === 'ink-thought' && d && d.id) return d.id;
+  if (slug === 'ground' && d && d.id) return d.id;
   if (slug === 'ink-challenge' && d && d.id) return 'challenge:' + d.id + ':' + new Date().toISOString().slice(0, 10);
   return cardKey(d);
 }
@@ -9575,6 +9618,8 @@ FEED_NAMES['due-lul']  = 'Your Queue';
 FEED_NAMES['due-dive'] = 'Deep Dive';
 FEED_NAMES['ink-thought']   = 'From your Ink';
 FEED_NAMES['ink-challenge'] = 'Your challenge';
+FEED_NAMES['ground']    = 'Ground';
+FEED_NAMES['flow-mark'] = 'Flow';
 
 // ── Activity weights (the ranking signal) ────────────────
 function feedWeights() {
@@ -9617,7 +9662,7 @@ function feedEligible() {
   // Quiz slugs live in the buckets too but have no card spec — filtered here.
   // Due slugs DO have specs but must never come out of the weighted draw:
   // they're mounted on their own cadence by feedDueTopUp/feedFill.
-  let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s) && !isDueSlug(s));
+  let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s) && !isDueSlug(s) && !FLOW_ONLY.has(s));
   // Some cards are only eligible when their data says so (an open challenge).
   list = list.filter(s => !CARD_GATES[s] || CARD_GATES[s]());
   // Signed out (or offline), the Claude proxy is closed — but bundled-data
@@ -9753,6 +9798,7 @@ function feedStartWatchdog() {
   feedWatchdog = setInterval(() => {
     if (!feedOpen || feedFails >= FEED_FAIL_CAP) return;
     if (feedBuffer.length === 0 && feedInFlight === 0) { feedFill(); feedTopUp(); }
+    if (flowActive() && !feedDueBuffer.length && !feedDueBusy) flowTopUp();
   }, 2500);
 }
 
@@ -9834,7 +9880,7 @@ function feedItemNode(item) {
   // Due cards are backed by a real database row (a flashcard with its own
   // interval and ease factor, a dive with its schedule). Keep the row on the
   // node rather than serialising it into data attributes.
-  if (isDueSlug(item.slug)) el._due = item.data;
+  if (isDueSlug(item.slug) || item.slug === 'ground') el._due = item.data;
   // Pictures that arrive on a second hop. Safe to fire against the still
   // detached node: every hydrator re-checks isConnected before it writes, and
   // feedFill appends synchronously right after this returns.
@@ -9939,6 +9985,9 @@ function feedPointerUp(e) {
 // scroll past three finance terms in a row — interleaving them is what makes
 // the feed feel varied even though generation is batched.
 function feedTake() {
+  // A Flow mounts only its phase's cards until Discover; the buffer stays
+  // warm underneath so the wander that follows starts instantly.
+  if (flowActive()) return null;
   const recent = feedMounted.slice(-FEED_LOOKBACK);
   let i = feedBuffer.findIndex(it => !recent.includes(it.slug));
   if (i === -1) {
@@ -10002,6 +10051,9 @@ const isDueSlug = (s) => DUE_SLUGS.includes(s);
 // Is a due card both available and at the right position to mount now?
 function feedDueReady() {
   if (!feedDueBuffer.length) return false;
+  // In a Flow the due work IS the feed: mount it as soon as it is ready. A
+  // phase marker is likewise never held back for cadence.
+  if (flowActive() || feedDueBuffer[0].slug === 'flow-mark') return true;
   const pos = feedMounted.length;
   if (pos < FEED_DUE_LEAD) return false;
   return pos - feedDueLastPos >= FEED_DUE_EVERY;
@@ -10011,6 +10063,7 @@ function feedDueReady() {
 // draining flashcards first, so a scroll doesn't turn into a review session.
 async function feedDueTopUp() {
   if (!feedOpen || feedDueBusy || feedDueBuffer.length) return;
+  if (flowActive()) return flowTopUp();
   if (!hasSession()) return;                 // all four are Supabase-backed
   if (feedMounted.length + FEED_AHEAD < FEED_DUE_LEAD) return;
   if (Date.now() < feedDueQuietUntil) return;
@@ -10226,6 +10279,310 @@ CARD_SPECS['due-dive'] = {
   },
 };
 
+// ══ Flow ═════════════════════════════════════════════════════════════════
+// One sitting, in order: what you parked, what you owe, one dive, something
+// you once wrote down, then whatever comes. Same cards as the Scroll, same
+// writes, same handlers. The difference is sequencing: the Scroll weaves one
+// due card in every sixth position so a wander never turns into homework;
+// Flow drains each source before moving to the next, so the numbers on the
+// home screen actually reach zero.
+//
+// Nothing is capped. A phase ends when its source has nothing left to give,
+// or when you tap the next step on the rail. Ground is the one exception —
+// a mantra is not owed, so it serves a few and moves on.
+const FLOW_PHASES = [
+  { id: 'queue',    label: 'Queue',    slug: 'due-lul',  done: 'Queue clear.' },
+  { id: 'recall',   label: 'Recall',   slug: 'due-card', done: 'Nothing else due.' },
+  { id: 'dive',     label: 'Dive',     slug: 'due-dive', done: 'Dives drilled.' },
+  { id: 'ground',   label: 'Ground',   slug: 'ground',   done: 'Grounded.' },
+  { id: 'discover', label: 'Discover' },
+];
+const FLOW_ONLY = new Set(['ground', 'flow-mark']);   // never in the Scroll's weighted draw
+const FLOW_GROUND_MAX = 3;          // ground items per sitting
+const FLOW_GROUND_REST_DAYS = 14;   // a ground item rests this long before it can come back
+
+let feedMode    = 'scroll';   // 'scroll' | 'flow'
+let flowPhase   = 0;
+let flowCounts  = {};         // phase id -> owed at open, for the rail
+let flowServedIn = {};        // phase id -> cards served this sitting
+
+const flowIsDiscover = () => feedMode === 'flow' && FLOW_PHASES[flowPhase].id === 'discover';
+const flowActive     = () => feedMode === 'flow' && !flowIsDiscover();
+
+// ── Ground: your own words, coming back ────────────────────────────────
+// Mantras and insights from Ink, plus the one-pagers the /bookreview skill
+// files as reflections tagged `book-review`. None of it is "due" — the point
+// is a periodic re-encounter, so recency is local and generous.
+let groundPool = null;
+
+function groundSeenMap() {
+  try { return JSON.parse(localStorage.getItem('flow_ground_seen') || '{}'); } catch (e) { return {}; }
+}
+function groundMarkSeen(id) {
+  const m = groundSeenMap();
+  m[id] = Date.now();
+  // Keep the map from growing without bound.
+  const cutoff = Date.now() - FLOW_GROUND_REST_DAYS * 2 * 86400000;
+  Object.keys(m).forEach(k => { if (m[k] < cutoff) delete m[k]; });
+  try { localStorage.setItem('flow_ground_seen', JSON.stringify(m)); } catch (e) {}
+}
+
+// A one-pager is markdown. Pull a title and a readable excerpt out of it
+// rather than printing hashes and asterisks.
+function groundBookExcerpt(r) {
+  const raw = String(r.text || '');
+  const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  let title = String(r.prompt_used || '').replace(/^book review:\s*/i, '').trim();
+  if (!title && lines[0] && /^#/.test(lines[0])) title = lines[0].replace(/^#+\s*/, '');
+  const body = lines.filter(l => !/^#/.test(l)).join('\n')
+    .replace(/\*\*(.+?)\*\*/g, '$1').replace(/\*(.+?)\*/g, '$1').replace(/^[-*]\s+/gm, '• ');
+  return { title, excerpt: trimTo(body, 420) };
+}
+
+async function groundLoadPool() {
+  if (groundPool) return groundPool;
+  if (!hasSession()) return (groundPool = []);
+  try {
+    const [mantras, insights, books] = await Promise.all([
+      sbFetch('mantras?select=id,text,created_at&status=eq.active&order=created_at.desc&limit=200').catch(() => []),
+      sbFetch('insights?select=id,text,created_at&status=eq.active&order=created_at.desc&limit=200').catch(() => []),
+      sbFetch('reflections?select=id,text,prompt_used,tags,date&tags=cs.{book-review}&order=date.desc&limit=60').catch(() => []),
+    ]);
+    groundPool = []
+      .concat((mantras || []).map(r => ({ id: 'mantra:' + r.id, rowId: r.id, table: 'mantras', kind: 'Mantra', text: inkPlain(r.text), when: inkWhen(r.created_at) })))
+      .concat((insights || []).map(r => ({ id: 'insight:' + r.id, rowId: r.id, table: 'insights', kind: 'Insight', text: inkPlain(r.text), when: inkWhen(r.created_at) })))
+      .concat((books || []).map(r => { const x = groundBookExcerpt(r); return { id: 'book:' + r.id, rowId: r.id, table: 'reflections', kind: 'From a book', title: x.title, text: x.excerpt, when: inkWhen(r.date) }; }))
+      .filter(x => x.text);
+  } catch (e) { groundPool = []; }
+  return groundPool;
+}
+
+// One of each kind while there is one to give, books first — they are the
+// rarest and the most worth a re-read. Random within a kind.
+CARD_SOURCES['ground'] = async (n) => {
+  const pool = await groundLoadPool();
+  if (!pool.length) return null;
+  const seen = groundSeenMap();
+  const rest = Date.now() - FLOW_GROUND_REST_DAYS * 86400000;
+  let fresh = pool.filter(x => !(seen[x.id] > rest) && !feedDueSeen.has(x.id));
+  if (!fresh.length) return null;
+  const out = [];
+  const order = ['From a book', 'Mantra', 'Insight'];
+  let k = 0;
+  while (out.length < n && fresh.length) {
+    let bag = fresh.filter(x => x.kind === order[k % order.length]);
+    if (!bag.length) bag = fresh;
+    const pick = bag[Math.floor(Math.random() * bag.length)];
+    out.push(pick);
+    fresh = fresh.filter(x => x !== pick);
+    k++;
+  }
+  out.forEach(x => groundMarkSeen(x.id));
+  return out;
+};
+
+CARD_SPECS['ground'] = {
+  slug: 'ground',
+  sourceOnly: true,
+  noOpen: true,
+  render: (d) => '<div class="ai-card ink-card">' +
+    '<div class="ink-meta">' + esc(d.kind) + (d.when ? ' · ' + esc(d.when) : '') + '</div>' +
+    (d.title ? '<div class="ink-challenge-title">' + esc(d.title) + '</div>' : '') +
+    '<blockquote class="ink-quote"' + (d.title ? ' style="font-size:17px;margin-top:12px"' : '') + '>' + esc(d.text) + '</blockquote>' +
+  '</div>',
+  renderBack: (d) => '<div class="feed-back-kind">' + esc(d.kind) + '</div>' +
+    '<div class="feed-back-topic">' + esc(d.title || trimTo(d.text, 80)) + '</div>' +
+    '<div class="feed-back-acts">' +
+      feedActBtn('data-feed-unflip="1"',      '✓', 'Still true') +
+      feedActBtn('data-feed-remember="1"',    '☆', 'Make a flashcard') +
+      feedActBtn('data-feed-claude="1"',      '✳', 'Ask Claude') +
+      (d.table === 'reflections' ? '' : feedActBtn('data-ground-dismiss="1"', '×', 'Let it go')) +
+    '</div>',
+};
+
+// A marker between phases. Says what just finished and what is next, so the
+// change of gear reads as intended rather than as the feed losing the plot.
+CARD_SPECS['flow-mark'] = {
+  slug: 'flow-mark',
+  sourceOnly: true,
+  noOpen: true,
+  render: (d) => '<div class="ai-single flow-mark">' +
+    '<div class="due-tag">' + esc(d.label) + '</div>' +
+    '<div class="main-text">' + esc(d.text) + '</div>' +
+    (d.next ? '<div class="flow-next">Next: ' + esc(d.next) + '</div>' : '') +
+    '<div class="due-hint">swipe on</div>' +
+  '</div>',
+  renderBack: () => '<div class="feed-back-kind">Flow</div>',
+};
+
+function flowAdvance() {
+  if (!flowActive()) return;
+  const ph = FLOW_PHASES[flowPhase];
+  const did = flowServedIn[ph.id] || 0;
+  flowPhase = Math.min(flowPhase + 1, FLOW_PHASES.length - 1);
+  const next = FLOW_PHASES[flowPhase];
+  // Only mark a phase that actually did something. An empty queue on a
+  // Tuesday should not cost a card.
+  if (did) {
+    feedDueBuffer.push({
+      slug: 'flow-mark',
+      data: { label: ph.label, text: ph.done, next: next.label },
+      key: 'flow-mark:' + ph.id + ':' + Date.now(),
+    });
+  }
+  if (flowIsDiscover()) {
+    // The Scroll's cadence takes over from here, counted from now.
+    feedDueLastPos = feedMounted.length;
+    feedDueQuietUntil = 0;
+    feedTopUp();
+  }
+  flowRenderRail();
+}
+
+// Keep FEED_AHEAD cards of the current phase mounted or ready. When a phase's
+// source runs dry, advance and keep going, so one call carries the sitting
+// from the Queue all the way to Discover if there is nothing owed.
+async function flowTopUp() {
+  if (!feedOpen || feedDueBusy || !flowActive()) return;
+  feedDueBusy = true;
+  try {
+    let guard = 0;
+    while (flowActive() && guard++ < 40) {
+      const ahead = feedItems().length - 1 - feedActiveIdx + feedDueBuffer.length;
+      if (ahead >= FEED_AHEAD) break;
+      const ph = FLOW_PHASES[flowPhase];
+      if (ph.id === 'ground' && (flowServedIn.ground || 0) >= FLOW_GROUND_MAX) { flowAdvance(); continue; }
+      if (!hasSession()) { flowAdvance(); continue; }   // every phase is Supabase-backed
+      let items = null;
+      try { items = await CARD_SOURCES[ph.slug](FEED_AHEAD); } catch (e) { items = null; }
+      if (!items || !items.length) { flowAdvance(); continue; }
+      let added = 0;
+      items.forEach(d => {
+        const key = feedKey(ph.slug, d);
+        if (feedDueSeen.has(key)) return;
+        feedDueSeen.add(key);
+        feedDueBuffer.push({ slug: ph.slug, data: d, key });
+        flowServedIn[ph.id] = (flowServedIn[ph.id] || 0) + 1;
+        added++;
+      });
+      if (!added) { flowAdvance(); continue; }
+      feedFill();
+    }
+  } finally {
+    feedDueBusy = false;
+    feedFill();
+    flowRenderRail();
+  }
+}
+
+// Which phase a mounted item belongs to. A marker sits at the boundary and
+// counts as the phase it introduces.
+function flowPhaseOfItem(item) {
+  if (item.slug === 'flow-mark') {
+    const i = FLOW_PHASES.findIndex(p => p.label === (item.data && item.data.next));
+    return i === -1 ? flowPhase : i;
+  }
+  const i = FLOW_PHASES.findIndex(p => p.slug === item.slug);
+  return i === -1 ? flowPhase : i;
+}
+
+function flowRenderRail() {
+  const el = document.getElementById('feed-filters');
+  if (!el || feedMode !== 'flow') return;
+  const onScreen = feedActiveEl && feedActiveEl.dataset && feedActiveEl.dataset.flowPhase;
+  const shown = onScreen != null && onScreen !== '' ? Math.min(parseInt(onScreen, 10), flowPhase) : flowPhase;
+  el.innerHTML = FLOW_PHASES.map((p, i) => {
+    const n = flowCounts[p.id];
+    const cls = 'flow-step' + (i === shown ? ' on' : (i < shown ? ' done' : ''));
+    return '<button class="' + cls + '" data-flow-skip="' + i + '">' + esc(p.label) +
+      (n && i >= shown ? ' <span class="flow-n">' + n + '</span>' : '') + '</button>';
+  }).join('');
+}
+
+// Jump ahead. Backwards is not offered: everything behind you was either
+// dealt with (and wrote its record) or scrolled past (and stays due).
+function flowSkipTo(i) {
+  if (feedMode !== 'flow' || i <= flowPhase || i >= FLOW_PHASES.length) return;
+  feedDueBuffer = feedDueBuffer.filter(x => x.slug === 'flow-mark');
+  flowPhase = i;
+  if (flowIsDiscover()) { feedDueLastPos = feedMounted.length; feedDueQuietUntil = 0; }
+  flowRenderRail();
+  feedFill();
+  feedTopUp();
+  feedDueTopUp();
+}
+
+async function openFlow() {
+  feedMode = 'flow';
+  flowPhase = 0;
+  flowServedIn = {};
+  flowCounts = {};
+  groundPool = null;   // Ink may have changed since the last sitting
+  openFeed();
+  if (!hasSession()) return;
+  try {
+    const [n, lul, dives] = await Promise.all([
+      srsGetDueCount().catch(() => 0),
+      lulFetch().catch(() => []),
+      sbFetch('deep_dives?select=id,status,next_review,resurface_at').catch(() => []),
+    ]);
+    flowCounts = {
+      queue:  (lul || []).length,
+      recall: n || 0,
+      dive:   (dives || []).filter(d => d && (ddIsDue(d) || ddIsResurfaced(d))).length,
+    };
+  } catch (e) { flowCounts = {}; }
+  flowRenderRail();
+}
+
+// The home button's sub-line follows the pillars, so the numbers agree.
+function flowUpdateHomeSub() {
+  const el = document.getElementById('flow-sub');
+  if (!el) return;
+  const q = parseInt(document.getElementById('lul-count')?.textContent, 10) || 0;
+  const c = parseInt(document.getElementById('srs-due-count')?.textContent, 10) || 0;
+  const bits = [];
+  if (q) bits.push(q + ' in the queue');
+  if (c) bits.push(c + ' card' + (c === 1 ? '' : 's') + ' due');
+  el.textContent = bits.length
+    ? bits.join(' · ') + ', then a dive, ground, wander'
+    : 'queue, cards, a dive, ground, then wander';
+}
+(() => {
+  const mo = new MutationObserver(flowUpdateHomeSub);
+  ['lul-count', 'srs-due-count'].forEach(id => {
+    const n = document.getElementById(id);
+    if (n) mo.observe(n, { childList: true, characterData: true, subtree: true });
+  });
+})();
+
+document.addEventListener('click', async e => {
+  const skip = e.target.closest('[data-flow-skip]');
+  if (skip) { flowSkipTo(parseInt(skip.dataset.flowSkip, 10)); return; }
+
+  // "Let it go": the same status flip Ink's Mind screen does. The row stays;
+  // it just stops coming back.
+  const drop = e.target.closest('[data-ground-dismiss]');
+  if (drop) {
+    const item = drop.closest('.feed-item');
+    const d = item && item._due;
+    if (!d || !d.table || !d.rowId || item.dataset.dueDone) return;
+    drop.disabled = true;
+    try {
+      await sbFetch(d.table + '?id=eq.' + encodeURIComponent(d.rowId), {
+        method: 'PATCH',
+        headers: { 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ status: 'dismissed' }),
+      });
+      if (groundPool) groundPool = groundPool.filter(x => x.id !== d.id);
+      feedRetireDue(item, 'Let go.');
+    } catch (err) {
+      drop.disabled = false;
+      showToast('Couldn\'t save that');
+    }
+  }
+});
+
 function feedFill() {
   const track = document.getElementById('feed-track');
   if (!feedOpen || !track) return;
@@ -10240,6 +10597,9 @@ function feedFill() {
     if (!item) break;              // holding for variety; refills on next batch
     if (isDueSlug(item.slug)) feedDueLastPos = feedMounted.length;
     const node = feedItemNode(item);
+    // The rail follows the card on screen, not the prefetch cursor, so each
+    // card remembers which phase it was mounted under.
+    if (feedMode === 'flow') node.dataset.flowPhase = String(flowPhaseOfItem(item));
     if (sentinel) track.insertBefore(node, sentinel); else track.appendChild(node);
     feedMounted.push(item.slug);
     ahead++;
@@ -10312,7 +10672,7 @@ function feedScoreExit() {
   const slug = feedActiveEl.dataset.slug;
   // Due cards aren't drawn from the weighted pool, so dwell on them would only
   // pollute the weights map with entries nothing ever reads.
-  if (slug && !isDueSlug(slug)) {
+  if (slug && !isDueSlug(slug) && !FLOW_ONLY.has(slug)) {
     if (dwell < FEED_DWELL_SHORT)     feedNudge(slug, 0.88);
     else if (dwell > FEED_DWELL_LONG) feedNudge(slug, 1.18);
   }
@@ -10330,6 +10690,7 @@ function feedSetActive(el) {
   feedActiveIdx = idx;
   feedActiveEl  = el;
   feedEnterTs   = Date.now();
+  if (feedMode === 'flow') flowRenderRail();
   feedFill();
   feedTopUp();
 }
@@ -10344,6 +10705,7 @@ function feedSizeTrack() {
 function feedRenderFilters() {
   const el = document.getElementById('feed-filters');
   if (!el) return;
+  if (feedMode === 'flow') return flowRenderRail();
   el.innerHTML = FEED_BUCKETS.map(b =>
     '<button class="feed-filter' + (b.bucket === feedBucket ? ' selected' : '') + '" data-feed-bucket="' + b.bucket + '">' + esc(b.label) + '</button>'
   ).join('');
@@ -10398,6 +10760,7 @@ function closeFeed() {
   if (!feedOpen) return;
   feedScoreExit();
   feedOpen = false;
+  feedMode = 'scroll';
   feedActiveEl = null;
   feedStopWatchdog();
   // Anything answered in the feed wrote a real record, so the home pillars are
@@ -10422,7 +10785,8 @@ function feedPrewarm() {
 // ── Wiring ───────────────────────────────────────────────
 feedRestore();
 
-document.getElementById('btn-scroll')?.addEventListener('click', openFeed);
+document.getElementById('btn-scroll')?.addEventListener('click', () => { feedMode = 'scroll'; openFeed(); });
+document.getElementById('btn-flow')?.addEventListener('click', openFlow);
 
 document.addEventListener('screenchange', e => {
   if (e.detail !== 'feed') closeFeed();
