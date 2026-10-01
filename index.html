@@ -2289,6 +2289,90 @@
       font-family: var(--font-sans); font-size: 14px; font-weight: 600;
     }
 
+    /* ── Channels (phase 2) ── */
+    /* A unit is something you are learning, so the question and the teach are
+       serif; chrome around it stays sans. Centred like a flashcard. */
+    #screen-feed .feed-item[data-slug="chan-unit"] .feed-body,
+    #screen-feed .feed-item[data-slug="chan-recall"] .feed-body,
+    #screen-feed .feed-item[data-slug="card-offer"] .feed-body,
+    #screen-feed .feed-item[data-slug="chan-offer"] .feed-body { justify-content: safe center; padding-bottom: 8px; }
+    .feed-item[data-slug="chan-unit"]:not([data-taught]) .feed-deeper-link { visibility: hidden; }
+    .chan-unit-title {
+      font-family: var(--font-sans); font-size: 12px; font-weight: 600;
+      color: var(--text-faint); margin-bottom: 12px;
+    }
+    .feed-body .ai-single .main-text.chan-q {
+      font-family: var(--font-serif); font-weight: 700;
+      font-size: clamp(23px, 6.2vw, 29px); line-height: 1.22; letter-spacing: -0.3px; margin-bottom: 18px;
+    }
+    .chan-opts { display: flex; flex-direction: column; gap: 8px; }
+    .chan-opt {
+      text-align: left; padding: 13px 15px; border-radius: var(--radius-md);
+      border: 1px solid var(--border-strong); background: transparent; cursor: pointer;
+      font-family: var(--font-sans); font-size: 15px; color: var(--text);
+    }
+    .chan-opt:disabled { cursor: default; color: var(--text-faint); }
+    .chan-opt.is-correct { background: var(--yes-bg); color: var(--yes-fg); border-color: var(--yes-bg); font-weight: 600; }
+    .chan-opt.is-wrong { background: var(--no-bg); color: var(--no-fg); text-decoration: line-through; }
+    .chan-reveal {
+      align-self: flex-start; padding: 11px 18px; border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong); background: transparent; cursor: pointer;
+      font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text);
+    }
+    .chan-teach { margin-top: 20px; }
+    .chan-answer { font-family: var(--font-sans); font-weight: 700; font-size: 15px; margin-bottom: 12px; }
+    .chan-body p { font-family: var(--font-serif); font-size: 17px; line-height: 1.6; color: var(--text); margin: 0 0 12px; }
+    .chan-why { font-family: var(--font-sans); font-size: 14px; color: var(--text-muted); margin-top: 6px; }
+    .chan-why::before { content: 'Think: '; font-weight: 700; color: var(--text); }
+    .offer-list { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+    .offer-row { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .offer-row.is-gone { display: none; }
+    .offer-row.is-kept .offer-front::after { content: '  kept'; font-family: var(--font-sans); font-size: 12px; color: var(--text-faint); }
+    .offer-front { font-family: var(--font-serif); font-weight: 700; font-size: 18px; line-height: 1.3; }
+    .offer-back { font-size: 14.5px; line-height: 1.5; color: var(--text-muted); margin-top: 4px; }
+    .offer-acts { display: flex; gap: 8px; margin-top: 10px; }
+    .offer-btn {
+      padding: 8px 14px; border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong); background: transparent; cursor: pointer;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text);
+    }
+    /* One fill per screen (DESIGN.md): Keep is the outlined action, Edit and
+       Skip drop to plain text. */
+    .offer-row .offer-btn:not(.is-keep) { border-color: transparent; color: var(--text-muted); padding-inline: 8px; }
+    .offer-btn:disabled { opacity: 0.6; }
+    .lul-answer { margin-top: 12px; }
+    /* Channels screen */
+    .ch-add { display: flex; gap: 8px; margin: 6px 0 22px; }
+    .ch-add input {
+      flex: 1; min-width: 0; padding: 12px 14px; border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+      font-family: var(--font-sans); font-size: 16px; outline: none;
+    }
+    .ch-add button {
+      padding: 12px 16px; border-radius: var(--radius-pill); border: none; cursor: pointer;
+      background: var(--ink); color: var(--ink-on); font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    }
+    .ch-add button:disabled { opacity: 0.6; }
+    .ch-section-label {
+      font-family: var(--font-sans); font-size: 10.5px; font-weight: 600; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-faint); margin: 8px 0 6px;
+    }
+    #ch-following, #ch-suggested { border-top: 1px solid var(--border); margin-bottom: 22px; }
+    .ch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+    .ch-row.is-muted .ch-name { color: var(--text-faint); }
+    .ch-name { font-family: var(--font-sans); font-weight: 700; font-size: 15.5px; }
+    .ch-why { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+    .ch-tag { font-weight: 500; font-size: 12px; color: var(--text-faint); }
+    .ch-row-acts { display: flex; gap: 6px; flex-shrink: 0; }
+    .ch-btn {
+      flex-shrink: 0; padding: 7px 13px; border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong); background: transparent; cursor: pointer;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text);
+    }
+    /* The add form's Follow is the screen's one fill; row Follows are outlines. */
+    .ch-btn.is-primary { border-color: var(--text); }
+    .ch-btn:disabled { opacity: 0.6; }
+
     /* Ground: your own words, so serif, per the two-faces rule. */
     .ink-meta { opacity: 1; color: var(--text-faint); }
     .ink-check { border-color: var(--border-strong); color: var(--text); }
@@ -2385,6 +2469,7 @@
       <button class="btn-icon" id="btn-timer-menu" title="Set timer">⏱</button>
       <button class="btn-icon" id="btn-home-overflow" title="More" aria-haspopup="true">⋯</button>
       <div class="home-overflow-menu hidden" id="home-overflow-menu" role="menu">
+        <button class="overflow-item" id="btn-channels">Channels</button>
         <button class="overflow-item" id="btn-activity-settings">Activities</button>
         <button class="overflow-item" id="btn-settings">API key</button>
         <button class="overflow-item" id="btn-theme">Theme: <span id="theme-label">Sun</span></button>
@@ -2684,6 +2769,23 @@
 </div>
 
 <!-- COURSES (Deep Dives v2) — see break-courses-spec.md -->
+<!-- CHANNELS: topics you follow; each runs a slow course into the feed -->
+<div id="screen-channels" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Channels</span>
+  </div>
+  <p class="framing">Topics you follow. Each one runs a short course in the background, one small unit at a time, mixed into your feed.</p>
+  <form class="ch-add" id="ch-add">
+    <input id="ch-add-input" type="text" placeholder="Follow a topic: all the US presidents, how vaccines work…" autocomplete="off" enterkeyhint="go">
+    <button type="submit" id="ch-add-go">Follow</button>
+  </form>
+  <div class="ch-section-label">Following</div>
+  <div id="ch-following"></div>
+  <div class="ch-section-label">Suggested for you</div>
+  <div id="ch-suggested"></div>
+</div>
+
 <div id="screen-courses" class="screen">
   <div class="activity-header">
     <button class="btn-back" data-back="home">←</button>
@@ -3199,6 +3301,7 @@
       <button class="srs-modal-close" id="add-menu-close">×</button>
     </div>
     <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-outline add-menu-opt" data-add="topic">Topic to follow</button>
       <button class="btn btn-outline add-menu-opt" data-add="card">Add Card</button>
       <button class="btn btn-outline add-menu-opt" data-add="lul">Look Up Later</button>
       <button class="btn btn-outline add-menu-opt" data-add="dive">Deep Dive</button>
@@ -9038,6 +9141,7 @@ document.getElementById('add-menu-close').addEventListener('click', () =>
 document.querySelectorAll('.add-menu-opt').forEach(btn => {
   btn.addEventListener('click', () => {
     document.getElementById('add-menu-modal').classList.add('hidden');
+    if (btn.dataset.add === 'topic')  channelsOpen(true);
     if (btn.dataset.add === 'card')   navigateToActivity('anki-input');
     if (btn.dataset.add === 'lul') {
       document.getElementById('lul-question-input').value = '';
@@ -10066,7 +10170,8 @@ function feedEligible() {
   // Quiz slugs live in the buckets too but have no card spec — filtered here.
   // Due slugs DO have specs but must never come out of the weighted draw:
   // they're mounted on their own cadence by feedDueTopUp/feedFill.
-  let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s) && !isDueSlug(s) && !FLOW_ONLY.has(s));
+  // Channel and offer cards are mounted by the channel composer (chanTake).
+  let list = pool.filter(s => CARD_SPECS[s] && !hidden.has(s) && !isDueSlug(s) && !FLOW_ONLY.has(s) && !CHAN_SLUGS.includes(s));
   // Some cards are only eligible when their data says so (an open challenge).
   list = list.filter(s => !CARD_GATES[s] || CARD_GATES[s]());
   // Signed out (or offline), the Claude proxy is closed — but bundled-data
@@ -10236,7 +10341,7 @@ function feedItemNode(item) {
   const liked    = getLiked(item.slug).includes(item.key);
   const disliked = getDisliked(item.slug).includes(item.key);
   const idAttr = 'data-slug="' + esc(item.slug) + '" data-id="' + esc(item.key) + '"';
-  const kindRaw = FEED_NAMES[item.slug] || item.slug;
+  const kindRaw = (item.data && item.data._chip) || FEED_NAMES[item.slug] || item.slug;
   const kind = esc(kindRaw);
   // Not every feed source has a standalone screen behind it (stoic registers a
   // card spec but no #screen-stoic). Opening one blanks the app, so a slug with
@@ -10290,6 +10395,9 @@ function feedItemNode(item) {
   // interval and ease factor, a dive with its schedule). Keep the row on the
   // node rather than serialising it into data attributes.
   if (isDueSlug(item.slug) || item.slug === 'ground') el._due = item.data;
+  // Channel cards carry their channel/course/unit; offer cards their payload.
+  if (item.slug === 'chan-unit' || item.slug === 'chan-recall') { el._chan = item.data; el._channelId = item.data._channelId; }
+  if (item.slug === 'card-offer' || item.slug === 'chan-offer') el._offer = item.data;
   // Pictures that arrive on a second hop. Safe to fire against the still
   // detached node: every hydrator re-checks isConnected before it writes, and
   // feedFill appends synchronously right after this returns.
@@ -10357,20 +10465,29 @@ function feedCardTopic(item) {
 // + questions, one JSON call) and once per question. Never mid-scroll.
 // Threads persist in `card_threads`, and an existing thread for the same card
 // is reused instead of paying for the opening call again.
-const DEEPER_SLUGS_SKIP = new Set(['flow-mark', 'due-card', 'due-quiz', 'due-lul', 'due-dive']);
+const DEEPER_SLUGS_SKIP = new Set(['flow-mark', 'due-card', 'due-quiz', 'due-dive', 'chan-recall', 'card-offer', 'chan-offer']);
 let deeper = null;   // { item, key, slug, topic, text, more, questions, messages, id, busy }
 
 function deeperCardText(item) {
   // A flashcard's front face is only the prompt; the thread needs both sides.
   if (item?._due && item.dataset.slug === 'due-card') return item._due.front + '\n' + item._due.back;
+  if (item?._due && item.dataset.slug === 'due-lul') return item._due.question + '\n' + (item._due.answer || item._due.tl_dr || '');
+  if (item?._chan) return item._chan.unit.title + '\n' + (item._chan.unit.body || '');
   return feedCardText(item);
+}
+function deeperCardTopic(item) {
+  if (item?._due && item.dataset.slug === 'due-card') return item._due.front;
+  if (item?._due && item.dataset.slug === 'due-lul') return item._due.question;
+  if (item?._chan) return item._chan.unit.title;
+  return feedCardTopic(item);
 }
 
 async function deeperOpen(item) {
   if (!item) return;
   if (!hasSession()) { showToast('Sign in to go deeper'); return; }
   const slug = item.dataset.slug;
-  const topic = item._due && slug === 'due-card' ? item._due.front : feedCardTopic(item);
+  const topic = deeperCardTopic(item);
+  if (item._chan) chanEngaged(item, 'deeper');
   deeper = { item, key: item.dataset.key || topic, slug, topic, text: deeperCardText(item),
              more: '', questions: [], messages: [], id: null, busy: false };
   document.getElementById('deeper-kind').textContent = FEED_NAMES[slug] || slug;
@@ -10624,6 +10741,10 @@ function feedTake() {
   // A Flow mounts only its phase's cards until Discover; the buffer stays
   // warm underneath so the wander that follows starts instantly.
   if (flowActive()) return null;
+  // Channels first get a roll at the slot (70/30); with nothing else
+  // buffered they take it outright.
+  const chan = chanTake(!feedBuffer.length);
+  if (chan) return chan;
   const recent = feedMounted.slice(-FEED_LOOKBACK);
   let i = feedBuffer.findIndex(it => !recent.includes(it.slug));
   if (i === -1) {
@@ -10872,10 +10993,16 @@ CARD_SOURCES['due-lul'] = async (n) => {
 CARD_SPECS['due-lul'] = {
   slug: 'due-lul',
   sourceOnly: true,
-  render: (d) => '<div class="ai-single">' +
+  // Questions are researched the moment they're parked, so most arrive with
+  // an answer: show it, and let "Go deeper" pull the thread from there.
+  render: (d) => {
+    const ans = lulCleanText(d.tl_dr || '') || lulCleanText(d.answer || '').split('\n')[0];
+    return '<div class="ai-single">' +
       '<div class="main-text">' + esc(d.question) + '</div>' +
+      (ans ? '<div class="sub-text lul-answer">' + esc(ans) + '</div>' : '') +
       '<div class="due-hint">tap for what to do with it</div>' +
-    '</div>',
+    '</div>';
+  },
   renderBack: (d) => '<div class="feed-back-kind">From your Queue</div>' +
     '<div class="feed-back-topic">' + esc(d.question) + '</div>' +
     '<div class="feed-back-acts">' +
@@ -11239,7 +11366,7 @@ function feedFill() {
   const sentinel = track.querySelector('.feed-loading');
   const wasCold = feedActiveIdx === -1;
   let ahead = feedItems().length - 1 - feedActiveIdx;
-  while ((feedBuffer.length || feedDueReady()) && ahead < FEED_AHEAD) {
+  while ((feedBuffer.length || feedDueReady() || (chanBuffer.length && !flowActive())) && ahead < FEED_AHEAD) {
     // Cadence is measured here, at mount, not at generation: generation runs
     // ahead by an unpredictable amount, so "every 6th card" only means
     // anything at the position a card actually lands in.
@@ -11269,6 +11396,8 @@ function feedFill() {
   }
   feedPersist();
   feedTrim();
+  // Cheap when there's nothing to do (busy / buffer full / quiet guards).
+  if (!flowActive()) chanTopUp();
 }
 
 // Unmount cards well behind the active one, then re-pin the scroll position
@@ -11350,7 +11479,8 @@ function feedScoreExit() {
   const slug = feedActiveEl.dataset.slug;
   // Due cards aren't drawn from the weighted pool, so dwell on them would only
   // pollute the weights map with entries nothing ever reads.
-  if (slug && !isDueSlug(slug) && !FLOW_ONLY.has(slug)) {
+  if (slug && CHAN_SLUGS.includes(slug)) chanOnExit(feedActiveEl, dwell);
+  else if (slug && !isDueSlug(slug) && !FLOW_ONLY.has(slug)) {
     if (dwell < FEED_DWELL_SHORT)     feedNudge(slug, 0.88);
     else if (dwell > FEED_DWELL_LONG) feedNudge(slug, 1.18);
   }
@@ -11893,7 +12023,10 @@ async function wikidataPresidents() {
 
 const COURSE_CANON = [{
   kind: 'us-presidents',
-  test: t => /president/i.test(t) && /(u\.?s\.?|america|united states|order)/i.test(t),
+    // "all the presidents" with no country named means the US ones (Nate is in
+  // New York); any other country named falls through to the model.
+  test: t => /president/i.test(t) && (/(u\.?s\.?|america|united states|order)/i.test(t) ||
+    /^\s*(learn\s+)?(all\s+(of\s+)?)?(the\s+)?presidents\s*\.?\s*$/i.test(t.trim())),
   shape: 'chronology',
   load: wikidataPresidents,
   source: { label: 'Wikidata — US presidents, in order', url: 'https://www.wikidata.org/wiki/Q11696' },
@@ -12917,6 +13050,575 @@ document.getElementById('co-plan-save')?.addEventListener('click', async (e) => 
 });
 
 updateCoursesBadge();
+
+// ══ Channels (break-feed-spec.md phase 2) ═════════════════════════════
+// A channel is a topic you follow, with a course behind it. Its card in the
+// feed is its next unit: a guess first, then the short teach. Units you've
+// been taught come back as recall cards when the course schedule says so.
+//
+// Rules carried over from Courses: units are built in the background and only
+// a BUILT unit is ever served (a build is ~20s; the feed never waits on it),
+// new units are capped per day, and flashcards are offered, never minted.
+//
+// Mix: in Discover, 70% of slots go to channels when one has a card ready.
+// If you skip most channel cards, Discover's share rises (to 50% at most) and
+// eases back as you engage.
+const CHAN_SHARE = 0.7;
+const CHAN_SKIP_WINDOW = 20;
+const CHAN_BUFFER = 2;
+const CHAN_BUILD_MAX = 3;           // background builds per top-up sweep
+const CHAN_OFFER_EVERY = 10;        // at most one offer card per this many cards
+const CHAN_QUIET_MS = 60000;        // back off this long after an empty sweep
+const CHAN_SLUGS = ['chan-unit', 'chan-recall', 'card-offer', 'chan-offer'];
+
+let chanList = null, chanListAt = 0;
+let chanBuffer = [];
+let chanBusy = false, chanQuietUntil = 0;
+let chanServed = new Set();
+let chanLastOfferPos = -99;
+let chanFollowOffered = false;
+
+async function chanFetchAll()  { return sbFetch('channels?select=*&order=created_at.asc'); }
+async function chanCreate(o)   { return sbFetch('channels', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(o) }); }
+async function chanUpdate(id, f) { return sbFetch('channels?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(f) }); }
+async function chanDelete(id)  { return sbFetch('channels?id=eq.' + id, { method: 'DELETE' }); }
+
+async function chanLoad(force) {
+  if (!force && chanList && Date.now() - chanListAt < 120000) return chanList;
+  chanList = (await chanFetchAll()) || [];
+  chanListAt = Date.now();
+  return chanList;
+}
+
+// Follow a topic: plan its course (canonical data where it exists, e.g. the
+// US presidents from Wikidata), save the course and the channel, start
+// building unit 1 so it can reach the feed within a few cards.
+async function channelStartFromTopic(topic, brief, from) {
+  if (!hasSession()) throw new Error('Sign in to follow topics');
+  topic = String(topic || '').trim();
+  if (!topic) throw new Error('empty topic');
+  const plan = await coPlan(topic, brief || '');
+  const course = await coCommitPlan(plan, brief || null, null, null);
+  const rows = await chanCreate({ name: plan.title, course_id: course.id, seeded_from: from || 'topic' });
+  chanList = null; chanQuietUntil = 0;
+  showToast('Following ' + plan.title);
+  chanTopUp();
+  updateCoursesBadge();
+  return Array.isArray(rows) ? rows[0] : rows;
+}
+
+async function channelFollowCourse(course) {
+  const rows = await chanCreate({ name: course.title, course_id: course.id, seeded_from: 'course' });
+  chanList = null; chanQuietUntil = 0;
+  showToast('Following ' + course.title);
+  chanTopUp();
+  return rows;
+}
+
+// ── Signals ──
+function chanLog() { try { return JSON.parse(localStorage.getItem('chan_log') || '[]'); } catch (e) { return []; } }
+function chanShare() {
+  const log = chanLog();
+  if (log.length < 6) return CHAN_SHARE;
+  const skip = log.filter(x => x === 1).length / log.length;
+  return skip > 0.6 ? 0.5 : skip > 0.45 ? 0.6 : CHAN_SHARE;
+}
+function chanSignal(channelId, kind) {
+  if (kind === 'skip' || kind === 'engage') {
+    const log = chanLog(); log.push(kind === 'skip' ? 1 : 0);
+    try { localStorage.setItem('chan_log', JSON.stringify(log.slice(-CHAN_SKIP_WINDOW))); } catch (e) {}
+  }
+  const c = (chanList || []).find(x => x.id === channelId);
+  if (!c) return;
+  const f = kind === 'skip' ? 0.9 : kind === 'deeper' ? 1.3 : kind === 'more' ? 1.5 : 1.15;
+  c.weight = Math.max(0.25, Math.min(4, (Number(c.weight) || 1) * f));
+  chanUpdate(c.id, { weight: c.weight }).catch(() => {});
+}
+// Called by feedScoreExit for channel cards: a quick flick past an untouched
+// card is a skip; anything you did with it already logged an engage.
+function chanOnExit(el, dwell) {
+  if (!el || !el._channelId || el.dataset.engaged) return;
+  if (dwell < FEED_DWELL_SHORT && (el.dataset.slug === 'chan-unit' || el.dataset.slug === 'chan-recall')) chanSignal(el._channelId, 'skip');
+}
+function chanEngaged(el, kind) {
+  if (!el) return;
+  if (!el.dataset.engaged) { el.dataset.engaged = '1'; chanSignal(el._channelId, kind || 'engage'); }
+  else if (kind === 'deeper') chanSignal(el._channelId, 'deeper');
+}
+
+// ── New-per-day cap ──
+function chanNewToday() {
+  try {
+    const o = JSON.parse(localStorage.getItem('chan_new_today') || '{}');
+    return o.date === localDateStr() ? o : { date: localDateStr(), n: {} };
+  } catch (e) { return { date: localDateStr(), n: {} }; }
+}
+function chanCountNew(courseId) {
+  const o = chanNewToday(); o.n[courseId] = (o.n[courseId] || 0) + 1;
+  try { localStorage.setItem('chan_new_today', JSON.stringify(o)); } catch (e) {}
+}
+
+// ── Keep the buffer stocked ──
+// One sweep: which channel deserves the next slot (weight x how long since it
+// last appeared), its due recall or next new unit, and background builds for
+// anything not built yet.
+async function chanTopUp() {
+  if (chanBusy || !hasSession() || chanBuffer.length >= CHAN_BUFFER) return;
+  if (Date.now() < chanQuietUntil) return;
+  chanBusy = true;
+  try {
+    const chans = (await chanLoad()).filter(c => c.status === 'following' && c.course_id);
+    if (!chans.length) { chanQuietUntil = Date.now() + CHAN_QUIET_MS; await chanMaybeFollowOffer(); return; }
+    const ids = chans.map(c => c.course_id).join(',');
+    const [courses, units] = await Promise.all([
+      sbFetch('courses?id=in.(' + ids + ')&select=*'),
+      sbFetch('course_units?course_id=in.(' + ids + ')&order=position.asc&select=*'),
+    ]);
+    const byCourse = {};
+    (courses || []).forEach(c => { byCourse[c.id] = c; });
+    const today = localDateStr();
+    const newToday = chanNewToday().n;
+    const now = Date.now();
+    const scored = chans.filter(c => byCourse[c.course_id]).map(c => {
+      const hrs = c.last_shown_at ? (now - new Date(c.last_shown_at).getTime()) / 3600000 : 24;
+      return { c, score: (Number(c.weight) || 1) * Math.min(3, 1 + hrs / 12) * (0.75 + Math.random() * 0.5) };
+    }).sort((a, b) => b.score - a.score);
+    let builds = 0;
+    const before = chanBuffer.length;
+    for (const { c } of scored) {
+      if (chanBuffer.length >= CHAN_BUFFER) break;
+      const course = byCourse[c.course_id];
+      const mine = (units || []).filter(u => u.course_id === c.course_id && u.kind === 'unit');
+      const due = mine.find(u => u.state !== 'ready' && u.built_at && u.next_review && u.next_review <= today && !chanServed.has('r:' + u.id));
+      if (due) { chanPush('chan-recall', c, course, due, mine); continue; }
+      const cap = Number(course.new_per_day) || 2;
+      if ((newToday[course.id] || 0) >= cap) continue;
+      const next = mine.find(u => u.state === 'ready' && !chanServed.has('u:' + u.id));
+      if (!next) continue;
+      if (next.built_at) { chanPush('chan-unit', c, course, next, mine); continue; }
+      if (builds < CHAN_BUILD_MAX) {
+        builds++;
+        // Fire and forget; the next sweep serves it once built.
+        coBuildUnit(course, next).then(() => { chanQuietUntil = 0; }).catch(() => {});
+      }
+    }
+    // A sweep that added nothing backs off, or every scroll event would
+    // re-query courses and units. A pending build wakes it early.
+    if (chanBuffer.length === before) chanQuietUntil = Date.now() + (builds ? 15000 : CHAN_QUIET_MS);
+    await chanMaybeFollowOffer();
+  } catch (e) {
+    chanQuietUntil = Date.now() + CHAN_QUIET_MS;
+  } finally {
+    chanBusy = false;
+    if (chanBuffer.length && feedOpen) feedFill();
+  }
+}
+
+// `units` = the course's teaching units only, so "n of N" ignores the
+// checkpoints and capstone that share the position numbering.
+function chanPush(slug, chan, course, unit, units) {
+  chanServed.add((slug === 'chan-recall' ? 'r:' : 'u:') + unit.id);
+  chanBuffer.push({
+    slug,
+    key: slug + ':' + unit.id,
+    data: { _channelId: chan.id, _chip: chan.name + ' · ' + (units.indexOf(unit) + 1) + ' of ' + units.length, chan, course, unit },
+  });
+}
+
+// "Follow <topic>?" for a flashcard cluster with 3+ cards and no channel. Once
+// per session, and a "Not now" is remembered.
+async function chanMaybeFollowOffer() {
+  if (chanFollowOffered) return;
+  chanFollowOffered = true;
+  try {
+    const [clusters, cards] = await Promise.all([
+      sbFetch('clusters?select=id,name'),
+      sbFetch('flashcards?select=cluster_id&cluster_id=not.is.null'),
+    ]);
+    const counts = {};
+    (cards || []).forEach(r => { counts[r.cluster_id] = (counts[r.cluster_id] || 0) + 1; });
+    let dismissed = [];
+    try { dismissed = JSON.parse(localStorage.getItem('chan_follow_dismissed') || '[]'); } catch (e) {}
+    const names = (chanList || []).map(c => c.name.toLowerCase());
+    const pick = (clusters || []).find(cl => cl && cl.name && (counts[cl.id] || 0) >= 3 &&
+      !dismissed.includes(cl.id) && !names.some(n => n.includes(cl.name.toLowerCase()) || cl.name.toLowerCase().includes(n)));
+    if (pick) chanBuffer.push({ slug: 'chan-offer', key: 'chan-offer:' + pick.id,
+      data: { clusterId: pick.id, name: pick.name, n: counts[pick.id] } });
+  } catch (e) {}
+}
+
+// Composer hook, called from feedTake(). Offer cards respect their own
+// spacing; unit cards take CHAN_SHARE of slots (more if Discover has nothing).
+function chanTake(force) {
+  if (!chanBuffer.length || flowActive()) return null;
+  const pos = feedMounted.length;
+  const i = chanBuffer.findIndex(it => {
+    if (it.slug === 'card-offer' || it.slug === 'chan-offer') return pos - chanLastOfferPos >= CHAN_OFFER_EVERY;
+    return true;
+  });
+  if (i === -1) return null;
+  if (!force && Math.random() > chanShare()) return null;
+  const item = chanBuffer.splice(i, 1)[0];
+  if (item.slug === 'card-offer' || item.slug === 'chan-offer') chanLastOfferPos = pos;
+  const c = item.data && item.data.chan;
+  if (c) { c.last_shown_at = new Date().toISOString(); chanUpdate(c.id, { last_shown_at: c.last_shown_at }).catch(() => {}); }
+  setTimeout(chanTopUp, 0);
+  return item;
+}
+
+// ── Cards ──
+FEED_NAMES['chan-unit'] = 'Channel';
+FEED_NAMES['chan-recall'] = 'Channel';
+FEED_NAMES['card-offer'] = 'Keep any of these?';
+FEED_NAMES['chan-offer'] = 'Follow this?';
+
+function chanParas(text) {
+  return String(text || '').split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+    .map(p => '<p>' + esc(p) + '</p>').join('');
+}
+
+CARD_SPECS['chan-unit'] = {
+  slug: 'chan-unit', sourceOnly: true, noOpen: true,
+  render: (d) => {
+    const u = d.unit, h = u.hook;
+    const q = h && h.question ? h.question : u.title;
+    const opts = h && h.kind === 'choice'
+      ? '<div class="chan-opts">' + h.options.map((o, i) =>
+          '<button class="chan-opt" data-chan-pick="' + i + '">' + esc(o) + '</button>').join('') + '</div>'
+      : '<button class="chan-reveal" data-chan-reveal="1">' + (h ? 'Guess, then show the answer' : 'Read it') + '</button>';
+    return '<div class="ai-single chan-card">' +
+      '<div class="chan-unit-title">' + esc(u.title) + '</div>' +
+      '<div class="main-text chan-q">' + esc(q) + '</div>' + opts +
+      '<div class="chan-teach" hidden>' +
+        // Multiple choice already highlights the answer; a free guess needs it said.
+        (h && h.kind !== 'choice' && h.answer ? '<div class="chan-answer">' + esc(h.answer) + '</div>' : '') +
+        '<div class="chan-body">' + chanParas(u.body) + '</div>' +
+        (u.why ? '<div class="chan-why">' + esc(u.why) + '</div>' : '') +
+      '</div>' +
+    '</div>';
+  },
+  renderBack: (d) => chanBack(d),
+};
+
+CARD_SPECS['chan-recall'] = {
+  slug: 'chan-recall', sourceOnly: true, noOpen: true,
+  render: (d) => '<div class="ai-single chan-card">' +
+      '<div class="chan-unit-title">Back from ' + esc(d.unit.title) + '</div>' +
+      '<div class="main-text chan-q">' + esc(d.unit.why || ('Explain ' + d.unit.title + ' from memory.')) + '</div>' +
+      '<div class="due-hint">say it to yourself, then tap to check</div>' +
+    '</div>',
+  renderBack: (d) => '<div class="feed-back-kind">' + esc(d.chan.name) + '</div>' +
+    '<div class="due-q">' + esc(d.unit.title) + '</div>' +
+    '<ul class="due-points">' + (d.unit.key_points || []).map(k => '<li>' + esc(k.text) + '</li>').join('') + '</ul>' +
+    '<div class="due-rate">' +
+      '<button class="due-btn due-miss" data-chan-rate="miss">Miss</button>' +
+      '<button class="due-btn due-hard" data-chan-rate="hard">Hard</button>' +
+      '<button class="due-btn due-easy" data-chan-rate="easy">Easy</button>' +
+    '</div>',
+};
+
+function chanBack(d) {
+  return '<div class="feed-back-kind">' + esc(d.chan.name) + '</div>' +
+    '<div class="feed-back-topic">' + esc(d.unit.title) + '</div>' +
+    '<div class="feed-back-acts">' +
+      feedActBtn('data-feed-deeper="1"', '↑', 'Go deeper') +
+      feedActBtn('data-chan-more="1"', '▲', 'More from this channel') +
+      feedActBtn('data-chan-course="1"', '›', 'Open the course') +
+      feedActBtn('data-chan-mute="1"', '×', 'Mute this channel') +
+    '</div>';
+}
+
+CARD_SPECS['card-offer'] = {
+  slug: 'card-offer', sourceOnly: true, noOpen: true,
+  render: (d) => '<div class="ai-single offer-card">' +
+      '<div class="chan-unit-title">From ' + esc(d.from) + '</div>' +
+      '<div class="offer-list">' + d.cards.map((c, i) =>
+        '<div class="offer-row" data-offer-row="' + i + '">' +
+          '<div class="offer-front">' + esc(c.front) + '</div>' +
+          '<div class="offer-back">' + esc(c.back) + '</div>' +
+          '<div class="offer-acts">' +
+            '<button class="offer-btn is-keep" data-offer-keep="' + i + '">Keep</button>' +
+            '<button class="offer-btn" data-offer-edit="' + i + '">Edit</button>' +
+            '<button class="offer-btn" data-offer-skip="' + i + '">Skip</button>' +
+          '</div>' +
+        '</div>').join('') + '</div>' +
+      '<div class="due-hint">nothing is saved unless you tap Keep</div>' +
+    '</div>',
+  renderBack: () => '<div class="feed-back-kind">Suggested flashcards</div>',
+};
+
+CARD_SPECS['chan-offer'] = {
+  slug: 'chan-offer', sourceOnly: true, noOpen: true,
+  render: (d) => '<div class="ai-single offer-card">' +
+      '<div class="main-text chan-q">' + esc(d.name) + '</div>' +
+      '<div class="chan-body"><p>You have ' + d.n + ' flashcards on this. Follow it as a channel and the feed will teach it a unit at a time.</p></div>' +
+      '<div class="offer-acts">' +
+        '<button class="offer-btn is-keep" data-chan-follow="1">Follow</button>' +
+        '<button class="offer-btn" data-chan-notnow="1">Not now</button>' +
+      '</div>' +
+    '</div>',
+  renderBack: () => '<div class="feed-back-kind">Follow this?</div>',
+};
+
+// Teach: a unit read in the feed counts as taught and comes back as a recall
+// card tomorrow. Its candidate flashcards are offered a couple of cards later.
+function chanTeach(item, picked) {
+  const d = item._chan;
+  if (!d || item.dataset.taught) return;
+  item.dataset.taught = '1';
+  const u = d.unit, h = u.hook;
+  if (h && h.kind === 'choice') {
+    item.querySelectorAll('[data-chan-pick]').forEach(b => {
+      const opt = h.options[Number(b.dataset.chanPick)];
+      b.disabled = true;
+      if (opt === h.answer) b.classList.add('is-correct');
+      else if (String(Number(b.dataset.chanPick)) === String(picked)) b.classList.add('is-wrong');
+    });
+  } else {
+    item.querySelector('[data-chan-reveal]')?.remove();
+  }
+  const teach = item.querySelector('.chan-teach');
+  if (teach) teach.hidden = false;
+  chanEngaged(item);
+  chanCountNew(d.course.id);
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  u.state = 'taught'; u.next_review = localDateStr(tomorrow);
+  cuUpdate(u.id, { state: 'taught', next_review: u.next_review }).catch(() => {});
+  if (Array.isArray(u.cards) && u.cards.length) {
+    chanBuffer.unshift({ slug: 'card-offer', key: 'card-offer:' + u.id,
+      data: { from: d.chan.name, cards: u.cards.slice(0, 3), unit: u, course: d.course } });
+  }
+  setTimeout(chanTopUp, 0);
+}
+
+document.addEventListener('click', async e => {
+  const pick = e.target.closest('[data-chan-pick]');
+  if (pick) { chanTeach(pick.closest('.feed-item'), pick.dataset.chanPick); return; }
+  if (e.target.closest('[data-chan-reveal]')) { chanTeach(e.target.closest('.feed-item')); return; }
+
+  const rate = e.target.closest('[data-chan-rate]');
+  if (rate) {
+    const item = rate.closest('.feed-item');
+    const d = item && item._chan;
+    if (!d || item.dataset.dueDone) return;
+    const u = d.unit, bucket = rate.dataset.chanRate;
+    const sched = cuSchedule(u, bucket);
+    const streak = bucket === 'easy' ? (Number(u.easy_streak) || 0) + 1 : 0;
+    const fields = Object.assign({}, sched, { easy_streak: streak,
+      state: streak >= CU_SOLID_STREAK ? 'solid' : 'recalled', review_count: (Number(u.review_count) || 0) + 1 });
+    Object.assign(u, fields);
+    chanEngaged(item);
+    item.classList.add('is-spent');
+    feedRetireDue(item, 'Back in ' + sched.interval + ' day' + (sched.interval === 1 ? '' : 's'));
+    feedAdvancePast(item);
+    cuUpdate(u.id, fields).then(() => updateCoursesBadge()).catch(() => showToast('Couldn\'t save that'));
+    return;
+  }
+
+  const more = e.target.closest('[data-chan-more]');
+  if (more) { const it = more.closest('.feed-item'); chanSignal(it._channelId, 'more'); feedSetActLabel(more, 'You\'ll see more of it'); more.disabled = true; return; }
+  const mute = e.target.closest('[data-chan-mute]');
+  if (mute) {
+    const it = mute.closest('.feed-item');
+    const c = (chanList || []).find(x => x.id === it._channelId);
+    if (!c) return;
+    c.status = 'muted';
+    chanBuffer = chanBuffer.filter(x => !(x.data && x.data._channelId === c.id));
+    chanUpdate(c.id, { status: 'muted' }).catch(() => {});
+    feedSetActLabel(mute, 'Muted'); mute.disabled = true;
+    showUndo('Muted ' + c.name, () => { c.status = 'following'; chanUpdate(c.id, { status: 'following' }).catch(() => {}); });
+    return;
+  }
+  const open = e.target.closest('[data-chan-course]');
+  if (open) {
+    const d = open.closest('.feed-item')._chan;
+    if (d && typeof openCourse === 'function') openCourse(d.course);
+    return;
+  }
+
+  const keep = e.target.closest('[data-offer-keep]');
+  const edit = e.target.closest('[data-offer-edit]');
+  const skip = e.target.closest('[data-offer-skip]');
+  if (keep || edit || skip) {
+    const btn = keep || edit || skip;
+    const item = btn.closest('.feed-item');
+    const d = item && item._offer;
+    const idx = Number(btn.dataset.offerKeep ?? btn.dataset.offerEdit ?? btn.dataset.offerSkip);
+    const card = d && d.cards[idx];
+    const row = btn.closest('.offer-row');
+    if (!card || !row) return;
+    if (skip) { row.classList.add('is-gone'); return; }
+    if (edit) {
+      openRememberPreview({ kind: 'Channel', rawFront: card.front, rawBack: card.back, srsSource: 'channel' }, card);
+      row.classList.add('is-gone');
+      return;
+    }
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      if (await cardExists(card.front)) { btn.textContent = 'Already saved'; row.classList.add('is-kept'); return; }
+      const r = await srsCreate(card.front, card.back, 'Channel: ' + d.from);
+      const created = Array.isArray(r) ? r[0] : r;
+      if (created && created.id && d.unit) {
+        const ids = (Array.isArray(d.unit.card_ids) ? d.unit.card_ids : []).concat(created.id);
+        d.unit.card_ids = ids;
+        cuUpdate(d.unit.id, { card_ids: ids }).catch(() => {});
+      }
+      btn.textContent = 'Kept'; row.classList.add('is-kept');
+      updateDueBadge();
+    } catch (err) { btn.disabled = false; btn.textContent = 'Keep'; showToast('Couldn\'t save that card'); }
+    return;
+  }
+
+  const follow = e.target.closest('[data-chan-follow]');
+  if (follow) {
+    const d = follow.closest('.feed-item')._offer;
+    if (!d || follow.disabled) return;
+    follow.disabled = true; follow.textContent = 'Planning…';
+    try { await channelStartFromTopic(d.name, 'Build on what I already know from my flashcards about ' + d.name + '.', 'cluster'); follow.textContent = 'Following'; }
+    catch (err) { follow.disabled = false; follow.textContent = 'Follow'; showToast('Couldn\'t start that channel'); }
+    return;
+  }
+  const notnow = e.target.closest('[data-chan-notnow]');
+  if (notnow) {
+    const d = notnow.closest('.feed-item')._offer;
+    let dis = [];
+    try { dis = JSON.parse(localStorage.getItem('chan_follow_dismissed') || '[]'); } catch (err) {}
+    if (d) dis.push(d.clusterId);
+    try { localStorage.setItem('chan_follow_dismissed', JSON.stringify(dis)); } catch (err) {}
+    notnow.closest('.offer-acts').innerHTML = '<span class="due-hint">Okay, not now.</span>';
+    return;
+  }
+});
+
+// ── Channels screen ──
+let chanSuggestCache = null;
+async function channelsOpen(focusAdd) {
+  showScreen('channels');
+  if (focusAdd) setTimeout(() => document.getElementById('ch-add-input')?.focus(), 80);
+  await channelsRender();
+}
+
+async function channelsRender() {
+  const fEl = document.getElementById('ch-following');
+  const sEl = document.getElementById('ch-suggested');
+  if (!fEl || !sEl) return;
+  if (!hasSession()) { fEl.innerHTML = '<div class="cu-note">Sign in to follow topics.</div>'; sEl.innerHTML = ''; return; }
+  let chans = [], courses = [];
+  try { [chans, courses] = await Promise.all([chanLoad(true), coFetch()]); } catch (e) {}
+  chans = chans || []; courses = courses || [];
+  fEl.innerHTML = chans.length ? chans.map(c =>
+    '<div class="ch-row' + (c.status === 'muted' ? ' is-muted' : '') + '">' +
+      '<div class="ch-name">' + esc(c.name) + (c.status === 'muted' ? ' <span class="ch-tag">muted</span>' : '') + '</div>' +
+      '<div class="ch-row-acts">' +
+        '<button class="ch-btn" data-ch-toggle="' + c.id + '">' + (c.status === 'muted' ? 'Unmute' : 'Mute') + '</button>' +
+        '<button class="ch-btn" data-ch-unfollow="' + c.id + '">Unfollow</button>' +
+      '</div>' +
+    '</div>').join('') : '<div class="cu-note">Nothing yet. Follow a topic above, or pick a suggestion.</div>';
+  const followed = new Set(chans.map(c => c.course_id).filter(Boolean));
+  const own = courses.filter(c => !followed.has(c.id)).map(c =>
+    '<div class="ch-row"><div><div class="ch-name">' + esc(c.title) + '</div><div class="ch-why">Your course</div></div>' +
+    '<button class="ch-btn is-primary" data-ch-follow-course="' + c.id + '">Follow</button></div>').join('');
+  sEl.innerHTML = own + '<div id="ch-suggest-model"><div class="cu-note">Looking at your cards and questions…</div></div>';
+  chanCoursesById = {}; courses.forEach(c => { chanCoursesById[c.id] = c; });
+  chanRenderSuggestions(chans);
+}
+let chanCoursesById = {};
+
+// Suggestions from what you already have: card fronts, parked questions,
+// book reviews, course titles. One model call, cached for a week.
+async function chanRenderSuggestions(chans) {
+  const el = document.getElementById('ch-suggest-model');
+  if (!el) return;
+  let list = null;
+  try {
+    const c = JSON.parse(localStorage.getItem('chan_suggest') || 'null');
+    if (c && Date.now() - c.at < 7 * 86400000) list = c.list;
+  } catch (e) {}
+  if (!list) {
+    try {
+      const [cards, luls, books] = await Promise.all([
+        sbFetch('flashcards?select=front&order=created_at.desc&limit=80').catch(() => []),
+        sbFetch('look_up_later?select=question&order=created_at.desc&limit=30').catch(() => []),
+        sbFetch('reflections?select=prompt_used&tags=cs.{book-review}&limit=15').catch(() => []),
+      ]);
+      const d = await callClaude(
+        'Propose 6 to 8 topics this person would enjoy following as learning channels. Each channel becomes a short course ' +
+        'taught one 3-minute unit at a time. Base them on what they already study:\n\n' +
+        'Flashcard fronts: ' + JSON.stringify((cards || []).map(x => x.front).slice(0, 80)) + '\n' +
+        'Questions they parked to look up: ' + JSON.stringify((luls || []).map(x => x.question)) + '\n' +
+        'Books they reviewed: ' + JSON.stringify((books || []).map(x => x.prompt_used)) + '\n' +
+        'Already following: ' + JSON.stringify((chans || []).map(c => c.name)) + '\n\n' +
+        'Rules: substantive subjects (history, science, economics, language, art, how things work), never self-help, ' +
+        'productivity, mindset or relationship advice. No duplicates of what they already follow. Mix close-to-home topics ' +
+        'with one or two adjacent ones they have not touched.\n' +
+        'Return JSON {"channels":[{"name":"<40 chars max>","why":"<12 words max, point at what in their stuff suggests it>",' +
+        '"brief":"<one sentence: what the course should cover>"}]}',
+        { max_tokens: 900 });
+      list = (d && Array.isArray(d.channels) ? d.channels : []).filter(x => x && x.name).slice(0, 8);
+      try { localStorage.setItem('chan_suggest', JSON.stringify({ at: Date.now(), list })); } catch (e) {}
+    } catch (e) { list = []; }
+  }
+  const names = new Set((chans || []).map(c => c.name.toLowerCase()));
+  const rows = list.filter(x => !names.has(String(x.name).toLowerCase()));
+  el.innerHTML = rows.length ? rows.map((x, i) =>
+    '<div class="ch-row"><div><div class="ch-name">' + esc(x.name) + '</div>' +
+      (x.why ? '<div class="ch-why">' + esc(x.why) + '</div>' : '') + '</div>' +
+    '<button class="ch-btn is-primary" data-ch-suggest="' + i + '">Follow</button></div>').join('')
+    : '<div class="cu-note">No suggestions right now.</div>';
+  el._list = rows;
+}
+
+document.getElementById('btn-channels')?.addEventListener('click', () => channelsOpen(false));
+document.getElementById('ch-add')?.addEventListener('submit', async e => {
+  e.preventDefault();
+  const input = document.getElementById('ch-add-input');
+  const btn = document.getElementById('ch-add-go');
+  const topic = input.value.trim();
+  if (!topic || btn.disabled) return;
+  btn.disabled = true; btn.textContent = 'Planning…';
+  try { await channelStartFromTopic(topic, '', 'topic'); input.value = ''; await channelsRender(); }
+  catch (err) { showToast('Couldn\'t plan that topic — ' + (err.message || 'try again')); }
+  btn.disabled = false; btn.textContent = 'Follow';
+});
+document.getElementById('screen-channels')?.addEventListener('click', async e => {
+  const t = e.target.closest('[data-ch-toggle]');
+  if (t) {
+    const c = (chanList || []).find(x => x.id === t.dataset.chToggle);
+    if (!c) return;
+    c.status = c.status === 'muted' ? 'following' : 'muted';
+    chanBuffer = chanBuffer.filter(x => !(x.data && x.data._channelId === c.id));
+    try { await chanUpdate(c.id, { status: c.status }); } catch (err) {}
+    channelsRender();
+    return;
+  }
+  const u = e.target.closest('[data-ch-unfollow]');
+  if (u) {
+    const c = (chanList || []).find(x => x.id === u.dataset.chUnfollow);
+    if (!c) return;
+    // The course stays in Courses; only the channel goes.
+    try { await chanDelete(c.id); } catch (err) {}
+    chanList = null; chanBuffer = chanBuffer.filter(x => !(x.data && x.data._channelId === c.id));
+    showToast('Unfollowed ' + c.name + ' (the course is still in Courses)');
+    channelsRender();
+    return;
+  }
+  const fc = e.target.closest('[data-ch-follow-course]');
+  if (fc) {
+    const course = chanCoursesById[fc.dataset.chFollowCourse];
+    if (!course) return;
+    fc.disabled = true;
+    try { await channelFollowCourse(course); channelsRender(); } catch (err) { fc.disabled = false; showToast('Couldn\'t follow that'); }
+    return;
+  }
+  const sg = e.target.closest('[data-ch-suggest]');
+  if (sg) {
+    const x = (document.getElementById('ch-suggest-model')._list || [])[Number(sg.dataset.chSuggest)];
+    if (!x || sg.disabled) return;
+    sg.disabled = true; sg.textContent = 'Planning…';
+    try { await channelStartFromTopic(x.name, x.brief || '', 'suggestion'); channelsRender(); }
+    catch (err) { sg.disabled = false; sg.textContent = 'Follow'; showToast('Couldn\'t plan that topic'); }
+  }
+});
 
 boot();
 </script>

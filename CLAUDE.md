@@ -160,6 +160,42 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 
 ---
 
+## Learning feed: go deeper + channels (`break-feed-spec.md`)
+
+**Go deeper (phase 1).** Every content card has a "Go deeper ↑" link (front) and
+a "Go deeper" action (back); due flashcards and queue answers have it too.
+`deeperOpen(item)` raises `#deeper` over the feed: one JSON call for
+`{more, questions[3]}`, then `deeperAsk` per question (prose, Sonnet, grounded in
+the card). Threads persist in `card_threads` (`deeperSave`: insert with a client
+uuid, then PATCH) and an existing row for the same `card_key` is reused with no
+model call. `DEEPER_SLUGS_SKIP` lists cards where going deeper would spoil an
+answer. Actions: Make a flashcard (preview, never auto-saved), Save as deep dive,
+Start a channel on this.
+
+**Channels (phase 2).** Table `channels` (one per followed topic, `course_id` →
+`courses`, `weight`, `status` following|muted). `channelStartFromTopic(topic,
+brief, from)` = `coPlan` → `coCommitPlan` → channel row → background build.
+Entry points: Add menu "Topic to follow", home ⋯ → Channels (`#screen-channels`:
+follow, mute, unfollow, your unfollowed courses, model suggestions cached 7 days
+in `localStorage.chan_suggest`), the go-deeper sheet, and "Follow this?" cards
+for flashcard clusters with 3+ cards.
+- Feed cards: `chan-unit` (guess first via the unit's `hook`, then the teach;
+  marks the unit `taught`, `next_review` tomorrow, counts toward `new_per_day`),
+  `chan-recall` (a due unit: why-prompt, key points, Miss/Hard/Easy through
+  `cuSchedule`), `card-offer` (the unit's candidate `cards`, Keep/Edit/Skip,
+  nothing saved without Keep, max one per `CHAN_OFFER_EVERY`=10), `chan-offer`.
+- **Only BUILT units are served.** `chanTopUp` builds up to `CHAN_BUILD_MAX`
+  units in the background and serves them on a later sweep. A sweep that adds
+  nothing backs off (`CHAN_QUIET_MS`), or it re-queries on every scroll.
+- Composer: `chanTake` is called at the top of `feedTake` (Discover / Scroll
+  only, never inside a Flow's due phases) and wins `chanShare()` of slots: 0.7,
+  dropping to 0.6 / 0.5 when the last 20 channel cards were mostly skipped
+  (`localStorage.chan_log`). Channel weights move per card: skip (under 2s,
+  untouched) ×0.9, engage ×1.15, go deeper ×1.3, "More from this channel" ×1.5.
+- `COURSE_CANON` treats a bare "all the presidents" as the US list (Wikidata).
+- Tests: `tests/deeper.spec.js`, `tests/channels.spec.js` (the `reach()` helper
+  scrolls the feed forward, since only `FEED_AHEAD` cards are mounted).
+
 ## Scroll feed (`#screen-feed`)
 
 A vertical, snap-scrolling feed of activity cards — the grid is for when you know
