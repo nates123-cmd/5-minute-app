@@ -2179,11 +2179,14 @@
     .due-done { font-family: var(--font-serif); color: var(--text-faint); }
     /* Graded flashcard: the note blinks in and fades while the feed glides
        to the next card (feedAdvancePast). No flip-back link on the way out. */
+    /* Flat on the way out: no flip transition, and the fade is opacity only.
+       Any transform inside a 3D-rotated face can render mirrored (iOS). */
+    .feed-item.is-spent .feed-flip { transition: none; }
     .feed-item.is-spent .due-done { animation: spent-fade 0.9s ease forwards; }
     .feed-item.is-spent .feed-back-close { display: none; }
     @keyframes spent-fade {
-      0%   { opacity: 0; transform: translateY(6px); }
-      30%  { opacity: 1; transform: none; }
+      0%   { opacity: 0; }
+      30%  { opacity: 1; }
       100% { opacity: 0; }
     }
 
@@ -10404,7 +10407,7 @@ function feedQuizRecord(correct) {
 
 // Remove a mounted due card once it's been dealt with, so the feed closes
 // over it rather than leaving a spent card in the scroll.
-function feedRetireDue(item, note, keepFace) {
+function feedRetireDue(item, note) {
   const body = item.querySelector('.feed-body');
   if (body) body.innerHTML = '<div class="ai-single"><div class="due-done">' + esc(note) + '</div></div>';
   // Blank the back too, or flipping the card again hands back live buttons
@@ -10412,9 +10415,7 @@ function feedRetireDue(item, note, keepFace) {
   const back = item.querySelector('.feed-back-inner');
   if (back) back.innerHTML = '<div class="due-done">' + esc(note) + '</div>' +
     '<button class="feed-back-close" data-feed-unflip="1">tap anywhere to flip back</button>';
-  // A graded flashcard is about to leave (feedAdvancePast), so it keeps the
-  // face it is showing instead of spinning round for half a second.
-  if (!keepFace) item.classList.remove('flipped');
+  item.classList.remove('flipped');
   item.dataset.dueDone = '1';
   // Tick the Flow counter for the phase this card belonged to.
   if (feedMode === 'flow') {
@@ -11213,9 +11214,13 @@ document.addEventListener('click', async e => {
     // Optimistic: the note flashes, the feed moves on, and the save finishes
     // behind it. Offline or flaky, the outbox queues it; only a hard failure
     // surfaces, as a toast.
+    // is-spent first: it kills the flip transition, so retiring snaps the card
+    // to its flat front face instead of spinning (a rotating face mid-scroll
+    // rendered the note mirrored).
+    item.classList.add('is-spent');
     feedRetireDue(item, rating === 0
       ? 'Back tomorrow'
-      : 'Back in ' + updates.interval + ' day' + (updates.interval === 1 ? '' : 's'), true);
+      : 'Back in ' + updates.interval + ' day' + (updates.interval === 1 ? '' : 's'));
     feedAdvancePast(item);
     srsUpdate(card.id, updates)
       .then(() => updateDueBadge())
