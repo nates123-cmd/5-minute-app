@@ -2177,6 +2177,15 @@
     .due-hard { background: transparent; color: var(--text); }
     .due-easy { background: var(--yes-bg); color: var(--yes-fg); border-color: var(--yes-bg); }
     .due-done { font-family: var(--font-serif); color: var(--text-faint); }
+    /* Graded flashcard: the note blinks in and fades while the feed glides
+       to the next card (feedAdvancePast). No flip-back link on the way out. */
+    .feed-item.is-spent .due-done { animation: spent-fade 0.9s ease forwards; }
+    .feed-item.is-spent .feed-back-close { display: none; }
+    @keyframes spent-fade {
+      0%   { opacity: 0; transform: translateY(6px); }
+      30%  { opacity: 1; transform: none; }
+      100% { opacity: 0; }
+    }
 
     /* Back of a content card: rows on a hairline, not a stack of tiles. */
     .feed-back-kind { color: var(--text-faint); }
@@ -10395,7 +10404,7 @@ function feedQuizRecord(correct) {
 
 // Remove a mounted due card once it's been dealt with, so the feed closes
 // over it rather than leaving a spent card in the scroll.
-function feedRetireDue(item, note) {
+function feedRetireDue(item, note, keepFace) {
   const body = item.querySelector('.feed-body');
   if (body) body.innerHTML = '<div class="ai-single"><div class="due-done">' + esc(note) + '</div></div>';
   // Blank the back too, or flipping the card again hands back live buttons
@@ -10403,7 +10412,9 @@ function feedRetireDue(item, note) {
   const back = item.querySelector('.feed-back-inner');
   if (back) back.innerHTML = '<div class="due-done">' + esc(note) + '</div>' +
     '<button class="feed-back-close" data-feed-unflip="1">tap anywhere to flip back</button>';
-  item.classList.remove('flipped');
+  // A graded flashcard is about to leave (feedAdvancePast), so it keeps the
+  // face it is showing instead of spinning round for half a second.
+  if (!keepFace) item.classList.remove('flipped');
   item.dataset.dueDone = '1';
   // Tick the Flow counter for the phase this card belonged to.
   if (feedMode === 'flow') {
@@ -10922,6 +10933,34 @@ function feedFill() {
 // to the active card's new offset. Don't try to subtract the removed height by
 // hand: a mandatory-snap container already re-anchors to its snapped element,
 // so manual compensation lands a full card off.
+// A graded flashcard leaves the feed: its note fades (CSS, .is-spent), the
+// track glides to the next card, then the spent card is unmounted so there is
+// nothing to scroll back through. Re-pin the way feedTrim does — snap
+// containers re-anchor, so never subtract heights by hand.
+const FEED_SPENT_HOLD_MS = 450;   // how long the note shows before moving on
+const FEED_SPENT_GLIDE_MS = 450;  // smooth-scroll time before unmounting
+function feedAdvancePast(item) {
+  item.classList.add('is-spent');
+  setTimeout(() => {
+    const track = document.getElementById('feed-track');
+    const items = feedItems();
+    const next = items[items.indexOf(item) + 1];
+    if (!track || !next || !item.isConnected) return;   // last card: leave the note
+    track.scrollTo({ top: next.offsetTop, behavior: 'smooth' });
+    setTimeout(() => {
+      if (!item.isConnected) return;
+      item.remove();
+      const now = feedItems();
+      feedActiveIdx = feedActiveEl ? now.indexOf(feedActiveEl) : -1;
+      if (feedActiveIdx === -1 && now.length) feedSetActive(now[0]);
+      const active = now[feedActiveIdx];
+      if (active) track.scrollTop = active.offsetTop;
+      feedFill();
+      feedDueTopUp();
+    }, FEED_SPENT_GLIDE_MS);
+  }, FEED_SPENT_HOLD_MS);
+}
+
 function feedTrim() {
   const track = document.getElementById('feed-track');
   if (!track) return;
@@ -11171,16 +11210,16 @@ document.addEventListener('click', async e => {
     // saw is recomputed rather than stashed on the element. Capped, so an Easy
     // here can never promote a card past what the feed is willing to ask.
     const updates = ladderApply(card, rating, ladderRung(card, FEED_LADDER_CAP));
-    try {
-      await srsUpdate(card.id, updates);
-      feedRetireDue(item, rating === 0
-        ? 'Noted — back tomorrow.'
-        : 'Back in ' + updates.interval + ' day' + (updates.interval === 1 ? '' : 's') + '.');
-      updateDueBadge();
-    } catch(err) {
-      showToast('Couldn\'t save that grade');
-      btns.forEach(b => { b.disabled = false; });
-    }
+    // Optimistic: the note flashes, the feed moves on, and the save finishes
+    // behind it. Offline or flaky, the outbox queues it; only a hard failure
+    // surfaces, as a toast.
+    feedRetireDue(item, rating === 0
+      ? 'Back tomorrow'
+      : 'Back in ' + updates.interval + ' day' + (updates.interval === 1 ? '' : 's'), true);
+    feedAdvancePast(item);
+    srsUpdate(card.id, updates)
+      .then(() => updateDueBadge())
+      .catch(() => showToast('Couldn\'t save that grade'));
     return;
   }
 

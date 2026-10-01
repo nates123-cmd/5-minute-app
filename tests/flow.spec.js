@@ -104,6 +104,27 @@ test('the Scroll never draws Flow-only cards, and closing a Flow resets the mode
   expect(mode).toBe('scroll');
 });
 
+test('grading a flashcard moves to the next card and drops the spent one', async ({ page }) => {
+  await stubFlow(page, { lul: 0, cards: 3 });
+  await boot(page);
+  await page.evaluate(() => openFlow());
+  await page.waitForFunction(() => document.querySelectorAll('.feed-item[data-slug="due-card"]').length >= 2, null, { timeout: 8000 });
+  const firstKey = await page.evaluate(() => {
+    const it = document.querySelector('.feed-item[data-slug="due-card"]');
+    feedToggleFlip(it);
+    it.querySelector('[data-due-rate="2"]').click();
+    return it.dataset.key;
+  });
+  // Saved straight away (optimistic), and the counter ticked.
+  await page.waitForFunction(() => window.__sbCalls.some(c => c.method === 'PATCH' && c.path.startsWith('flashcards')), null, { timeout: 5000 });
+  expect(await page.evaluate(() => flowDone.recall)).toBe(1);
+  // After the fade and glide, the graded card is gone and a fresh one is on screen.
+  await page.waitForFunction(k => !document.querySelector('.feed-item[data-key="' + k + '"]'), firstKey, { timeout: 4000 });
+  const active = await page.evaluate(() => ({ slug: feedActiveEl && feedActiveEl.dataset.slug, done: feedActiveEl && feedActiveEl.dataset.dueDone }));
+  expect(active.slug).toBe('due-card');
+  expect(active.done).toBeUndefined();
+});
+
 test('"Let it go" writes the same dismissed status Ink would', async ({ page }) => {
   await stubFlow(page, { lul: 0, cards: 0, books: 0 });
   await boot(page);
