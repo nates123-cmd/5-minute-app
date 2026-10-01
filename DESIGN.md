@@ -56,6 +56,20 @@ progress bars, encouragement copy), it is wrong.**
 The accent names survive only so the old rules keep compiling. Never add a hue
 back through them.
 
+### Light mode: the exact inverse, by the sun
+
+`html.light` redefines the same tokens inverted (white ground `#FFFFFF`, black
+ink, black is the one fill, `--surface` `#F2F2F2`). Nothing else changes, so
+every rule here holds in both. Theme lives in `localStorage.break_theme`:
+`sun` (default) / `dark` / `light`, cycled from the home `⋯` menu.
+
+Sun mode uses Ink's offline NOAA sunrise/sunset maths (`sunTimes`,
+`resolveSun`). It asks for location once (`break_geo`) and falls back to
+Brooklyn coordinates if refused. It re-applies at the next sun event and when
+the app comes back to the foreground. A pre-paint script in `<head>` reads the
+last answer (`break_sun_light`) so there is no flash.
+**Never use a colour literal in CSS**; use a token, or light mode breaks.
+
 ## Type: two faces, two jobs
 
 - **Source Serif 4** (600/700): *something you are learning or wrote yourself.*

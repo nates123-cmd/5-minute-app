@@ -337,6 +337,9 @@ black and white only. Tokens keep their old names (`--accent*` are now white/gre
 so old rules compile; `--yes-*` / `--no-*` replace the red/green right-wrong pairs.
 Two faces: **Source Serif 4** = something you are learning or wrote yourself;
 **Instrument Sans** = everything else. `break-redesign-spec.md` (Citrine) is history.
+**Light mode** = `html.light`, the same tokens inverted. `localStorage.break_theme` is
+`sun` (default, flips at local sunrise/sunset via `resolveSun`), `dark` or `light`,
+cycled from the home `⋯` menu. No colour literals in CSS, tokens only.
 
 ---
 

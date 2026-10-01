@@ -21,6 +21,15 @@
   <script src="./dev-config.js" onerror="void 0"></script>
   <script src="./suite-sync.js"></script>
   <title>Break</title>
+  <script>
+    // Theme, set before styles parse so there is no flash. 'sun' (default)
+    // follows sunrise/sunset; the main script recomputes and keeps it current.
+    (function () {
+      var t = localStorage.getItem('break_theme') || 'sun';
+      var light = t === 'light' || (t === 'sun' && localStorage.getItem('break_sun_light') === '1');
+      if (light) document.documentElement.classList.add('light');
+    })();
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     /* Lock horizontal motion + pinch zoom at the document level. Inner
@@ -83,6 +92,30 @@
       --card-bg: var(--surface);
       --radius:  var(--radius-md);
       --font:    var(--font-sans);
+    }
+
+    /* Light: the exact inverse, so every rule in DESIGN.md holds unchanged.
+       Daytime by default (the sun decides; see applyTheme). */
+    html.light {
+      color-scheme: light;
+      --bg:         #FFFFFF;
+      --surface:    #F2F2F2;
+      --surface-2:  #E4E4E4;
+      --text:       #000000;
+      --text-muted: rgba(0, 0, 0, 0.64);
+      --text-faint: rgba(0, 0, 0, 0.42);
+      --accent:    #000000;
+      --accent-2:  #424242;
+      --accent-3:  #000000;
+      --accent-4:  #737373;
+      --ink:       #000000;
+      --ink-on:    #FFFFFF;
+      --yes-bg: #000000;
+      --yes-fg: #FFFFFF;
+      --no-bg:  #EBEBEB;
+      --no-fg:  rgba(0, 0, 0, 0.5);
+      --border:        rgba(0, 0, 0, 0.12);
+      --border-strong: rgba(0, 0, 0, 0.32);
     }
 
     html, body {
@@ -2257,6 +2290,7 @@
       <div class="home-overflow-menu hidden" id="home-overflow-menu" role="menu">
         <button class="overflow-item" id="btn-activity-settings">Activities</button>
         <button class="overflow-item" id="btn-settings">API key</button>
+        <button class="overflow-item" id="btn-theme">Theme: <span id="theme-label">Sun</span></button>
       </div>
     </div>
   </div>
@@ -3669,6 +3703,99 @@ document.getElementById('srs-due-card')?.addEventListener('click', () => {
     item.addEventListener('click', () => menu.classList.add('hidden'));
   });
 })();
+
+// ── Theme: dark at night, light by day ───────────────────────────────
+// 'sun' (default) flips at local sunrise/sunset; 'dark' / 'light' pin it.
+// Sun maths is Ink's network-free NOAA approximation (reference_solar_theme_impl).
+// Location is asked for once; until it arrives, or if refused, Brooklyn stands
+// in, which is right for where the app is actually used.
+const THEMES = ['sun', 'dark', 'light'];
+const THEME_LABEL = { sun: 'Sun', dark: 'Dark', light: 'Light' };
+const SUN_FALLBACK = { lat: 40.705, lng: -73.923 };
+function getTheme() { const t = localStorage.getItem('break_theme'); return THEMES.includes(t) ? t : 'sun'; }
+function getGeo() { try { return JSON.parse(localStorage.getItem('break_geo') || 'null'); } catch (e) { return null; } }
+
+// Returns sunrise/sunset as Dates, or null for either at polar day/night.
+function sunTimes(date, lat, lng) {
+  const Z = 90.833, D = Math.PI / 180, R = 180 / Math.PI;
+  const Y = date.getUTCFullYear(), Mo = date.getUTCMonth(), Da = date.getUTCDate();
+  const N = Math.floor((Date.UTC(Y, Mo, Da) - Date.UTC(Y, 0, 0)) / 86400000);
+  function calc(rise) {
+    const lngH = lng / 15, t = N + ((rise ? 6 : 18) - lngH) / 24;
+    const M = (0.9856 * t) - 3.289;
+    const L = (M + 1.916 * Math.sin(M * D) + 0.020 * Math.sin(2 * M * D) + 282.634 + 360) % 360;
+    let RA = (R * Math.atan(0.91764 * Math.tan(L * D)) + 360) % 360;
+    RA += (Math.floor(L / 90) * 90 - Math.floor(RA / 90) * 90); RA /= 15;
+    const sinDec = 0.39782 * Math.sin(L * D), cosDec = Math.cos(Math.asin(sinDec));
+    const cosH = (Math.cos(Z * D) - sinDec * Math.sin(lat * D)) / (cosDec * Math.cos(lat * D));
+    if (cosH > 1 || cosH < -1) return null;
+    const H = (rise ? 360 - R * Math.acos(cosH) : R * Math.acos(cosH)) / 15;
+    const UT = (((H + RA - 0.06571 * t - 6.622) - lngH) % 24 + 24) % 24;
+    return new Date(Date.UTC(Y, Mo, Da) + UT * 3600000);
+  }
+  return { sunrise: calc(true), sunset: calc(false) };
+}
+
+// {light, next}: next = ms to the next sunrise or sunset. Events are gathered
+// for yesterday/today/tomorrow because at western longitudes the real instant
+// can land on the neighbouring UTC day (Ink learned this the hard way).
+function resolveSun() {
+  const g = getGeo() || SUN_FALLBACK;
+  const now = new Date(), rises = [], sets = [];
+  for (const off of [-1, 0, 1]) {
+    const st = sunTimes(new Date(now.getTime() + off * 86400000), g.lat, g.lng);
+    if (st.sunrise) rises.push(st.sunrise);
+    if (st.sunset) sets.push(st.sunset);
+  }
+  if (!rises.length || !sets.length) {
+    // Polar day or night: fall back to a 7am / 7pm clock.
+    const h = now.getHours(), nx = new Date(now);
+    if (h < 7) nx.setHours(7, 0, 0, 0); else if (h < 19) nx.setHours(19, 0, 0, 0);
+    else { nx.setDate(nx.getDate() + 1); nx.setHours(7, 0, 0, 0); }
+    return { light: h >= 7 && h < 19, next: nx - now };
+  }
+  const last = a => a.filter(t => t <= now).sort((x, y) => y - x)[0] || null;
+  const first = a => a.filter(t => t > now).sort((x, y) => x - y)[0] || null;
+  const lr = last(rises), ls = last(sets);
+  const light = !!lr && (!ls || lr > ls);
+  const next = [first(rises), first(sets)].filter(Boolean).sort((x, y) => x - y)[0];
+  return { light, next: next ? next - now : null };
+}
+
+let sunTimer = null, geoTried = false;
+function applyTheme() {
+  const t = getTheme();
+  let light = t === 'light';
+  if (sunTimer) { clearTimeout(sunTimer); sunTimer = null; }
+  if (t === 'sun') {
+    const s = resolveSun();
+    light = s.light;
+    try { localStorage.setItem('break_sun_light', light ? '1' : '0'); } catch (e) {}
+    // Re-apply at the next sun event; cap at 6h to dodge timer drift.
+    if (s.next != null) sunTimer = setTimeout(applyTheme, Math.min(s.next + 1000, 6 * 3600000));
+    if (!geoTried && !getGeo() && navigator.geolocation) {
+      geoTried = true;
+      navigator.geolocation.getCurrentPosition(p => {
+        try { localStorage.setItem('break_geo', JSON.stringify({ lat: p.coords.latitude, lng: p.coords.longitude })); } catch (e) {}
+        applyTheme();
+      }, () => {}, { maximumAge: 6 * 3600000, timeout: 8000 });
+    }
+  }
+  document.documentElement.classList.toggle('light', light);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', light ? '#FFFFFF' : '#000000');
+  const lbl = document.getElementById('theme-label');
+  if (lbl) lbl.textContent = THEME_LABEL[t];
+}
+document.getElementById('btn-theme')?.addEventListener('click', () => {
+  const t = THEMES[(THEMES.indexOf(getTheme()) + 1) % THEMES.length];
+  try { localStorage.setItem('break_theme', t); } catch (e) {}
+  applyTheme();
+  showToast('Theme: ' + THEME_LABEL[t] + (t === 'sun' ? ' (light by day, dark at night)' : ''));
+});
+// Timers sleep while the app is backgrounded; recheck on the way back in.
+document.addEventListener('visibilitychange', () => { if (!document.hidden && getTheme() === 'sun') applyTheme(); });
+applyTheme();
 
 // ── Activity settings (per-activity on/off toggles) ──
 function renderSettings() {
