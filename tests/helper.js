@@ -4,7 +4,7 @@ import { SB_AUTH_KEY, API_KEY_KEY } from './constants.js';
 // Load the app and wait until the page <script> has finished running. `sm2` is
 // the canary — it's a top-level function declaration, so once window.sm2 exists
 // the whole script body (incl. the boot() call at the bottom) has executed.
-export async function boot(page) {
+export async function boot(page, path = '/#home') {
   // The app registers a service worker that calls reg.update() on load and
   // reloads the page on `controllerchange`. That reload races page.evaluate and
   // surfaces as "Execution context was destroyed". Neutralise SW registration
@@ -18,7 +18,7 @@ export async function boot(page) {
       });
     }
   });
-  await page.goto('/');
+  await page.goto(path);
   await page.waitForFunction(() => typeof window.sm2 === 'function');
 }
 

@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Break" />
-  <meta name="theme-color" content="#b8473a" />
+  <meta name="theme-color" content="#000000" />
   <meta name="description" content="Break — short, enriching activities to make the most of a 5-minute break." />
   <link rel="manifest" href="./manifest.json" />
   <link rel="icon" type="image/png" sizes="32x32" href="./icons/icon-32.png" />
@@ -16,8 +16,8 @@
   <link rel="preconnect" href="https://xsmnfcmtbpeaccnyinkr.supabase.co" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2722%27%20fill%3D%27%23C97A60%27/%3E%3Cpath%20d%3D%27M38%2035%20C36%2029%2C40%2025%2C38%2019%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M50%2033%20C48%2027%2C52%2023%2C50%2017%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M62%2035%20C60%2029%2C64%2025%2C62%2019%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2722%27%20y%3D%2742%27%20width%3D%2744%27%20height%3D%2734%27%20rx%3D%277%27%20fill%3D%27%23F4ECDD%27/%3E%3Cpath%20d%3D%27M66%2050%20Q80%2050%2080%2059%20Q80%2068%2066%2068%27%20stroke%3D%27%23F4ECDD%27%20stroke-width%3D%276%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2716%27%20y%3D%2776%27%20width%3D%2756%27%20height%3D%277%27%20rx%3D%273.5%27%20fill%3D%27%23F4ECDD%27/%3E%3C/svg%3E" />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%20100%20100%27%3E%3Crect%20width%3D%27100%27%20height%3D%27100%27%20rx%3D%2722%27%20fill%3D%27%23000000%27/%3E%3Cpath%20d%3D%27M38%2035%20C36%2029%2C40%2025%2C38%2019%27%20stroke%3D%27%23FFFFFF%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M50%2033%20C48%2027%2C52%2023%2C50%2017%27%20stroke%3D%27%23FFFFFF%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Cpath%20d%3D%27M62%2035%20C60%2029%2C64%2025%2C62%2019%27%20stroke%3D%27%23FFFFFF%27%20stroke-width%3D%273.5%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2722%27%20y%3D%2742%27%20width%3D%2744%27%20height%3D%2734%27%20rx%3D%277%27%20fill%3D%27%23FFFFFF%27/%3E%3Cpath%20d%3D%27M66%2050%20Q80%2050%2080%2059%20Q80%2068%2066%2068%27%20stroke%3D%27%23FFFFFF%27%20stroke-width%3D%276%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3Crect%20x%3D%2716%27%20y%3D%2776%27%20width%3D%2756%27%20height%3D%277%27%20rx%3D%273.5%27%20fill%3D%27%23FFFFFF%27/%3E%3C/svg%3E" />
   <script src="./dev-config.js" onerror="void 0"></script>
   <script src="./suite-sync.js"></script>
   <title>Break</title>
@@ -33,37 +33,50 @@
     }
 
     :root {
+      /* Black and white. See DESIGN.md: WikiTok owns the ground, Vocabulary
+         owns the flashcard, Nate owns the palette. No hue anywhere. */
+      color-scheme: dark;
+
       /* Surfaces */
-      --bg:         #F4ECDD;
-      --surface:    #EAE0CC;
-      --surface-2:  #E2D6BC;
+      --bg:         #000000;
+      --surface:    #141414;
+      --surface-2:  #232323;
 
-      /* Type */
-      --text:       #3A3025;
-      --text-muted: rgba(58, 48, 37, 0.6);
-      --text-faint: rgba(58, 48, 37, 0.45);
+      /* Type: three tiers, not one --muted doing all of it */
+      --text:       #FFFFFF;
+      --text-muted: rgba(255, 255, 255, 0.64);
+      --text-faint: rgba(255, 255, 255, 0.40);
 
-      /* Accents */
-      --accent:    #C97A60;  /* terracotta — Review */
-      --accent-2:  #D9B374;  /* ochre — Queue */
-      --accent-3:  #8FA188;  /* sage — active filter */
-      --accent-4:  #9F7A7A;  /* dusty plum — Recs */
-      --ink:       #3A3025;
-      --ink-on:    #F4ECDD;
+      /* "Accents" are all white or grey now. The names stay so the rules that
+         use them keep working; the hue is gone. */
+      --accent:    #FFFFFF;
+      --accent-2:  #BDBDBD;
+      --accent-3:  #FFFFFF;
+      --accent-4:  #8C8C8C;
+      --ink:       #FFFFFF;
+      --ink-on:    #000000;
+
+      /* Right / wrong without red and green: right is the white fill,
+         wrong is a dim grey. */
+      --yes-bg: #FFFFFF;
+      --yes-fg: #000000;
+      --no-bg:  #262626;
+      --no-fg:  rgba(255, 255, 255, 0.55);
 
       /* Borders */
-      --border:        rgba(58, 48, 37, 0.15);
-      --border-strong: rgba(58, 48, 37, 0.3);
+      --border:        rgba(255, 255, 255, 0.14);
+      --border-strong: rgba(255, 255, 255, 0.34);
 
-      /* Geometry */
-      --radius-sm:   12px;
-      --radius-md:   16px;
-      --radius-lg:   20px;
+      /* Geometry: tighter than before, and not one radius for everything */
+      --radius-sm:   6px;
+      --radius-md:   10px;
+      --radius-lg:   14px;
       --radius-pill: 999px;
 
-      /* Type stack */
-      --font-sans:  -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
-      --font-serif: "Fraunces", Georgia, "Times New Roman", serif;
+      /* Type: two faces, two jobs. Serif = something you are learning or
+         wrote yourself. Sans = everything else. */
+      --font-sans:  "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+      --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
 
       /* Back-compat aliases — existing CSS rules pick these up automatically */
       --muted:   var(--text-muted);
@@ -357,8 +370,8 @@
       transition: background 0.15s, border-color 0.15s;
     }
     .btn-share { font-size: 0.78rem; padding: 5px 8px; }
-    .btn-thumb.active-up   { background: #d4edda; border-color: #5cb85c; }
-    .btn-thumb.active-down { background: #f8d7da; border-color: #d9534f; }
+    .btn-thumb.active-up   { background: var(--yes-bg); border-color: var(--yes-bg); }
+    .btn-thumb.active-down { background: var(--no-bg); border-color: var(--no-bg); }
     /* Timer modal */
     .timer-modal {
       position: fixed; inset: 0;
@@ -640,7 +653,7 @@
       justify-content: center; cursor: pointer; color: var(--bg);
       font-size: 2rem; font-weight: 700;
       transition: transform 4s ease-in-out;
-      box-shadow: 0 0 0 14px rgba(168,152,128,0.12), 0 0 0 28px rgba(168,152,128,0.06);
+      box-shadow: 0 0 0 14px rgba(255,255,255,0.10), 0 0 0 28px rgba(255,255,255,0.05);
       user-select: none; -webkit-tap-highlight-color: transparent;
     }
     .breathe-ring.expand { transform: scale(1.45); }
@@ -774,22 +787,22 @@
     .srs-controls { padding: 8px 0 0; }
     .srs-rate-btns { display: flex; gap: 10px; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
     .srs-rate-btns .btn { flex: 1; padding: 14px 8px; font-weight: 600; border-radius: var(--radius); border: none; cursor: pointer; font-family: var(--font); font-size: 0.95rem; }
-    .srs-btn-miss { background: #e8d5d5; color: #7a2525; }
+    .srs-btn-miss { background: var(--no-bg); color: var(--no-fg); }
     .srs-btn-hard { background: var(--card-bg); color: var(--text); border: 1.5px solid var(--border) !important; }
-    .srs-btn-easy { background: #d5e8d8; color: #256b30; }
+    .srs-btn-easy { background: var(--yes-bg); color: var(--yes-fg); }
     /* MC options */
     .srs-mc-options { display: flex; flex-direction: column; gap: 10px; }
     .srs-mc-btn { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: left; font-size: 0.93rem; color: var(--text); cursor: pointer; font-family: var(--font); transition: background 0.15s; }
-    .srs-mc-btn.srs-mc-correct { background: #d5e8d8; border-color: #256b30; color: #256b30; font-weight: 600; }
-    .srs-mc-btn.srs-mc-wrong   { background: #e8d5d5; border-color: #7a2525; color: #7a2525; }
-    .srs-mc-btn.srs-mc-reveal  { border-color: #256b30; }
+    .srs-mc-btn.srs-mc-correct { background: var(--yes-bg); border-color: var(--yes-fg); color: var(--yes-fg); font-weight: 600; }
+    .srs-mc-btn.srs-mc-wrong   { background: var(--no-bg); border-color: var(--no-fg); color: var(--no-fg); }
+    .srs-mc-btn.srs-mc-reveal  { border-color: var(--yes-fg); }
     /* Done state */
     .srs-done { text-align: center; padding: 32px 0; display: flex; flex-direction: column; align-items: center; }
     .srs-done-icon { font-size: 2.8rem; margin-bottom: 14px; }
     .srs-done-title { font-size: 1.15rem; font-weight: 600; margin-bottom: 6px; }
     .srs-done-sub { color: var(--muted); font-size: 0.88rem; margin-bottom: 20px; }
     .srs-done-stats { display: flex; gap: 20px; font-size: 0.85rem; font-weight: 600; }
-    .srs-stat-easy { color: #256b30; } .srs-stat-hard { color: var(--muted); } .srs-stat-miss { color: #7a2525; }
+    .srs-stat-easy { color: var(--yes-fg); } .srs-stat-hard { color: var(--muted); } .srs-stat-miss { color: var(--no-fg); }
     /* Mastery ladder — one quiet line above the card. Filled dots are the rung
        you're being asked at; sage means this card has reached the top. */
     .srs-rung { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); text-align: center; margin: -10px 0 14px; min-height: 1em; opacity: 0.75; }
@@ -829,15 +842,15 @@
     .quiz-question-box { background: var(--card-bg); border-radius: var(--radius); padding: 24px 20px; font-size: 1rem; font-weight: 500; line-height: 1.6; margin-bottom: 16px; min-height: 80px; }
     .quiz-options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
     .quiz-option { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: left; font-size: 0.93rem; color: var(--text); cursor: pointer; font-family: var(--font); transition: background 0.15s, border-color 0.15s; }
-    .quiz-option.correct { background: #d5e8d8; border-color: #256b30; color: #256b30; font-weight: 600; }
-    .quiz-option.wrong   { background: #e8d5d5; border-color: #7a2525; color: #7a2525; }
-    .quiz-option.reveal  { border-color: #256b30; }
+    .quiz-option.correct { background: var(--yes-bg); border-color: var(--yes-fg); color: var(--yes-fg); font-weight: 600; }
+    .quiz-option.wrong   { background: var(--no-bg); border-color: var(--no-fg); color: var(--no-fg); }
+    .quiz-option.reveal  { border-color: var(--yes-fg); }
     .quiz-option:disabled { cursor: default; }
     .quiz-typed-row { display: flex; gap: 10px; margin-bottom: 12px; }
     .quiz-typed-input { flex: 1; padding: 13px 14px; border: 1.5px solid var(--border); border-radius: 10px; background: var(--card-bg); font-size: 0.95rem; color: var(--text); font-family: var(--font); outline: none; }
     .quiz-typed-input:focus { border-color: var(--accent); }
-    .quiz-typed-input.correct { border-color: #256b30; background: #d5e8d8; color: #256b30; }
-    .quiz-typed-input.wrong   { border-color: #7a2525; background: #e8d5d5; color: #7a2525; }
+    .quiz-typed-input.correct { border-color: var(--yes-fg); background: var(--yes-bg); color: var(--yes-fg); }
+    .quiz-typed-input.wrong   { border-color: var(--no-fg); background: var(--no-bg); color: var(--no-fg); }
     .quiz-answer-reveal { font-size: 0.88rem; color: var(--muted); margin-bottom: 12px; min-height: 1.3em; }
     .quiz-action-btns { display: flex; gap: 10px; }
     .quiz-action-btns .btn { flex: 1; }
@@ -854,7 +867,7 @@
     .quiz-done-btns .btn { flex: 1; }
 
     /* ── Offline banner ──────────────────────── */
-    #offline-banner { display:none; background:#e8d5d5; color:#7a2525; font-size:0.8rem; font-weight:500; text-align:center; padding:9px 16px; position:fixed; top:0; left:0; right:0; z-index:1000; }
+    #offline-banner { display:none; background:var(--no-bg); color:var(--no-fg); font-size:0.8rem; font-weight:500; text-align:center; padding:9px 16px; position:fixed; top:0; left:0; right:0; z-index:1000; }
     body.offline-active { padding-top: 36px; }
 
     /* ── Citrine sub-screen retheme ─────────── */
@@ -974,7 +987,7 @@
       border: 1px solid var(--border);
       border-radius: var(--radius-md);
       padding: 6px;
-      box-shadow: 0 8px 24px rgba(58,48,37,0.12);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.6);
       z-index: 100;
       display: flex;
       flex-direction: column;
@@ -1054,8 +1067,15 @@
       opacity: 0.85;
     }
     .pillar-review { background: var(--accent); color: var(--ink-on); }
-    .pillar-queue  { background: var(--accent-2); color: var(--text); }
-    .pillar-recs   { background: var(--accent-4); color: var(--ink-on); }
+    /* Counts and the wordmark are chrome, so sans (DESIGN.md two-faces rule).
+       Flashcards keep the one white fill: they are the priority. */
+    .brand { font-family: var(--font-sans); font-weight: 700; font-size: 28px; letter-spacing: -0.6px; }
+    .pillar-num { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+    .pillar-sub { font-family: var(--font-sans); font-style: normal; font-size: 13px; opacity: 0.7; }
+    #screen-home .btn-scroll { border-radius: var(--radius-md); border-width: 1px; }
+    .btn-scroll .btn-scroll-label { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.2px; }
+    .pillar-queue  { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
+    .pillar-recs   { background: transparent; color: var(--text); border: 1px solid var(--border-strong); }
 
     /* ── Recs screen ─────────────────────────── */
     #recs-tabs {
@@ -1465,7 +1485,7 @@
       gap: 8px;
       padding: calc(10px + env(safe-area-inset-top)) 14px 14px;
       /* Cards scroll under this, so fade it out rather than cutting a hard edge */
-      background: linear-gradient(to bottom, var(--bg) 55%, rgba(244, 236, 221, 0));
+      background: linear-gradient(to bottom, var(--bg) 55%, rgba(0, 0, 0, 0));
       pointer-events: none;
     }
     .feed-top > * { pointer-events: auto; }
@@ -1779,8 +1799,8 @@
       transition: background 0.15s, border-color 0.15s, transform 0.1s;
     }
     .feed-rate .feed-act:active { transform: scale(0.96); }
-    .feed-rate .feed-act.active-up   { background: #d4edda; border-color: #5cb85c; color: #256b30; }
-    .feed-rate .feed-act.active-down { background: #f8d7da; border-color: #d9534f; color: #7a2525; }
+    .feed-rate .feed-act.active-up   { background: var(--yes-bg); border-color: var(--yes-bg); color: var(--yes-fg); }
+    .feed-rate .feed-act.active-down { background: var(--no-bg); border-color: var(--no-bg); color: var(--no-fg); }
 
     /* ── Due work cards ──────────────────────────────────
        Deliberately quiet. These are the only cards that ask something of you,
@@ -1842,9 +1862,9 @@
     }
     .due-btn:active { transform: scale(0.97); }
     .due-btn:disabled { opacity: 0.45; }
-    .due-miss { background: #e8d5d5; color: #7a2525; border-color: #e8d5d5; }
+    .due-miss { background: var(--no-bg); color: var(--no-fg); border-color: var(--no-bg); }
     .due-hard { background: var(--surface); color: var(--text); }
-    .due-easy { background: #d5e8d8; color: #256b30; border-color: #d5e8d8; }
+    .due-easy { background: var(--yes-bg); color: var(--yes-fg); border-color: var(--yes-bg); }
 
     .due-opts { display: flex; flex-direction: column; gap: 8px; margin-top: 18px; }
     .due-opt {
@@ -1864,8 +1884,8 @@
     /* Disabled must not read as "unavailable" here — every option greys out the
        moment you answer, and the two that matter are coloured on top. */
     .due-opt:disabled { cursor: default; }
-    .due-opt.is-correct { background: #d5e8d8; border-color: #5cb85c; color: #256b30; font-weight: 600; }
-    .due-opt.is-wrong   { background: #f8d7da; border-color: #d9534f; color: #7a2525; }
+    .due-opt.is-correct { background: var(--yes-bg); border-color: var(--yes-bg); color: var(--yes-fg); font-weight: 600; }
+    .due-opt.is-wrong   { background: var(--no-bg); border-color: var(--no-bg); color: var(--no-fg); }
     .due-verdict:not(:empty) {
       font-family: var(--font-sans);
       font-size: 13.5px;
@@ -2000,7 +2020,7 @@
     .flow-step.done::before { content: '✓'; font-size: 10px; }
     .flow-step .flow-n {
       font-size: 10px; padding: 0 5px; border-radius: 999px;
-      background: rgba(0,0,0,.08); color: inherit;
+      background: rgba(255,255,255,.12); color: inherit;
     }
     .flow-step.on .flow-n { background: rgba(255,255,255,.22); }
 
@@ -2008,6 +2028,140 @@
     .flow-mark .due-tag { margin-bottom: 18px; }
     .flow-mark .main-text { font-family: var(--font-serif); font-size: 24px; line-height: 1.35; }
     .flow-mark .flow-next { margin-top: 18px; font-size: 13.5px; color: var(--text-muted); }
+
+    /* ══ Black and white feed (DESIGN.md) ══════════════════════════════
+       WikiTok owns the frame: a wordmark top-left, text-only navigation
+       top-right, content cards set in a bold sans and left-aligned.
+       Vocabulary owns the flashcard: one prompt, dead centre, in a heavy
+       book serif, with the n / N counter as the only ornament. */
+    .feed-top { align-items: baseline; gap: 14px; padding-inline: 18px; }
+    .feed-wordmark {
+      background: none; border: none; padding: 0; cursor: pointer;
+      font-family: var(--font-sans); font-size: 21px; font-weight: 700;
+      letter-spacing: -0.4px; color: var(--text); flex-shrink: 0;
+    }
+    .feed-top .feed-filters {
+      margin-left: auto; gap: 12px; align-items: baseline; padding-right: 14px;
+      /* More steps than fit on a phone: fade the edge so it reads as "more". */
+      -webkit-mask-image: linear-gradient(to right, #000 85%, transparent);
+              mask-image: linear-gradient(to right, #000 85%, transparent);
+    }
+
+    /* Filters and the Flow rail: words, not pills. */
+    .feed-filter,
+    .flow-step {
+      padding: 4px 0; border: none; border-radius: 0; background: none;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+      color: var(--text-faint);
+    }
+    .feed-filter.selected { background: none; color: var(--text); font-weight: 600; }
+    .flow-step.on { background: none; color: var(--text); font-weight: 600; }
+    .flow-step.done { opacity: 1; color: var(--text-faint); text-decoration: line-through; }
+    .flow-step.done::before { content: none; }
+    .flow-step .flow-n { background: none; padding: 0; font-size: 12px; font-variant-numeric: tabular-nums; }
+    /* The counter (Vocabulary's "0/5"): only the step you are in gets the
+       pill, and it counts down real work, never a decoration. */
+    .flow-step.on .flow-n {
+      padding: 2px 8px; margin-left: 3px;
+      border: 1px solid var(--border-strong); border-radius: var(--radius-pill);
+      background: none; color: var(--text);
+    }
+
+    /* Content cards: WikiTok. Bold sans headline, left-aligned body, sitting
+       low on the card where a thumb and an eye already are. Flashcards and
+       Flow markers stay centred (Vocabulary). */
+    .feed-item:not([data-slug^="due-"]):not([data-slug="flow-mark"]):not(.feed-loading) .feed-body {
+      justify-content: safe flex-end;
+      padding-bottom: 54px;
+    }
+    .feed-chip { color: var(--text-faint); font-weight: 600; letter-spacing: 0.14em; font-size: 10.5px; }
+    .feed-body .ai-single .main-text,
+    .feed-body .ai-single .word-title,
+    .feed-body .ai-card h4 {
+      font-family: var(--font-sans);
+      font-weight: 700;
+      font-size: clamp(24px, 6.6vw, 32px);
+      line-height: 1.16;
+      letter-spacing: -0.6px;
+    }
+    .feed-body .ai-single .sub-text,
+    .feed-body .ai-card p { font-size: 16px; line-height: 1.6; color: var(--text-muted); }
+    .feed-body blockquote { color: var(--text); }
+    /* Pictures go edge to edge and square, the way WikiTok gives the photo
+       the whole card. Artwork still never crops. */
+    .feed-body .art-wrap,
+    .feed-body .bp-img-wrap,
+    .feed-body .am-img-wrap { margin: 0 -34px 22px; }
+    .feed-body .art-img,
+    .feed-body .bp-img,
+    .feed-body .am-img { border-radius: 0; }
+    .feed-body .art-img { object-fit: contain; background: var(--surface); }
+
+    /* Flashcards: Vocabulary. The prompt is the page. */
+    /* No kind label on a flashcard: the counter already says what this is. */
+    .feed-item[data-slug="due-card"] .feed-chip { visibility: hidden; }
+    .feed-item[data-slug="due-card"] .feed-body .ai-single { text-align: center; }
+    .feed-item[data-slug="due-card"] .feed-body .ai-single .main-text {
+      font-family: var(--font-serif);
+      font-weight: 700;
+      font-size: clamp(24px, 6.4vw, 30px);
+      line-height: 1.25;
+      letter-spacing: -0.3px;
+      margin-bottom: 0;
+    }
+    /* A single word or short term gets the full Vocabulary headword size. */
+    .feed-item[data-slug="due-card"] .feed-body .ai-single .main-text.due-word {
+      font-size: clamp(38px, 11vw, 52px);
+      line-height: 1.05;
+      letter-spacing: -0.8px;
+    }
+    .feed-item[data-slug="due-card"] .due-hint {
+      margin-top: 22px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    .feed-item[data-slug="due-card"] .feed-back-inner { text-align: center; }
+    .feed-item[data-slug="due-card"] .feed-back-kind { color: var(--text-faint); }
+    /* Back: Vocabulary's order. The word stays the headline, the answer sits
+       under it like a definition. */
+    .feed-item[data-slug="due-card"] .due-q {
+      font-family: var(--font-serif); font-weight: 700; color: var(--text);
+      font-size: clamp(26px, 7vw, 34px); line-height: 1.15; letter-spacing: -0.4px;
+      margin-bottom: 14px;
+    }
+    .feed-item[data-slug="due-card"] .due-a {
+      font-family: var(--font-sans); font-weight: 400; color: var(--text-muted);
+      font-size: 17px; line-height: 1.5; margin-bottom: 38px;
+    }
+    /* Miss and Hard are outlines, Easy is the one white fill. */
+    .due-btn {
+      border-radius: var(--radius-pill);
+      padding: 14px 6px;
+      font-size: 14px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border-strong);
+    }
+    .due-miss { background: transparent; color: var(--text-muted); border-color: var(--border-strong); }
+    .due-hard { background: transparent; color: var(--text); }
+    .due-easy { background: var(--yes-bg); color: var(--yes-fg); border-color: var(--yes-bg); }
+    .due-done { font-family: var(--font-serif); color: var(--text-faint); }
+
+    /* Back of a content card: rows on a hairline, not a stack of tiles. */
+    .feed-back-kind { color: var(--text-faint); }
+    .feed-back-topic { font-family: var(--font-sans); font-weight: 700; letter-spacing: -0.4px; }
+    .feed-back-acts { gap: 0; border-top: 1px solid var(--border); }
+    .feed-bact {
+      border: none; border-bottom: 1px solid var(--border); border-radius: 0;
+      background: none; padding: 15px 2px; font-weight: 500; font-size: 15px;
+    }
+    .feed-rate { margin-top: 18px; }
+    .feed-rate .feed-act { border-color: var(--border-strong); }
+    .due-opt { background: transparent; border-color: var(--border-strong); }
+    .due-opt.is-wrong { text-decoration: line-through; }
+    .feed-skel { border-radius: 2px; }
+
+    /* Ground: your own words, so serif, per the two-faces rule. */
+    .ink-meta { opacity: 1; color: var(--text-faint); }
+    .ink-check { border-color: var(--border-strong); color: var(--text); }
 
 
   /* ── Courses (Deep Dives v2) ─────────────────────────────── */
@@ -2114,7 +2268,7 @@
 
   <button class="btn-scroll btn-flow" id="btn-flow">
     <span class="btn-scroll-label">Flow</span>
-    <span class="btn-scroll-sub" id="flow-sub">queue, cards, a dive, ground, then wander</span>
+    <span class="btn-scroll-sub" id="flow-sub">cards, queue, a dive, ground, then wander</span>
   </button>
 
   <button class="btn-scroll" id="btn-scroll">
@@ -2212,7 +2366,7 @@
 <!-- SCROLL FEED -->
 <div id="screen-feed" class="screen">
   <div class="feed-top">
-    <button class="feed-back btn-back" data-back="home">←</button>
+    <button class="feed-wordmark btn-back" data-back="home" aria-label="Home">Break</button>
     <div class="feed-filters" id="feed-filters"></div>
   </div>
   <div class="feed-track" id="feed-track"></div>
@@ -4819,10 +4973,10 @@ const LOADERS = {
   ctx.lineTo(S, S - r); ctx.quadraticCurveTo(S, S, S - r, S);
   ctx.lineTo(r, S); ctx.quadraticCurveTo(0, S, 0, S - r);
   ctx.lineTo(0, r); ctx.quadraticCurveTo(0, 0, r, 0);
-  ctx.fillStyle = '#C97A60';
+  ctx.fillStyle = '#000000';
   ctx.fill();
 
-  ctx.strokeStyle = '#F4ECDD';
+  ctx.strokeStyle = '#FFFFFF';
   ctx.lineCap = 'round';
 
   // Steam wisps
@@ -4834,7 +4988,7 @@ const LOADERS = {
   });
 
   // Mug body
-  ctx.fillStyle = '#F4ECDD';
+  ctx.fillStyle = '#FFFFFF';
   const bx=22*s,by=42*s,bw=44*s,bh=34*s,br=7*s;
   ctx.beginPath();
   ctx.moveTo(bx+br,by); ctx.lineTo(bx+bw-br,by);
@@ -4852,7 +5006,7 @@ const LOADERS = {
   ctx.stroke();
 
   // Saucer
-  ctx.fillStyle = '#F4ECDD';
+  ctx.fillStyle = '#FFFFFF';
   const sx=16*s,sy=76*s,sw=56*s,sh=7*s,sr=3.5*s;
   ctx.beginPath();
   ctx.moveTo(sx+sr,sy); ctx.lineTo(sx+sw-sr,sy);
@@ -5024,11 +5178,14 @@ function showOtpGate() {
   showScreen('otp');
 }
 
-// Auth-aware boot: require a session, then home. (AI key is server-side.)
+// Auth-aware boot: require a session, then straight into a Flow, flashcards
+// first. Home is one tap away on the wordmark, or open the app at `#home` to
+// land there (the test harness boots that way). (AI key is server-side.)
 function boot() {
   if (!hasSession()) { showOtpGate(); return; }
-  showScreen('home');
   sync.resume();
+  if (location.hash === '#home') showScreen('home');
+  else openFlow();
 }
 
 // ── Offline outbox + read snapshots (shared suite-sync.js) ─────────────
@@ -10121,6 +10278,11 @@ function feedRetireDue(item, note) {
     '<button class="feed-back-close" data-feed-unflip="1">tap anywhere to flip back</button>';
   item.classList.remove('flipped');
   item.dataset.dueDone = '1';
+  // Tick the Flow counter for the phase this card belonged to.
+  if (feedMode === 'flow') {
+    const ph = FLOW_PHASES.find(p => p.slug === item.dataset.slug);
+    if (ph) { flowDone[ph.id] = (flowDone[ph.id] || 0) + 1; flowRenderRail(); }
+  }
 }
 
 // --- 1. A flashcard you owe -------------------------------------------
@@ -10145,8 +10307,10 @@ CARD_SPECS['due-card'] = {
   render: (d) => {
     const rung = ladderRung(d, FEED_LADDER_CAP);
     const prompt = rung === 2 ? ladderPack(d).reworded.prompt : (rung === 1 ? d.back : d.front);
+    // A word or short term gets the big headword setting (DESIGN.md).
+    const short = String(prompt || '').length <= 28 && !/[.?!]\s/.test(prompt || '');
     return '<div class="ai-single">' +
-      '<div class="main-text">' + esc(prompt) + '</div>' +
+      '<div class="main-text' + (short ? ' due-word' : '') + '">' + esc(prompt) + '</div>' +
       '<div class="due-hint">' + (rung ? 'tap to check' : 'tap for the answer') + '</div>' +
     '</div>';
   },
@@ -10290,9 +10454,11 @@ CARD_SPECS['due-dive'] = {
 // Nothing is capped. A phase ends when its source has nothing left to give,
 // or when you tap the next step on the rail. Ground is the one exception —
 // a mantra is not owed, so it serves a few and moves on.
+// Flashcards lead: the app opens straight into a Flow (boot), and the cards
+// you owe are the first thing under your thumb.
 const FLOW_PHASES = [
+  { id: 'recall',   label: 'Cards',    slug: 'due-card', done: 'Nothing else due.' },
   { id: 'queue',    label: 'Queue',    slug: 'due-lul',  done: 'Queue clear.' },
-  { id: 'recall',   label: 'Recall',   slug: 'due-card', done: 'Nothing else due.' },
   { id: 'dive',     label: 'Dive',     slug: 'due-dive', done: 'Dives drilled.' },
   { id: 'ground',   label: 'Ground',   slug: 'ground',   done: 'Grounded.' },
   { id: 'discover', label: 'Discover' },
@@ -10304,6 +10470,7 @@ const FLOW_GROUND_REST_DAYS = 14;   // a ground item rests this long before it c
 let feedMode    = 'scroll';   // 'scroll' | 'flow'
 let flowPhase   = 0;
 let flowCounts  = {};         // phase id -> owed at open, for the rail
+let flowDone    = {};         // phase id -> cards dealt with this sitting (the n in n / N)
 let flowServedIn = {};        // phase id -> cards served this sitting
 
 const flowIsDiscover = () => feedMode === 'flow' && FLOW_PHASES[flowPhase].id === 'discover';
@@ -10495,7 +10662,9 @@ function flowRenderRail() {
     const n = flowCounts[p.id];
     const cls = 'flow-step' + (i === shown ? ' on' : (i < shown ? ' done' : ''));
     return '<button class="' + cls + '" data-flow-skip="' + i + '">' + esc(p.label) +
-      (n && i >= shown ? ' <span class="flow-n">' + n + '</span>' : '') + '</button>';
+      (n && i > shown ? ' <span class="flow-n">' + n + '</span>' : '') +
+      (n && i === shown ? ' <span class="flow-n">' + Math.min(flowDone[p.id] || 0, n) + ' / ' + n + '</span>' : '') +
+      '</button>';
   }).join('');
 }
 
@@ -10517,6 +10686,7 @@ async function openFlow() {
   flowPhase = 0;
   flowServedIn = {};
   flowCounts = {};
+  flowDone = {};
   groundPool = null;   // Ink may have changed since the last sitting
   openFeed();
   if (!hasSession()) return;
@@ -10542,11 +10712,11 @@ function flowUpdateHomeSub() {
   const q = parseInt(document.getElementById('lul-count')?.textContent, 10) || 0;
   const c = parseInt(document.getElementById('srs-due-count')?.textContent, 10) || 0;
   const bits = [];
-  if (q) bits.push(q + ' in the queue');
   if (c) bits.push(c + ' card' + (c === 1 ? '' : 's') + ' due');
+  if (q) bits.push(q + ' in the queue');
   el.textContent = bits.length
     ? bits.join(' · ') + ', then a dive, ground, wander'
-    : 'queue, cards, a dive, ground, then wander';
+    : 'cards, queue, a dive, ground, then wander';
 }
 (() => {
   const mo = new MutationObserver(flowUpdateHomeSub);

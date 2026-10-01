@@ -28,7 +28,7 @@ function stubFlow(page, { lul = 1, cards = 1, mantras = 1, books = 1 } = {}) {
 
 test.beforeEach(async ({ page }) => { await seedSession(page); });
 
-test('Flow mounts the queue first, then a marker, then due cards', async ({ page }) => {
+test('Flow mounts due flashcards first, then a marker, then the queue', async ({ page }) => {
   await stubFlow(page);
   await boot(page);
   await page.evaluate(() => openFlow());
@@ -40,12 +40,12 @@ test('Flow mounts the queue first, then a marker, then due cards', async ({ page
     rail: [...document.querySelectorAll('.flow-step')].map(b => b.className.replace('flow-step', '').trim()),
   }));
   expect(state.mode).toBe('flow');
-  expect(state.mounted.slice(0, 3)).toEqual(['due-lul', 'flow-mark', 'due-card']);
-  // Recall may already have drained into Dive by the time we look; either way
-  // the Queue is behind us and nothing past Dive has started.
-  expect(['recall', 'dive']).toContain(state.phase);
-  // The rail follows the card on screen (the first queue item), not the
-  // prefetch cursor, so Queue is still lit.
+  expect(state.mounted.slice(0, 3)).toEqual(['due-card', 'flow-mark', 'due-lul']);
+  // The Queue may already have drained into Dive by the time we look; either
+  // way Cards is behind us and nothing past Dive has started.
+  expect(['queue', 'dive']).toContain(state.phase);
+  // The rail follows the card on screen (the first flashcard), not the
+  // prefetch cursor, so Cards is still lit.
   expect(state.rail[0]).toBe('on');
   expect(state.rail.slice(1)).toEqual(['', '', '', '']);
 });

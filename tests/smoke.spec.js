@@ -47,12 +47,21 @@ test('session but no API key -> API-key screen', async ({ page }) => {
   await expect(page.locator('#screen-home')).not.toHaveClass(/active/);
 });
 
-test('valid session + API key -> home is the active screen', async ({ page }) => {
+test('valid session at #home -> home is the active screen', async ({ page }) => {
   await seedSession(page);
   await stubFetchEmpty(page); // neutralise the badge-count fetches boot fires
   await boot(page);
   await expect(page.locator('#screen-home')).toHaveClass(/active/);
   await expect(page.locator('#screen-otp')).not.toHaveClass(/active/);
+});
+
+test('valid session at / -> opens straight into a Flow, flashcards first', async ({ page }) => {
+  await seedSession(page);
+  await stubFetchEmpty(page);
+  await boot(page, '/');
+  await expect(page.locator('#screen-feed')).toHaveClass(/active/);
+  const state = await page.evaluate(() => ({ mode: feedMode, first: FLOW_PHASES[0].id }));
+  expect(state).toEqual({ mode: 'flow', first: 'recall' });
 });
 
 test('boot throws no uncaught page errors', async ({ page }) => {

@@ -145,10 +145,13 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 
 ---
 
-## Home screen layout (post-Citrine redesign)
+## Boot
+`boot()` opens a **Flow** straight away (flashcards first), not home. Home is the **Break** wordmark in the feed's top-left; opening at `#home` lands on home (the Playwright helper `boot(page)` defaults to `/#home`; pass `'/'` to test the real boot).
+
+## Home screen layout
 - **Header**: "Break" wordmark + date; timer icon
 - **Capture button** (full-width, `--ink`) → opens the **Add menu** modal: Add Card / Recommendation / Look Up Later / Listen Later
-- **Flow button** (outlined, accent border, directly below Capture) → `openFlow()`. Same feed engine as Scroll in `feedMode = 'flow'`: drains `due-lul` → `due-card` → `due-dive` → `ground` (Ink mantras/insights + `reflections` tagged `book-review`, 3 per sitting, 14-day rest in `localStorage.flow_ground_seen`) → hands over to the ordinary scroll. No caps on the due phases. `flowTopUp()` replaces the every-6th due cadence; `feedTake()` returns nothing until Discover; `flow-mark` cards separate phases that served something; the rail (`flowRenderRail`) follows the on-screen card's `data-flow-phase`. `FLOW_ONLY` slugs never enter `feedEligible()`. Sub-line follows the Queue/Flashcards pillar numbers via a MutationObserver.
+- **Flow button** (outlined, accent border, directly below Capture) → `openFlow()`. Same feed engine as Scroll in `feedMode = 'flow'`: drains `due-card` (Cards) → `due-lul` (Queue) → `due-dive` → `ground` (Ink mantras/insights + `reflections` tagged `book-review`, 3 per sitting, 14-day rest in `localStorage.flow_ground_seen`) → hands over to the ordinary scroll. No caps on the due phases. `flowTopUp()` replaces the every-6th due cadence; `feedTake()` returns nothing until Discover; `flow-mark` cards separate phases that served something; the rail (`flowRenderRail`) follows the on-screen card's `data-flow-phase`, and the step you are in shows an `n / N` counter (`flowDone` graded this sitting over `flowCounts` owed at open; `feedRetireDue` ticks it). `FLOW_ONLY` slugs never enter `feedEligible()`. Sub-line follows the Queue/Flashcards pillar numbers via a MutationObserver.
 - **Scroll button** (outlined, below Flow) → `openFeed()`, the vertical card feed (see below)
 - **Pillars row**: 3 equal columns — Review (`--accent`), Queue (`--accent-2`), Recs (`--accent-4`). Recs number = `listening_queue` unlistened + `recommendations` saved, via `updateRecsBadge()` (`updateListenBadge()` now just delegates to it; no home element of its own). Tapping Recs → `recs` screen.
 - **Filter pills** (Reflect / Informational / Activity / Random)
@@ -328,22 +331,12 @@ Array of slugs that get "Google it", "Ask Claude", "Remember It" buttons injecte
 
 ---
 
-## CSS design tokens (Citrine — see `break-redesign-spec.md`)
-```css
---bg:        #F4ECDD   /* wheat */
---surface:   #EAE0CC   /* tinted card */
---surface-2: #E2D6BC
---text:      #3A3025   /* warm brown */
---text-muted/--text-faint  /* rgba browns */
---accent:    #C97A60   /* terracotta — Review */
---accent-2:  #D9B374   /* ochre — Queue */
---accent-3:  #8FA188   /* sage — active filter */
---accent-4:  #9F7A7A   /* dusty plum — Recs */
---ink: #3A3025  --ink-on: #F4ECDD
---radius-sm/md/lg/pill
---font-serif: Fraunces  --font-sans: system
-```
-Back-compat aliases (`--muted`, `--card-bg`, `--radius`, `--font`) map to the new tokens. Serif (Fraunces) for headings/hero/numbers; sans for chrome. No gamification, no shadows. Mantras removed.
+## Design: black and white (see `DESIGN.md`, read it before any visual change)
+WikiTok owns the frame and content cards, Vocabulary owns the flashcard, palette is
+black and white only. Tokens keep their old names (`--accent*` are now white/grey)
+so old rules compile; `--yes-*` / `--no-*` replace the red/green right-wrong pairs.
+Two faces: **Source Serif 4** = something you are learning or wrote yourself;
+**Instrument Sans** = everything else. `break-redesign-spec.md` (Citrine) is history.
 
 ---
 
