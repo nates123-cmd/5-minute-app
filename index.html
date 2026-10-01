@@ -75,6 +75,7 @@
       /* Borders */
       --border:        rgba(255, 255, 255, 0.14);
       --border-strong: rgba(255, 255, 255, 0.34);
+      --scrim:         rgba(0, 0, 0, 0.62);
 
       /* Geometry: tighter than before, and not one radius for everything */
       --radius-sm:   6px;
@@ -116,6 +117,7 @@
       --no-fg:  rgba(0, 0, 0, 0.5);
       --border:        rgba(0, 0, 0, 0.12);
       --border-strong: rgba(0, 0, 0, 0.32);
+      --scrim:         rgba(0, 0, 0, 0.32);
     }
 
     html, body {
@@ -2105,7 +2107,7 @@
        Flow markers stay centred (Vocabulary). */
     .feed-item:not([data-slug^="due-"]):not([data-slug="flow-mark"]):not(.feed-loading) .feed-body {
       justify-content: safe flex-end;
-      padding-bottom: 54px;
+      padding-bottom: 8px;   /* the "Go deeper" link sits right under the copy */
     }
     .feed-chip { color: var(--text-faint); font-weight: 600; letter-spacing: 0.14em; font-size: 10.5px; }
     .feed-body .ai-single .main-text,
@@ -2203,6 +2205,89 @@
     .due-opt { background: transparent; border-color: var(--border-strong); }
     .due-opt.is-wrong { text-decoration: line-through; }
     .feed-skel { border-radius: 2px; }
+
+    /* ── Go deeper (break-feed-spec.md phase 1) ── */
+    .feed-deeper-link {
+      align-self: flex-start;
+      width: 100%; max-width: 660px; margin-inline: auto;
+      padding: 10px 34px calc(4px + env(safe-area-inset-bottom));
+      background: none; border: none; text-align: left; cursor: pointer;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+      color: var(--text-muted); flex-shrink: 0;
+    }
+    .feed-deeper-link.is-center { text-align: center; padding-inline: 0; margin-top: 18px; }
+    .deeper { position: fixed; inset: 0; z-index: 80; }
+    .deeper-scrim {
+      position: absolute; inset: 0; background: var(--scrim);
+      opacity: 0; transition: opacity 0.25s ease;
+    }
+    .deeper.open .deeper-scrim { opacity: 1; }
+    .deeper-sheet {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: 88%; max-width: 680px; margin-inline: auto;
+      display: flex; flex-direction: column;
+      background: var(--bg); color: var(--text);
+      border-top: 1px solid var(--border-strong);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      transform: translateY(100%);
+      transition: transform 0.28s cubic-bezier(0.2, 0.7, 0.3, 1);
+      touch-action: pan-y;
+    }
+    .deeper.open .deeper-sheet { transform: translateY(0); }
+    .deeper-grab { padding: 10px 0 4px; display: flex; justify-content: center; cursor: grab; touch-action: none; }
+    .deeper-grab span { width: 38px; height: 4px; border-radius: 2px; background: var(--border-strong); }
+    .deeper-head { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 22px 0; }
+    .deeper-kind {
+      font-family: var(--font-sans); font-size: 10.5px; font-weight: 600;
+      letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-faint);
+    }
+    .deeper-done {
+      background: none; border: none; cursor: pointer; padding: 6px 0;
+      font-family: var(--font-sans); font-size: 14px; font-weight: 600; color: var(--text);
+    }
+    .deeper-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 6px 22px 18px; }
+    .deeper-topic {
+      font-family: var(--font-sans); font-weight: 700; font-size: clamp(22px, 6vw, 28px);
+      line-height: 1.15; letter-spacing: -0.5px; margin-bottom: 14px;
+    }
+    .deeper-more p { font-size: 16px; line-height: 1.62; color: var(--text-muted); margin: 0; }
+    .deeper-err { font-size: 14px; color: var(--text-faint); }
+    .deeper-chips { display: flex; flex-direction: column; gap: 0; margin-top: 18px; border-top: 1px solid var(--border); }
+    .deeper-chip {
+      text-align: left; background: none; border: none; border-bottom: 1px solid var(--border);
+      padding: 13px 2px; cursor: pointer;
+      font-family: var(--font-sans); font-size: 15px; font-weight: 600; color: var(--text);
+    }
+    .deeper-chip::before { content: '→  '; color: var(--text-faint); font-weight: 400; }
+    .deeper-chips:empty { display: none; }
+    .deeper-thread { display: flex; flex-direction: column; gap: 14px; margin-top: 22px; }
+    .deeper-thread:empty { display: none; }
+    .deeper-msg { font-size: 15.5px; line-height: 1.58; white-space: pre-wrap; }
+    .deeper-msg.is-q { font-weight: 700; color: var(--text); }
+    .deeper-msg.is-a { color: var(--text-muted); }
+    .deeper-msg.is-wait { color: var(--text-faint); }
+    .deeper-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+    .deeper-act {
+      padding: 9px 14px; border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong); background: transparent; cursor: pointer;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text);
+    }
+    .deeper-act:disabled { opacity: 0.6; cursor: default; }
+    .deeper-ask {
+      display: flex; gap: 8px; align-items: center;
+      padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+      border-top: 1px solid var(--border);
+    }
+    .deeper-ask input {
+      flex: 1; min-width: 0; padding: 12px 14px; border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong); background: var(--surface); color: var(--text);
+      font-family: var(--font-sans); font-size: 16px; outline: none;
+    }
+    .deeper-ask button {
+      padding: 12px 16px; border-radius: var(--radius-pill); border: none; cursor: pointer;
+      background: var(--ink); color: var(--ink-on);
+      font-family: var(--font-sans); font-size: 14px; font-weight: 600;
+    }
 
     /* Ground: your own words, so serif, per the two-faces rule. */
     .ink-meta { opacity: 1; color: var(--text-faint); }
@@ -2416,6 +2501,29 @@
     <div class="feed-filters" id="feed-filters"></div>
   </div>
   <div class="feed-track" id="feed-track"></div>
+  <!-- Go deeper: rises over the card; the feed stays mounted underneath, so
+       closing lands back on the same card (break-feed-spec.md, phase 1). -->
+  <div class="deeper" id="deeper" hidden>
+    <div class="deeper-scrim" data-deeper-close="1"></div>
+    <div class="deeper-sheet" id="deeper-sheet" role="dialog" aria-label="Go deeper">
+      <div class="deeper-grab" id="deeper-grab"><span></span></div>
+      <div class="deeper-head">
+        <div class="deeper-kind" id="deeper-kind"></div>
+        <button class="deeper-done" data-deeper-close="1">Done</button>
+      </div>
+      <div class="deeper-scroll" id="deeper-scroll">
+        <div class="deeper-topic" id="deeper-topic"></div>
+        <div class="deeper-more" id="deeper-more"></div>
+        <div class="deeper-thread" id="deeper-thread"></div>
+        <div class="deeper-chips" id="deeper-chips"></div>
+        <div class="deeper-acts" id="deeper-acts"></div>
+      </div>
+      <form class="deeper-ask" id="deeper-ask">
+        <input id="deeper-input" type="text" placeholder="Ask anything about this" autocomplete="off" enterkeyhint="send">
+        <button type="submit" id="deeper-send">Ask</button>
+      </form>
+    </div>
+  </div>
 </div>
 
 <!-- HISTORY -->
@@ -10144,6 +10252,10 @@ function feedItemNode(item) {
           ? '<button class="feed-chip" ' + openAttr + '>' + kind + '</button>'
           : '<div class="feed-chip feed-chip-static">' + kind + '</div>') +
         '<div class="feed-body">' + body + '</div>' +
+        // WikiTok's "Read more →": the one way deeper from the front, on every
+        // card with something to go deeper on (not Flow markers or spent cards).
+        (DEEPER_SLUGS_SKIP.has(item.slug) ? '' :
+          '<button class="feed-deeper-link" data-feed-deeper="1">Go deeper ↑</button>') +
       '</div>' +
       '<div class="feed-face feed-face-back feed-back-face">' +
         '<div class="feed-back-inner">' +
@@ -10154,8 +10266,9 @@ function feedItemNode(item) {
             '<div class="feed-back-kind">' + kind + '</div>' +
             '<div class="feed-back-topic">' + esc(item.key) + '</div>' +
             '<div class="feed-back-acts">' +
+              feedActBtn('data-feed-deeper="1"',   '↑', 'Go deeper') +
               feedActBtn('data-feed-remember="1"', '☆', 'Make a flashcard') +
-              feedActBtn('data-feed-claude="1"',   '✳', 'Ask Claude') +
+              feedActBtn('data-feed-claude="1"',   '✳', 'Open in Claude') +
               feedActBtn('data-feed-google="1"',   '⌕', 'Google it') +
               feedActBtn('data-feed-dive="1"',     '◎', 'Deep dive later') +
               feedActBtn('data-feed-lul="1"',      '↷', 'Look up later') +
@@ -10234,6 +10347,233 @@ function feedCardText(item) {
 function feedCardTopic(item) {
   return (item?.dataset.key || feedCardText(item).split('\n')[0] || '').trim();
 }
+// ══ Go deeper ════════════════════════════════════════════════════════
+// The third path on every card (skip / engage / go deeper, break-feed-spec.md).
+// A sheet rises over the card with: a short "learn more", three follow-up
+// questions as chips, an ask box, and save actions. The feed stays mounted
+// underneath, so closing lands on the same card.
+//
+// The model is called only because you asked: once on first open (learn more
+// + questions, one JSON call) and once per question. Never mid-scroll.
+// Threads persist in `card_threads`, and an existing thread for the same card
+// is reused instead of paying for the opening call again.
+const DEEPER_SLUGS_SKIP = new Set(['flow-mark', 'due-card', 'due-quiz', 'due-lul', 'due-dive']);
+let deeper = null;   // { item, key, slug, topic, text, more, questions, messages, id, busy }
+
+function deeperCardText(item) {
+  // A flashcard's front face is only the prompt; the thread needs both sides.
+  if (item?._due && item.dataset.slug === 'due-card') return item._due.front + '\n' + item._due.back;
+  return feedCardText(item);
+}
+
+async function deeperOpen(item) {
+  if (!item) return;
+  if (!hasSession()) { showToast('Sign in to go deeper'); return; }
+  const slug = item.dataset.slug;
+  const topic = item._due && slug === 'due-card' ? item._due.front : feedCardTopic(item);
+  deeper = { item, key: item.dataset.key || topic, slug, topic, text: deeperCardText(item),
+             more: '', questions: [], messages: [], id: null, busy: false };
+  document.getElementById('deeper-kind').textContent = FEED_NAMES[slug] || slug;
+  document.getElementById('deeper-topic').textContent = topic;
+  document.getElementById('deeper-input').value = '';
+  deeperRender();
+  const root = document.getElementById('deeper');
+  root.hidden = false;
+  requestAnimationFrame(() => root.classList.add('open'));
+  const mine = deeper;
+  try {
+    const rows = await sbFetch('card_threads?card_key=eq.' + encodeURIComponent(mine.key) +
+      '&select=id,learn_more,questions,messages&order=updated_at.desc&limit=1');
+    const row = rows && rows[0];
+    if (deeper !== mine) return;
+    if (row && row.learn_more) {
+      Object.assign(mine, { id: row.id, more: row.learn_more, questions: row.questions || [], messages: row.messages || [] });
+      deeperRender();
+      return;
+    }
+  } catch (e) { /* no saved thread, or offline: fall through to a fresh one */ }
+  try {
+    const d = await callClaude(
+      'A curious adult is reading a short card in a learning feed and wants to go one level deeper.\n\n' +
+      'Card:\n' + mine.text + '\n\n' +
+      'Return JSON {"more": string, "questions": [string, string, string]}.\n' +
+      '- more: 110-160 words that go one level deeper than the card: the mechanism, one concrete number, ' +
+      'date or example, and why it matters. Plain prose, no headings, no lists. Do not restate the card.\n' +
+      '- questions: three short follow-up questions (9 words max each) a curious person would ask next, ' +
+      'each opening a different thread: one how/why, one about a specific case or example, one connecting ' +
+      'to something else. Factual curiosity only: no advice, self-help or personal-reflection questions.',
+      { max_tokens: 700 });
+    if (deeper !== mine) return;
+    mine.more = String(d.more || '').trim();
+    mine.questions = (Array.isArray(d.questions) ? d.questions : []).map(String).filter(Boolean).slice(0, 3);
+    deeperRender();
+    deeperSave();
+  } catch (e) {
+    if (deeper !== mine) return;
+    mine.more = '';
+    document.getElementById('deeper-more').innerHTML =
+      '<div class="deeper-err">Couldn\'t load more on this. You can still ask below.</div>';
+  }
+}
+
+function deeperClose() {
+  const root = document.getElementById('deeper');
+  if (!root || root.hidden) return;
+  root.classList.remove('open');
+  const sheet = document.getElementById('deeper-sheet');
+  if (sheet) sheet.style.transform = '';
+  setTimeout(() => { root.hidden = true; }, 260);
+  document.getElementById('deeper-input')?.blur();
+  deeper = null;
+}
+
+function deeperRender() {
+  if (!deeper) return;
+  const moreEl = document.getElementById('deeper-more');
+  moreEl.innerHTML = deeper.more
+    ? '<p>' + esc(deeper.more) + '</p>'
+    : '<div class="feed-skel" style="width:92%"></div><div class="feed-skel" style="width:84%"></div><div class="feed-skel" style="width:60%"></div>';
+  const asked = new Set(deeper.messages.filter(m => m.role === 'user').map(m => m.content));
+  document.getElementById('deeper-chips').innerHTML = deeper.questions
+    .filter(q => !asked.has(q))
+    .map(q => '<button class="deeper-chip" data-deeper-q="' + esc(q) + '">' + esc(q) + '</button>').join('');
+  document.getElementById('deeper-thread').innerHTML = deeper.messages.map(m =>
+    '<div class="deeper-msg ' + (m.role === 'user' ? 'is-q' : 'is-a') + '">' + esc(m.content) + '</div>').join('') +
+    (deeper.busy ? '<div class="deeper-msg is-a is-wait">Thinking…</div>' : '');
+  document.getElementById('deeper-acts').innerHTML =
+    '<button class="deeper-act" data-deeper-act="card">Make a flashcard</button>' +
+    '<button class="deeper-act" data-deeper-act="dive">Save as deep dive</button>' +
+    (typeof channelStartFromTopic === 'function'
+      ? '<button class="deeper-act" data-deeper-act="channel">Start a channel on this</button>' : '');
+}
+
+async function deeperAsk(q) {
+  q = String(q || '').trim();
+  if (!deeper || !q || deeper.busy) return;
+  const mine = deeper;
+  mine.messages.push({ role: 'user', content: q });
+  mine.busy = true;
+  deeperRender();
+  deeperScrollEnd();
+  try {
+    const sys = 'You are a sharp, well-read guide inside a learning app. The reader is pulling a thread on the card below. ' +
+      'Answer in plain prose, under 140 words, a short paragraph or two, no headings or bullet dumps. Be concrete: ' +
+      'mechanisms, numbers, dates, named examples. You may go beyond the card when asked. If something is uncertain ' +
+      'or disputed, say so. No self-help or advice framing.\n\nCard:\n' + mine.text +
+      (mine.more ? '\n\nAlready shown to the reader:\n' + mine.more : '');
+    const res = await fetch(SB_URL + '/functions/v1/claude', {
+      method: 'POST',
+      headers: await claudeHeaders(),
+      body: JSON.stringify({ model: CLAUDE_MODEL, max_tokens: 500, system: sys, messages: mine.messages }),
+    });
+    if (!res.ok) throw new Error('Claude proxy ' + res.status);
+    const data = await res.json();
+    const text = (typeof data.text === 'string' ? data.text : (data.content?.[0]?.text || '')).trim();
+    if (!text) throw new Error('empty');
+    mine.messages.push({ role: 'assistant', content: text });
+    mine.busy = false;
+    if (deeper === mine) { deeperRender(); deeperScrollEnd(); }
+    deeperSave(mine);
+  } catch (e) {
+    mine.messages.pop();
+    mine.busy = false;
+    if (deeper === mine) {
+      deeperRender();
+      document.getElementById('deeper-input').value = q;
+      showToast('Couldn\'t get an answer. Try again.');
+    }
+  }
+}
+
+function deeperScrollEnd() {
+  const s = document.getElementById('deeper-scroll');
+  if (s) s.scrollTop = s.scrollHeight;
+}
+
+// First save inserts with a client id (works offline through the outbox);
+// later saves patch the same row.
+async function deeperSave(t = deeper) {
+  if (!t || !t.more) return;
+  const fields = { learn_more: t.more, questions: t.questions, messages: t.messages, updated_at: new Date().toISOString() };
+  try {
+    if (!t.id) {
+      t.id = crypto.randomUUID();
+      await sbFetch('card_threads', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify({
+        id: t.id, card_key: t.key, card_slug: t.slug, topic: t.topic, card_text: t.text,
+        channel_id: t.item?._channelId || null, ...fields }) });
+    } else {
+      await sbFetch('card_threads?id=eq.' + t.id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify(fields) });
+    }
+  } catch (e) { /* the thread still works on screen; it just isn't kept */ }
+}
+
+// Everything the sheet learned, as context for a card or a dive.
+function deeperContext(t) {
+  return [t.text, t.more, ...t.messages.map(m => (m.role === 'user' ? 'Q: ' : 'A: ') + m.content)]
+    .filter(Boolean).join('\n\n');
+}
+
+document.addEventListener('click', async e => {
+  if (e.target.closest('[data-feed-deeper]')) {
+    deeperOpen(e.target.closest('.feed-item'));
+    return;
+  }
+  if (e.target.closest('[data-deeper-close]')) { deeperClose(); return; }
+  const chip = e.target.closest('[data-deeper-q]');
+  if (chip) { deeperAsk(chip.dataset.deeperQ); return; }
+  const act = e.target.closest('[data-deeper-act]');
+  if (act && deeper && !act.disabled) {
+    const t = deeper;
+    const kind = act.dataset.deeperAct;
+    if (kind === 'card') {
+      const source = { kind: FEED_NAMES[t.slug] || t.slug, rawFront: t.topic, rawBack: deeperContext(t), srsSource: t.slug };
+      act.disabled = true; act.textContent = 'Condensing…';
+      let card = null;
+      try { card = await generateRememberCard(source, Math.floor(Math.random() * 900) + 100); } catch (err) {}
+      openRememberPreview(source, card);   // offered, never saved without a tap
+      act.disabled = false; act.textContent = 'Make a flashcard';
+    } else if (kind === 'dive') {
+      act.disabled = true; act.textContent = 'Building…';
+      try { await ddFromLul(t.topic, deeperContext(t)); act.textContent = 'Saved to Deep Dives'; showToast('Deep dive saved'); }
+      catch (err) { act.disabled = false; act.textContent = 'Save as deep dive'; showToast('Couldn\'t build that dive'); }
+    } else if (kind === 'channel' && typeof channelStartFromTopic === 'function') {
+      act.disabled = true; act.textContent = 'Starting…';
+      try { await channelStartFromTopic(t.topic, deeperContext(t)); act.textContent = 'Channel started'; }
+      catch (err) { act.disabled = false; act.textContent = 'Start a channel on this'; showToast('Couldn\'t start that channel'); }
+    }
+  }
+});
+document.getElementById('deeper-ask')?.addEventListener('submit', e => {
+  e.preventDefault();
+  const input = document.getElementById('deeper-input');
+  const q = input.value;
+  input.value = '';
+  deeperAsk(q);
+});
+// Drag the grab bar down to close, like any phone sheet.
+(() => {
+  const grab = document.getElementById('deeper-grab');
+  const sheet = document.getElementById('deeper-sheet');
+  if (!grab || !sheet) return;
+  let y0 = null;
+  grab.addEventListener('pointerdown', e => { y0 = e.clientY; sheet.style.transition = 'none'; grab.setPointerCapture(e.pointerId); });
+  grab.addEventListener('pointermove', e => {
+    if (y0 == null) return;
+    sheet.style.transform = 'translateY(' + Math.max(0, e.clientY - y0) + 'px)';
+  });
+  const end = e => {
+    if (y0 == null) return;
+    const dy = e.clientY - y0;
+    y0 = null;
+    sheet.style.transition = '';
+    if (dy > 90) deeperClose(); else sheet.style.transform = '';
+  };
+  grab.addEventListener('pointerup', end);
+  grab.addEventListener('pointercancel', end);
+})();
+// Leaving the feed closes the sheet.
+document.addEventListener('screenchange', e => { if (e.detail !== 'feed') deeperClose(); });
+
 function feedSetActLabel(btn, text) {
   const lb = btn.querySelector('.feed-bact-lb');
   if (lb) lb.textContent = text;
@@ -10464,7 +10804,8 @@ CARD_SPECS['due-card'] = {
       '<button class="due-btn due-miss" data-due-rate="0">Miss</button>' +
       '<button class="due-btn due-hard" data-due-rate="1">Hard</button>' +
       '<button class="due-btn due-easy" data-due-rate="2">Easy</button>' +
-    '</div>';
+    '</div>' +
+    '<button class="feed-deeper-link is-center" data-feed-deeper="1">Go deeper ↑</button>';
   },
 };
 
