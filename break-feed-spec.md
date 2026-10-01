@@ -69,6 +69,33 @@ time, interleaved with everything else, rather than as homework on a shelf.
   unit ready simply sits out a slot.
 - **The rail** shows `Cards n/N · <your channels> · Discover`.
 
+## Adding things feeds the feed
+
+Nate, 2026-10-01: "account for the adding of stuff through the app (either a
+flashcard, look up later, or a topic). If I do a general topic, all the
+presidents for instance, then it should feed content regarding that."
+
+Capture (the Add menu) is the main way channels are born. What each kind of
+add does:
+
+| You add | What the feed does with it |
+|---|---|
+| **A topic** (new "Topic" option in the Add menu, e.g. "all the US presidents") | Becomes a **channel** straight away: `coPlan` builds the course (presidents already resolve to canonical Wikidata via `COURSE_CANON`, so the list is real, not model-recalled). Its first unit is prebuilt and appears within the next few cards. |
+| **A flashcard** | Reviewed as a due card, as now. It also counts toward its topic: when 3+ cards share a topic or cluster with no channel yet, the feed offers **"Follow <topic>?"** once. |
+| **A look-up-later** | Its researched answer (`lulResearch`) arrives as a feed card with the go-deeper sheet, so the question can turn into a thread, a dive, or a channel. |
+
+## Suggested flashcards: offered, never saved without approval
+
+Channels and go-deeper threads produce good candidate cards, but nothing goes
+into `flashcards` without a tap.
+
+- **Offer card**: after you engage with a unit or a thread, the feed may slot in
+  one card showing 1 to 3 proposed flashcards, each with **Keep / Edit / Skip**.
+  Keep writes through `srsCreate` (deduped by `cardExists`); Edit opens the
+  existing preview; Skip discards. Ignoring the card discards everything on it.
+- At most one offer card per 10 cards, so the feed never turns into a review queue.
+- The no-self-help rule applies to every suggestion.
+
 ## The composer (who gets the next slot)
 
 1. Due flashcards first, as now (the Cards phase of Flow).
@@ -94,7 +121,9 @@ time, interleaved with everything else, rather than as homework on a shelf.
    box, save actions, `card_threads` table. Self-contained; the biggest felt
    change.
 2. **Channels.** `channels` table, seeding pass, course units as feed cards,
-   background prebuild, the 70/30 composer, the rail.
+   background prebuild, the 70/30 composer, the rail, **"Topic" in the Add menu
+   (add a topic = new channel)**, look-up-later answers as feed cards, and
+   **suggested-flashcard offer cards (Keep / Edit / Skip)**.
 3. **Guess-first and per-topic tuning.** Engage steps on Discover cards where
    cheap (bundled sets first: "which fallacy is this?"), topic-level weights,
    the self-tuning Discover share, "Follow this?" offers.
