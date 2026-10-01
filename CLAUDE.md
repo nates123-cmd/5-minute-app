@@ -193,6 +193,21 @@ for flashcard clusters with 3+ cards.
   (`localStorage.chan_log`). Channel weights move per card: skip (under 2s,
   untouched) ×0.9, engage ×1.15, go deeper ×1.3, "More from this channel" ×1.5.
 - `COURSE_CANON` treats a bare "all the presidents" as the US list (Wikidata).
+**Phase 3: guess first + interests.**
+- `CARD_QUIZ` turns bundled cards (bias, fallacy, new-word, etymology) into a
+  three-way "which one is this?" `QUIZ_SHARE` (0.5) of the time, decided at
+  mount in `feedItemNode` (`feedQuizFor`). Distractors come from the same list;
+  AI-made variants (not in the list) never quiz. A miss offers "Keep as a
+  flashcard" (one tap, `srsCreate`); nothing is saved otherwise. No model calls.
+- `interestBump(topic, amt)` keeps `localStorage.interest_topics` (title →
+  decayed score, half-life 14 days, top 60): go deeper +1, a question +2,
+  dwell >9s +0.5, guess answered +0.5, thumbs ±1. `interestPromptCtx()` adds the
+  top 6 to `feedGenerateViaClaude`'s prompt ("a third of the time, something
+  related").
+- `deeperMaybeOfferFollow` queues a "Follow this?" (`chan-offer`) after a sheet
+  closes with 2+ questions on a non-channel card; "Not now" is remembered as
+  `topic:<name>` in `chan_follow_dismissed`.
+- Tests: `tests/phase3.spec.js`.
 - Tests: `tests/deeper.spec.js`, `tests/channels.spec.js` (the `reach()` helper
   scrolls the feed forward, since only `FEED_AHEAD` cards are mounted).
 

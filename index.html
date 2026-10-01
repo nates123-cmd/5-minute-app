@@ -2373,6 +2373,19 @@
     .ch-btn.is-primary { border-color: var(--text); }
     .ch-btn:disabled { opacity: 0.6; }
 
+    /* ── Guess first (phase 3) ── */
+    .feed-item[data-quiz]:not([data-answered]) .feed-deeper-link { visibility: hidden; }
+    .cq-verdict {
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600;
+      color: var(--text-muted); margin-bottom: 14px;
+    }
+    .cq-keep {
+      margin-left: 6px; padding: 5px 11px; border-radius: var(--radius-pill);
+      border: 1px solid var(--border-strong); background: transparent; cursor: pointer;
+      font-family: var(--font-sans); font-size: 12px; font-weight: 600; color: var(--text);
+    }
+    .cq-keep:disabled { opacity: 0.6; }
+
     /* Ground: your own words, so serif, per the two-faces rule. */
     .ink-meta { opacity: 1; color: var(--text-faint); }
     .ink-check { border-color: var(--border-strong); color: var(--text); }
@@ -10207,7 +10220,8 @@ async function feedGenerateViaClaude(slug, spec) {
   const liked    = getLiked(slug).slice(-8);
   const disliked = getDisliked(slug).slice(-8);
   const ratingCtx = (liked.length ? ' More like these: ' + liked.join(', ') + '.' : '') +
-                    (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '');
+                    (disliked.length ? ' Avoid anything similar to: ' + disliked.join(', ') + '.' : '') +
+                    interestPromptCtx();   // topic-level interests (phase 3)
   // Same prompt the single-card screen uses, asked for in bulk, on the
   // cheaper feed model.
   const raw = await callClaude(
@@ -10338,6 +10352,9 @@ function feedItemNode(item) {
   el.dataset.key  = item.key;
   let body = '';
   try { body = spec.render(item.data); } catch(e) { body = '<div class="ai-single"><div class="main-text">' + esc(item.key) + '</div></div>'; }
+  // Guess first (phase 3): the normal card waits behind a quick "which one?".
+  const quiz = feedQuizFor(item);
+  if (quiz) body = quizHtml(quiz) + '<div class="cq-reveal" hidden>' + body + '</div>';
   const liked    = getLiked(item.slug).includes(item.key);
   const disliked = getDisliked(item.slug).includes(item.key);
   const idAttr = 'data-slug="' + esc(item.slug) + '" data-id="' + esc(item.key) + '"';
@@ -10398,6 +10415,7 @@ function feedItemNode(item) {
   // Channel cards carry their channel/course/unit; offer cards their payload.
   if (item.slug === 'chan-unit' || item.slug === 'chan-recall') { el._chan = item.data; el._channelId = item.data._channelId; }
   if (item.slug === 'card-offer' || item.slug === 'chan-offer') el._offer = item.data;
+  if (quiz) { el._quiz = quiz; el.dataset.quiz = '1'; }
   // Pictures that arrive on a second hop. Safe to fire against the still
   // detached node: every hydrator re-checks isConnected before it writes, and
   // feedFill appends synchronously right after this returns.
@@ -10488,6 +10506,7 @@ async function deeperOpen(item) {
   const slug = item.dataset.slug;
   const topic = deeperCardTopic(item);
   if (item._chan) chanEngaged(item, 'deeper');
+  interestBump(topic, 1);
   deeper = { item, key: item.dataset.key || topic, slug, topic, text: deeperCardText(item),
              more: '', questions: [], messages: [], id: null, busy: false };
   document.getElementById('deeper-kind').textContent = FEED_NAMES[slug] || slug;
@@ -10541,7 +10560,9 @@ function deeperClose() {
   if (sheet) sheet.style.transform = '';
   setTimeout(() => { root.hidden = true; }, 260);
   document.getElementById('deeper-input')?.blur();
+  const t = deeper;
   deeper = null;
+  deeperMaybeOfferFollow(t);
 }
 
 function deeperRender() {
@@ -10570,6 +10591,7 @@ async function deeperAsk(q) {
   const mine = deeper;
   mine.messages.push({ role: 'user', content: q });
   mine.busy = true;
+  interestBump(mine.topic, 2);
   deeperRender();
   deeperScrollEnd();
   try {
@@ -11482,7 +11504,7 @@ function feedScoreExit() {
   if (slug && CHAN_SLUGS.includes(slug)) chanOnExit(feedActiveEl, dwell);
   else if (slug && !isDueSlug(slug) && !FLOW_ONLY.has(slug)) {
     if (dwell < FEED_DWELL_SHORT)     feedNudge(slug, 0.88);
-    else if (dwell > FEED_DWELL_LONG) feedNudge(slug, 1.18);
+    else if (dwell > FEED_DWELL_LONG) { feedNudge(slug, 1.18); interestBump(feedCardTopic(feedActiveEl), 0.5); }
   }
   feedEnterTs = 0;
 }
@@ -11846,6 +11868,7 @@ document.addEventListener('click', async e => {
   const thumb = e.target.closest('.feed-rate [data-thumb]');
   if (thumb) {
     feedNudge(thumb.dataset.slug, thumb.dataset.thumb === 'up' ? 1.5 : 0.6);
+    interestBump(feedCardTopic(thumb.closest('.feed-item')), thumb.dataset.thumb === 'up' ? 1 : -1);
     return;
   }
 
@@ -13351,7 +13374,8 @@ CARD_SPECS['chan-offer'] = {
   slug: 'chan-offer', sourceOnly: true, noOpen: true,
   render: (d) => '<div class="ai-single offer-card">' +
       '<div class="main-text chan-q">' + esc(d.name) + '</div>' +
-      '<div class="chan-body"><p>You have ' + d.n + ' flashcards on this. Follow it as a channel and the feed will teach it a unit at a time.</p></div>' +
+      '<div class="chan-body"><p>' + esc(d.reason || ('You have ' + d.n + ' flashcards on this.')) +
+        ' Follow it as a channel and the feed will teach it a unit at a time.</p></div>' +
       '<div class="offer-acts">' +
         '<button class="offer-btn is-keep" data-chan-follow="1">Follow</button>' +
         '<button class="offer-btn" data-chan-notnow="1">Not now</button>' +
@@ -13474,7 +13498,7 @@ document.addEventListener('click', async e => {
     const d = follow.closest('.feed-item')._offer;
     if (!d || follow.disabled) return;
     follow.disabled = true; follow.textContent = 'Planning…';
-    try { await channelStartFromTopic(d.name, 'Build on what I already know from my flashcards about ' + d.name + '.', 'cluster'); follow.textContent = 'Following'; }
+    try { await channelStartFromTopic(d.name, d.brief || ('Build on what I already know from my flashcards about ' + d.name + '.'), d.from || 'cluster'); follow.textContent = 'Following'; }
     catch (err) { follow.disabled = false; follow.textContent = 'Follow'; showToast('Couldn\'t start that channel'); }
     return;
   }
@@ -13483,7 +13507,7 @@ document.addEventListener('click', async e => {
     const d = notnow.closest('.feed-item')._offer;
     let dis = [];
     try { dis = JSON.parse(localStorage.getItem('chan_follow_dismissed') || '[]'); } catch (err) {}
-    if (d) dis.push(d.clusterId);
+    if (d) dis.push(d.clusterId || ('topic:' + String(d.name).toLowerCase()));
     try { localStorage.setItem('chan_follow_dismissed', JSON.stringify(dis)); } catch (err) {}
     notnow.closest('.offer-acts').innerHTML = '<span class="due-hint">Okay, not now.</span>';
     return;
@@ -13619,6 +13643,125 @@ document.getElementById('screen-channels')?.addEventListener('click', async e =>
     catch (err) { sg.disabled = false; sg.textContent = 'Follow'; showToast('Couldn\'t plan that topic'); }
   }
 });
+
+// ══ Phase 3: guess first + interests by topic (break-feed-spec.md) ═════
+//
+// Guess first: cards from the bundled lists (biases, fallacies, words, word
+// origins) sometimes open as "which one is this?" with three options drawn
+// from the same list. Answering reveals the normal card. A miss offers the
+// card as a flashcard, one tap, never automatic. No model call anywhere.
+const QUIZ_SHARE = 0.5;
+function quizRedact(text, word) {
+  if (!text || !word) return text || '';
+  return String(text).replace(new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'), '____');
+}
+function quizFrom(pool, d, keyOf, question, stem, back) {
+  const answer = d && keyOf(d);
+  if (!answer || !stem || !pool.some(x => keyOf(x) === answer)) return null;   // AI-made variants: no quiz
+  const others = pool.map(keyOf).filter(k => k && k !== answer);
+  for (let i = others.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [others[i], others[j]] = [others[j], others[i]]; }
+  const options = [answer, ...others.slice(0, 2)];
+  for (let i = options.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [options[i], options[j]] = [options[j], options[i]]; }
+  return { question, stem, options, answer, back: back || '' };
+}
+const CARD_QUIZ = {
+  'cognitive-bias':  d => quizFrom(DATA_BIASES, d, x => x.name, 'Which bias is this?', d.example, d.definition),
+  'logical-fallacy': d => quizFrom(DATA_FALLACIES, d, x => x.name, 'Which fallacy is this?', d.example, d.definition),
+  'new-word':        d => quizFrom(DATA_WORDS, d, x => x.word, 'Which word means this?', d.definition, d.definition),
+  'etymology':       d => quizFrom(DATA_ETYMOLOGY, d, x => x.word, 'Which word has this history?', quizRedact(d.journey, d.word), d.journey),
+};
+function feedQuizFor(item) {
+  const make = CARD_QUIZ[item.slug];
+  if (!make || Math.random() >= QUIZ_SHARE) return null;
+  try { return make(item.data || {}); } catch (e) { return null; }
+}
+function quizHtml(q) {
+  return '<div class="ai-single cq">' +
+    '<div class="chan-unit-title">' + esc(q.question) + '</div>' +
+    '<div class="main-text chan-q">' + esc(q.stem) + '</div>' +
+    '<div class="chan-opts">' + q.options.map((o, i) =>
+      '<button class="chan-opt" data-cq-pick="' + i + '">' + esc(o) + '</button>').join('') + '</div>' +
+  '</div>';
+}
+
+document.addEventListener('click', async e => {
+  const pick = e.target.closest('[data-cq-pick]');
+  if (pick) {
+    const item = pick.closest('.feed-item');
+    const q = item && item._quiz;
+    if (!q || item.dataset.answered) return;
+    item.dataset.answered = '1';
+    const chosen = q.options[Number(pick.dataset.cqPick)];
+    const right = chosen === q.answer;
+    interestBump(q.answer, 0.5);
+    const quiz = item.querySelector('.cq');
+    if (quiz) quiz.outerHTML = '<div class="cq-verdict">' +
+      (right ? 'Right: ' + esc(q.answer) + '.' : 'You said ' + esc(chosen) + '. It\'s ' + esc(q.answer) + '.') +
+      (right ? '' : ' <button class="cq-keep" data-cq-keep="1">Keep as a flashcard</button>') + '</div>';
+    const hid = item.querySelector('.cq-reveal');
+    if (hid) hid.hidden = false;
+    return;
+  }
+  const keep = e.target.closest('[data-cq-keep]');
+  if (keep) {
+    const q = keep.closest('.feed-item')?._quiz;
+    if (!q || keep.disabled) return;
+    keep.disabled = true; keep.textContent = 'Saving…';
+    try {
+      if (await cardExists(q.answer)) { keep.textContent = 'Already saved'; return; }
+      await srsCreate(q.answer, q.back, 'Guess first');
+      keep.textContent = 'Kept';
+      updateDueBadge();
+    } catch (err) { keep.disabled = false; keep.textContent = 'Keep as a flashcard'; showToast('Couldn\'t save that card'); }
+  }
+});
+
+// Interests by topic. Each card's topic (its title) collects a score from
+// what you do with it: go deeper +1, ask a question +2, linger +0.5, answer a
+// guess +0.5, thumbs up +1, thumbs down -1. Scores halve every two weeks.
+// The top few steer the AI-made Discover cards toward related subjects some
+// of the time; the rest stays varied on purpose.
+const INTEREST_HALF_LIFE_MS = 14 * 86400000;
+const INTEREST_MAX = 60;
+function interestRead() { try { return JSON.parse(localStorage.getItem('interest_topics') || '{}'); } catch (e) { return {}; } }
+function interestScore(r, now) { return r.w * Math.pow(0.5, (now - r.at) / INTEREST_HALF_LIFE_MS); }
+function interestBump(topic, amt) {
+  topic = String(topic || '').trim().slice(0, 80);
+  if (!topic) return;
+  const m = interestRead(), now = Date.now();
+  const cur = m[topic] ? interestScore(m[topic], now) : 0;
+  m[topic] = { w: cur + amt, at: now };
+  const keep = Object.entries(m).sort((a, b) => interestScore(b[1], now) - interestScore(a[1], now)).slice(0, INTEREST_MAX);
+  try { localStorage.setItem('interest_topics', JSON.stringify(Object.fromEntries(keep))); } catch (e) {}
+}
+function interestTop(n) {
+  const m = interestRead(), now = Date.now();
+  return Object.entries(m).map(([t, r]) => [t, interestScore(r, now)])
+    .filter(([, s]) => s >= 0.8).sort((a, b) => b[1] - a[1]).slice(0, n).map(([t]) => t);
+}
+function interestPromptCtx() {
+  const top = interestTop(6);
+  if (top.length < 2) return '';
+  return ' Lately the reader has been most curious about: ' + top.join('; ') +
+    '. About a third of the time, pick something related to one of these (a neighbouring idea, not the same thing); keep the rest varied.';
+}
+
+// After a real thread on a Discover card (2+ questions asked), offer to follow
+// the topic as a channel. Once per topic; "Not now" is remembered.
+function deeperMaybeOfferFollow(t) {
+  if (!t || t.item?._chan || isDueSlug(t.slug)) return;
+  const asked = t.messages.filter(m => m.role === 'user').map(m => m.content);
+  if (asked.length < 2) return;
+  const name = String(t.topic || '').slice(0, 60);
+  let dis = [];
+  try { dis = JSON.parse(localStorage.getItem('chan_follow_dismissed') || '[]'); } catch (e) {}
+  if (!name || dis.includes('topic:' + name.toLowerCase())) return;
+  if ((chanList || []).some(c => c.name.toLowerCase() === name.toLowerCase())) return;
+  if (chanBuffer.some(x => x.slug === 'chan-offer' && x.data && x.data.name === name)) return;
+  chanBuffer.unshift({ slug: 'chan-offer', key: 'chan-offer:topic:' + name,
+    data: { name, from: 'deeper', reason: 'You asked ' + asked.length + ' questions about this.',
+            brief: 'Start from what I was curious about: ' + asked.join(' / ') } });
+}
 
 boot();
 </script>
