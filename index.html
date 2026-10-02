@@ -2497,7 +2497,7 @@
 
   <button class="btn-scroll btn-flow" id="btn-flow">
     <span class="btn-scroll-label">Flow</span>
-    <span class="btn-scroll-sub" id="flow-sub">cards, queue, a dive, ground, then wander</span>
+    <span class="btn-scroll-sub" id="flow-sub">cards, lessons, queue, a dive, then wander</span>
   </button>
 
   <button class="btn-scroll" id="btn-scroll">
@@ -10902,7 +10902,7 @@ function feedRetireDue(item, note) {
   item.dataset.dueDone = '1';
   // Tick the Flow counter for the phase this card belonged to.
   if (feedMode === 'flow') {
-    const ph = FLOW_PHASES.find(p => p.slug === item.dataset.slug);
+    const ph = FLOW_PHASES.find(p => flowPhaseHas(p, item.dataset.slug));
     if (ph) { flowDone[ph.id] = (flowDone[ph.id] || 0) + 1; flowRenderRail(); }
   }
 }
@@ -11085,15 +11085,22 @@ CARD_SPECS['due-dive'] = {
 // a mantra is not owed, so it serves a few and moves on.
 // Flashcards lead: the app opens straight into a Flow (boot), and the cards
 // you owe are the first thing under your thumb.
+// Channels come straight after Cards (2026-10-02): with eleven undrilled
+// dives in the way, a channel lesson used to land around card 19. Dives are
+// capped per sitting for the same reason; the rest stay due for next time.
 const FLOW_PHASES = [
   { id: 'recall',   label: 'Cards',    slug: 'due-card', done: 'Nothing else due.' },
+  { id: 'channels', label: 'Channels', slugs: ['chan-unit', 'chan-recall'], done: 'That\'s today\'s lessons.' },
   { id: 'queue',    label: 'Queue',    slug: 'due-lul',  done: 'Queue clear.' },
   { id: 'dive',     label: 'Dive',     slug: 'due-dive', done: 'Dives drilled.' },
   { id: 'ground',   label: 'Ground',   slug: 'ground',   done: 'Grounded.' },
   { id: 'discover', label: 'Discover' },
 ];
+const flowPhaseHas = (p, slug) => p.slug === slug || (p.slugs || []).includes(slug);
 const FLOW_ONLY = new Set(['ground', 'flow-mark']);   // never in the Scroll's weighted draw
 const FLOW_GROUND_MAX = 3;          // ground items per sitting
+const FLOW_CHAN_MAX = 6;            // channel lessons per sitting; the rest interleave in Discover
+const FLOW_DIVE_MAX = 2;            // dives per sitting; the rest stay due
 const FLOW_GROUND_REST_DAYS = 14;   // a ground item rests this long before it can come back
 
 let feedMode    = 'scroll';   // 'scroll' | 'flow'
@@ -11248,9 +11255,30 @@ async function flowTopUp() {
       if (ahead >= FEED_AHEAD) break;
       const ph = FLOW_PHASES[flowPhase];
       if (ph.id === 'ground' && (flowServedIn.ground || 0) >= FLOW_GROUND_MAX) { flowAdvance(); continue; }
+      if (ph.id === 'dive' && (flowServedIn.dive || 0) >= FLOW_DIVE_MAX) { flowAdvance(); continue; }
       if (!hasSession()) { flowAdvance(); continue; }   // every phase is Supabase-backed
+      if (ph.id === 'channels') {
+        // Drain today's built lessons from the channel buffer, sweeping for
+        // more when it runs dry. Unbuilt lessons are building in the
+        // background and turn up in Discover (or next sitting) instead.
+        if ((flowServedIn.channels || 0) >= FLOW_CHAN_MAX) { flowAdvance(); continue; }
+        let i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug));
+        if (i === -1) { chanQuietUntil = 0; await chanTopUp(); i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug)); }
+        if (i === -1) { flowAdvance(); continue; }
+        const it = chanBuffer.splice(i, 1)[0];
+        const c = it.data && it.data.chan;
+        if (c) { c.last_shown_at = new Date().toISOString(); chanUpdate(c.id, { last_shown_at: c.last_shown_at }).catch(() => {}); }
+        feedDueBuffer.push(it);
+        flowServedIn.channels = (flowServedIn.channels || 0) + 1;
+        feedFill();
+        continue;
+      }
       let items = null;
       try { items = await CARD_SOURCES[ph.slug](FEED_AHEAD); } catch (e) { items = null; }
+      // Capped phases take only what's left of their cap from a batch, or a
+      // batch of three walks straight past a cap of two.
+      const cap = ph.id === 'dive' ? FLOW_DIVE_MAX : ph.id === 'ground' ? FLOW_GROUND_MAX : Infinity;
+      if (items && cap !== Infinity) items = items.slice(0, Math.max(0, cap - (flowServedIn[ph.id] || 0)));
       if (!items || !items.length) { flowAdvance(); continue; }
       let added = 0;
       items.forEach(d => {
@@ -11278,7 +11306,7 @@ function flowPhaseOfItem(item) {
     const i = FLOW_PHASES.findIndex(p => p.label === (item.data && item.data.next));
     return i === -1 ? flowPhase : i;
   }
-  const i = FLOW_PHASES.findIndex(p => p.slug === item.slug);
+  const i = FLOW_PHASES.findIndex(p => flowPhaseHas(p, item.slug));
   return i === -1 ? flowPhase : i;
 }
 
@@ -11319,6 +11347,9 @@ async function openFlow() {
   groundPool = null;   // Ink may have changed since the last sitting
   openFeed();
   if (!hasSession()) return;
+  // Start writing channel lessons now, while the Cards phase is on screen.
+  chanQuietUntil = 0;
+  chanTopUp();
   try {
     const [n, lul, dives] = await Promise.all([
       srsGetDueCount().catch(() => 0),
@@ -11344,8 +11375,8 @@ function flowUpdateHomeSub() {
   if (c) bits.push(c + ' card' + (c === 1 ? '' : 's') + ' due');
   if (q) bits.push(q + ' in the queue');
   el.textContent = bits.length
-    ? bits.join(' · ') + ', then a dive, ground, wander'
-    : 'cards, queue, a dive, ground, then wander';
+    ? bits.join(' · ') + ', then lessons, a dive, wander'
+    : 'cards, lessons, queue, a dive, then wander';
 }
 (() => {
   const mo = new MutationObserver(flowUpdateHomeSub);
@@ -11419,7 +11450,9 @@ function feedFill() {
   feedPersist();
   feedTrim();
   // Cheap when there's nothing to do (busy / buffer full / quiet guards).
-  if (!flowActive()) chanTopUp();
+  // Every phase, not just Discover: lessons must be written before they're
+  // needed (a build is ~20s). Serving is still gated by phase.
+  chanTopUp();
 }
 
 // Unmount cards well behind the active one, then re-pin the scroll position
@@ -13185,9 +13218,16 @@ function chanCountNew(courseId) {
 // One sweep: which channel deserves the next slot (weight x how long since it
 // last appeared), its due recall or next new unit, and background builds for
 // anything not built yet.
-async function chanTopUp() {
-  if (chanBusy || !hasSession() || chanBuffer.length >= CHAN_BUFFER) return;
-  if (Date.now() < chanQuietUntil) return;
+// A sweep already running is shared, so the Flow's Channels phase can await
+// the one boot started instead of seeing an empty buffer and moving on.
+let chanSweep = null;
+function chanTopUp() {
+  if (chanSweep) return chanSweep;
+  if (!hasSession() || chanBuffer.length >= CHAN_BUFFER || Date.now() < chanQuietUntil) return Promise.resolve();
+  chanSweep = chanSweepRun().finally(() => { chanSweep = null; });
+  return chanSweep;
+}
+async function chanSweepRun() {
   chanBusy = true;
   try {
     const chans = (await chanLoad()).filter(c => c.status === 'following' && c.course_id);
@@ -13209,16 +13249,18 @@ async function chanTopUp() {
     let builds = 0;
     const before = chanBuffer.length;
     for (const { c } of scored) {
-      if (chanBuffer.length >= CHAN_BUFFER) break;
+      // A full buffer stops serving, not building: keep starting builds for
+      // the channels further down so their lessons are ready later.
+      const room = chanBuffer.length < CHAN_BUFFER;
       const course = byCourse[c.course_id];
       const mine = (units || []).filter(u => u.course_id === c.course_id && u.kind === 'unit');
       const due = mine.find(u => u.state !== 'ready' && u.built_at && u.next_review && u.next_review <= today && !chanServed.has('r:' + u.id));
-      if (due) { chanPush('chan-recall', c, course, due, mine); continue; }
+      if (due) { if (room) chanPush('chan-recall', c, course, due, mine); continue; }
       const cap = Number(course.new_per_day) || 2;
       if ((newToday[course.id] || 0) >= cap) continue;
       const next = mine.find(u => u.state === 'ready' && !chanServed.has('u:' + u.id));
       if (!next) continue;
-      if (next.built_at) { chanPush('chan-unit', c, course, next, mine); continue; }
+      if (next.built_at) { if (room) chanPush('chan-unit', c, course, next, mine); continue; }
       if (builds < CHAN_BUILD_MAX) {
         builds++;
         // Fire and forget; the next sweep serves it once built.

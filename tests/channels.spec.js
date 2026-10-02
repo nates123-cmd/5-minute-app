@@ -84,6 +84,20 @@ test('offer card: Keep saves, Skip does not', async ({ page }) => {
   expect(posts).toEqual(['A']);
 });
 
+test('in a Flow, channel lessons come right after Cards, not after Discover', async ({ page }) => {
+  await stub(page, { units: [unit()] });
+  await boot(page);
+  await page.evaluate(() => openFlow());
+  await page.waitForFunction(() => typeof feedMounted !== 'undefined' && feedMounted.includes('chan-unit'), null, { timeout: 8000 });
+  const s = await page.evaluate(() => ({
+    phase: FLOW_PHASES[flowPhaseOfItem({ slug: 'chan-unit' })].id,
+    firstDiscover: feedMounted.findIndex(x => !['chan-unit', 'chan-recall', 'flow-mark', 'due-card', 'due-lul', 'due-dive', 'ground', 'card-offer', 'chan-offer'].includes(x)),
+    chanAt: feedMounted.indexOf('chan-unit'),
+  }));
+  expect(s.phase).toBe('channels');
+  if (s.firstDiscover !== -1) expect(s.chanAt).toBeLessThan(s.firstDiscover);
+});
+
 test('a due unit comes back as a recall card and grading schedules it', async ({ page }) => {
   await stub(page, { units: [unit({ state: 'taught', next_review: '2026-01-01' })] });
   await boot(page);

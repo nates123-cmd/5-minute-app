@@ -4,8 +4,8 @@
 import { test, expect } from '@playwright/test';
 import { boot, seedSession } from './helper.js';
 
-function stubFlow(page, { lul = 1, cards = 1, mantras = 1, books = 1 } = {}) {
-  return page.addInitScript(({ lul, cards, mantras, books }) => {
+function stubFlow(page, { lul = 1, cards = 1, mantras = 1, books = 1, dives = 0 } = {}) {
+  return page.addInitScript(({ lul, cards, mantras, books, dives }) => {
     window.__sbCalls = [];
     const json = (v, extra = {}) => new Response(JSON.stringify(v), {
       status: 200, headers: { 'Content-Type': 'application/json', 'Content-Range': '0-0/0', ...extra },
@@ -17,14 +17,30 @@ function stubFlow(page, { lul = 1, cards = 1, mantras = 1, books = 1 } = {}) {
       window.__sbCalls.push({ path, method: opts.method || 'GET', body: opts.body || null });
       if (path.startsWith('look_up_later')) return json(Array.from({ length: lul }, (_, i) => ({ id: 'l' + i, question: 'Parked question ' + i, status: 'pending', created_at: '2026-09-01T10:00:00Z' })));
       if (path.startsWith('flashcards')) return json(Array.from({ length: cards }, (_, i) => ({ id: 'f' + i, front: 'Front ' + i, back: 'Back ' + i, next_review: '2026-01-01', interval: 1, ease_factor: 2.5, review_count: 0 })));
-      if (path.startsWith('deep_dives')) return json([]);
+      if (path.startsWith('deep_dives')) return json(Array.from({ length: dives }, (_, i) => ({ id: 'd' + i, title: 'Dive ' + i, prompt: 'Explain ' + i, key_points: [{ text: 'k' }], status: 'active', next_review: null })));
       if (path.startsWith('mantras')) return json(Array.from({ length: mantras }, (_, i) => ({ id: 'm' + i, text: 'Relax into it ' + i, created_at: '2026-06-01T10:00:00Z', status: 'active' })));
       if (path.startsWith('insights')) return json([]);
       if (path.startsWith('reflections')) return json(Array.from({ length: books }, (_, i) => ({ id: 'r' + i, text: '# Let Them\n\n**Thesis.** Stop managing other people.\n\n- Let them\n- Let me', prompt_used: 'Book review: Let Them', tags: ['book-review'], date: '2026-09-01' })));
       return json([]);
     };
-  }, { lul, cards, mantras, books });
+  }, { lul, cards, mantras, books, dives });
 }
+
+test('a Flow serves at most two dives, however many are due', async ({ page }) => {
+  await seedSession(page);
+  await stubFlow(page, { lul: 0, cards: 0, dives: 6 });
+  await boot(page);
+  await page.evaluate(() => openFlow());
+  // Scroll forward like a thumb; only a few cards are mounted ahead.
+  await page.waitForFunction(() => {
+    if (typeof feedMounted === 'undefined') return false;
+    if (feedMounted.includes('ground')) return true;
+    feedActiveIdx = feedItems().length - 1; feedFill(); flowTopUp();
+    return false;
+  }, null, { timeout: 8000, polling: 200 });
+  const dives = await page.evaluate(() => feedMounted.filter(s => s === 'due-dive').length);
+  expect(dives).toBe(2);
+});
 
 test.beforeEach(async ({ page }) => { await seedSession(page); });
 
@@ -47,7 +63,7 @@ test('Flow mounts due flashcards first, then a marker, then the queue', async ({
   // The rail follows the card on screen (the first flashcard), not the
   // prefetch cursor, so Cards is still lit.
   expect(state.rail[0]).toBe('on');
-  expect(state.rail.slice(1)).toEqual(['', '', '', '']);
+  expect(state.rail.slice(1)).toEqual(['', '', '', '', '']);
 });
 
 test('phases with nothing to give are skipped silently; Ground serves a book before a mantra', async ({ page }) => {
