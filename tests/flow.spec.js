@@ -6,6 +6,9 @@ import { boot, seedSession } from './helper.js';
 
 function stubFlow(page, { lul = 1, cards = 1, mantras = 1, books = 1, dives = 0 } = {}) {
   return page.addInitScript(({ lul, cards, mantras, books, dives }) => {
+    // These are the in-sequence tests; Mixed (the default since 2026-10-05)
+    // is covered in flow-mix.spec.js.
+    localStorage.setItem('break_flow_order', 'sequence');
     window.__sbCalls = [];
     const json = (v, extra = {}) => new Response(JSON.stringify(v), {
       status: 200, headers: { 'Content-Type': 'application/json', 'Content-Range': '0-0/0', ...extra },
