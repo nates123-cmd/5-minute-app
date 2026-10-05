@@ -2486,6 +2486,7 @@
         <button class="overflow-item" id="btn-activity-settings">Activities</button>
         <button class="overflow-item" id="btn-settings">API key</button>
         <button class="overflow-item" id="btn-theme">Theme: <span id="theme-label">Sun</span></button>
+        <button class="overflow-item" id="btn-flow-order">Flow: <span id="flow-order-label">Mixed</span></button>
       </div>
     </div>
   </div>
@@ -4032,6 +4033,21 @@ document.getElementById('btn-theme')?.addEventListener('click', () => {
 // Timers sleep while the app is backgrounded; recheck on the way back in.
 document.addEventListener('visibilitychange', () => { if (!document.hidden && getTheme() === 'sun') applyTheme(); });
 applyTheme();
+
+// Flow order: Mixed (one card at a time from every phase) or In sequence
+// (drain each phase before the next). Flips on the home menu; the Flow
+// button's sub-line follows it.
+function renderFlowOrderLabel() {
+  const el = document.getElementById('flow-order-label');
+  if (el) el.textContent = flowOrder() === 'mix' ? 'Mixed' : 'In sequence';
+  if (typeof flowUpdateHomeSub === 'function') flowUpdateHomeSub();
+}
+document.getElementById('btn-flow-order')?.addEventListener('click', () => {
+  setFlowOrder(flowOrder() === 'mix' ? 'sequence' : 'mix');
+  renderFlowOrderLabel();
+  showToast(flowOrder() === 'mix' ? 'Flow: mixed, one card at a time from everything' : 'Flow: in sequence, cards first, then lessons, queue, a dive, wander');
+});
+renderFlowOrderLabel();
 
 // ── Activity settings (per-activity on/off toggles) ──
 function renderSettings() {
@@ -10759,13 +10775,15 @@ function feedPointerUp(e) {
 // just been on screen. Batches arrive three-of-a-kind, so without this you'd
 // scroll past three finance terms in a row — interleaving them is what makes
 // the feed feel varied even though generation is batched.
-function feedTake() {
+function feedTake(fromMix) {
   // A Flow mounts only its phase's cards until Discover; the buffer stays
-  // warm underneath so the wander that follows starts instantly.
-  if (flowActive()) return null;
+  // warm underneath so the wander that follows starts instantly. A mixed
+  // Flow asks for a wander card by name (fromMix); channels have their own
+  // slot in that deal, so they don't roll for this one.
+  if (flowActive() && !fromMix) return null;
   // Channels first get a roll at the slot (70/30); with nothing else
   // buffered they take it outright.
-  const chan = chanTake(!feedBuffer.length);
+  const chan = fromMix ? null : chanTake(!feedBuffer.length);
   if (chan) return chan;
   const recent = feedMounted.slice(-FEED_LOOKBACK);
   let i = feedBuffer.findIndex(it => !recent.includes(it.slug));
@@ -10841,8 +10859,11 @@ function feedDueReady() {
 // Keep one due item ready. Rotates through the four sources rather than
 // draining flashcards first, so a scroll doesn't turn into a review session.
 async function feedDueTopUp() {
-  if (!feedOpen || feedDueBusy || feedDueBuffer.length) return;
+  if (!feedOpen || feedDueBusy) return;
+  // A Flow keeps its own stock per phase (a mixed one restocks a phase while
+  // others still have cards), so it decides for itself whether to fetch.
   if (flowActive()) return flowTopUp();
+  if (feedDueBuffer.length) return;
   if (!hasSession()) return;                 // all four are Supabase-backed
   if (feedMounted.length + FEED_AHEAD < FEED_DUE_LEAD) return;
   if (Date.now() < feedDueQuietUntil) return;
@@ -10933,7 +10954,10 @@ CARD_SPECS['due-card'] = {
     const short = String(prompt || '').length <= 28 && !/[.?!]\s/.test(prompt || '');
     return '<div class="ai-single">' +
       '<div class="main-text' + (short ? ' due-word' : '') + '">' + esc(prompt) + '</div>' +
-      '<div class="due-hint">' + (rung ? 'tap to check' : 'tap for the answer') + '</div>' +
+      // The ticker ("27 left · ") is filled by flowRenderRail and stays live
+      // as cards are graded; empty outside a Flow.
+      '<div class="due-hint"><span class="due-left">' + (feedMode === 'flow' && flowLeft('recall') != null ? flowLeft('recall') + ' left · ' : '') + '</span>' +
+        (rung ? 'tap to check' : 'tap for the answer') + '</div>' +
     '</div>';
   },
   // Always both sides, so a reversed or reworded front reveals unambiguously.
@@ -11106,10 +11130,31 @@ const FLOW_GROUND_REST_DAYS = 14;   // a ground item rests this long before it c
 let feedMode    = 'scroll';   // 'scroll' | 'flow'
 let flowPhase   = 0;
 let flowCounts  = {};         // phase id -> owed at open, for the rail
-let flowDone    = {};         // phase id -> cards dealt with this sitting (the n in n / N)
+let flowDone    = {};         // phase id -> cards dealt with this sitting (what the counter counts down)
 let flowServedIn = {};        // phase id -> cards served this sitting
 
-const flowIsDiscover = () => feedMode === 'flow' && FLOW_PHASES[flowPhase].id === 'discover';
+// Two orders for a Flow (2026-10-05, Nate's ask). "In sequence" drains each
+// phase before the next, as above. "Mixed" (the default) deals one card at a
+// time from whichever phases still have something to give, so a sitting reads
+// flashcard, lesson, wander, flashcard… Tapping a step on the rail while
+// mixed narrows the feed to that one phase until it runs dry ("go through all
+// of them"), then it widens back to the mix.
+// The key is a literal, not a const: the home menu reads this before the
+// Flow block's consts exist.
+const FLOW_MIX_STOCK = 2;     // per phase, cards kept ready while mixed
+const FLOW_MIX_WEIGHT = { recall: 3, channels: 2, discover: 2, queue: 1, dive: 1, ground: 1 };
+function flowOrder() { try { return localStorage.getItem('break_flow_order') === 'sequence' ? 'sequence' : 'mix'; } catch (e) { return 'mix'; } }
+function setFlowOrder(o) { try { localStorage.setItem('break_flow_order', o); } catch (e) {} }
+let flowFocus = null;         // mixed: the phase id you tapped into, or null for the mix
+let flowDry   = {};           // mixed: phase id -> true once its source ran dry this sitting
+let flowMixPrimed = false;    // mixed: the first stock has landed, so the wander may join the deal
+
+const flowMixed = () => feedMode === 'flow' && flowOrder() === 'mix';
+// Mixed: the wander is just one more thing in the deal, so "Discover" only
+// takes over outright when you tap into it or when every owed phase is dry.
+const flowIsDiscover = () => feedMode === 'flow' && (flowMixed()
+  ? (flowFocus === 'discover' || (!flowFocus && FLOW_PHASES.every(p => p.id === 'discover' || flowDry[p.id])))
+  : FLOW_PHASES[flowPhase].id === 'discover');
 const flowActive     = () => feedMode === 'flow' && !flowIsDiscover();
 
 // ── Ground: your own words, coming back ────────────────────────────────
@@ -11247,6 +11292,7 @@ function flowAdvance() {
 // from the Queue all the way to Discover if there is nothing owed.
 async function flowTopUp() {
   if (!feedOpen || feedDueBusy || !flowActive()) return;
+  if (flowMixed()) return flowMixTopUp();
   feedDueBusy = true;
   try {
     let guard = 0;
@@ -11299,6 +11345,171 @@ async function flowTopUp() {
   }
 }
 
+// ── Mixed order ──────────────────────────────────────────────────────
+// Per-sitting cap for a phase. Tapping into a phase lifts its cap: "go
+// through all of them" means all of them.
+function flowCap(ph) {
+  if (flowFocus === ph.id) return Infinity;
+  return ph.id === 'dive' ? FLOW_DIVE_MAX : ph.id === 'ground' ? FLOW_GROUND_MAX : ph.id === 'channels' ? FLOW_CHAN_MAX : Infinity;
+}
+
+// A phase's source gave nothing. Mark it so the deal stops asking, and if you
+// were tapped into it, say so and widen back to the mix.
+function flowRunDry(ph) {
+  if (flowDry[ph.id]) return;
+  flowDry[ph.id] = true;
+  if (flowFocus === ph.id) {
+    if (flowServedIn[ph.id]) {
+      feedDueBuffer.unshift({ slug: 'flow-mark', data: { label: ph.label, text: ph.done, next: 'Mix' }, key: 'flow-mark:' + ph.id + ':' + Date.now() });
+    }
+    flowFocus = null;
+  }
+  if (flowIsDiscover()) { feedDueLastPos = feedMounted.length; feedDueQuietUntil = 0; feedTopUp(); }
+}
+
+// Keep FLOW_MIX_STOCK cards of every live phase ready (FEED_AHEAD of the one
+// you tapped into), so the deal always has a choice. Channels are never
+// marked dry in the open mix: their lessons are still being written in the
+// background and turn up when built.
+async function flowMixTopUp() {
+  if (!feedOpen || feedDueBusy || feedMode !== 'flow') return;
+  feedDueBusy = true;
+  try {
+    const want = flowFocus ? FLOW_PHASES.filter(p => p.id === flowFocus) : FLOW_PHASES;
+    // Every phase is stocked at once and the deal starts after, so the first
+    // few cards already have a choice to draw from (filling after each
+    // phase in turn dealt three flashcards before the queue had arrived).
+    // The channel sweep can be slow (it may build a lesson), so the four
+    // one-query sources deal as soon as they land and channels join after.
+    const stock = async ph => {
+      if (ph.id === 'discover' || flowDry[ph.id]) return;   // feedTopUp stocks the wander
+      const have = feedDueBuffer.filter(x => flowPhaseHas(ph, x.slug)).length;
+      const need = (flowFocus ? FEED_AHEAD : FLOW_MIX_STOCK) - have;
+      if (need <= 0) return;
+      const room = flowCap(ph) - (flowServedIn[ph.id] || 0);
+      if (room <= 0 || !hasSession()) { flowRunDry(ph); return; }
+      let added = 0;
+      if (ph.id === 'channels') {
+        for (let k = 0; k < Math.min(need, room); k++) {
+          let i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug));
+          if (i === -1) { chanQuietUntil = 0; await chanTopUp(); i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug)); }
+          if (i === -1) break;
+          const it = chanBuffer.splice(i, 1)[0];
+          const c = it.data && it.data.chan;
+          if (c) { c.last_shown_at = new Date().toISOString(); chanUpdate(c.id, { last_shown_at: c.last_shown_at }).catch(() => {}); }
+          feedDueBuffer.push(it);
+          flowServedIn.channels = (flowServedIn.channels || 0) + 1;
+          added++;
+        }
+        // Dry means nothing new AND nothing of it still in hand.
+        if (!added && !have && flowFocus === ph.id) flowRunDry(ph);
+      } else {
+        let items = null;
+        try { items = await CARD_SOURCES[ph.slug](Math.min(need, room)); } catch (e) { items = null; }
+        (items || []).forEach(d => {
+          const key = feedKey(ph.slug, d);
+          if (feedDueSeen.has(key)) return;
+          feedDueSeen.add(key);
+          feedDueBuffer.push({ slug: ph.slug, data: d, key });
+          flowServedIn[ph.id] = (flowServedIn[ph.id] || 0) + 1;
+          added++;
+        });
+        if (!added && !have) flowRunDry(ph);
+      }
+    };
+    const safe = ph => stock(ph).catch(() => {});
+    const fast = want.filter(p => p.id !== 'channels');
+    const chan = want.find(p => p.id === 'channels');
+    await Promise.all([
+      Promise.all(fast.map(safe)).then(() => { flowMixPrimed = true; feedFill(); }),
+      chan ? safe(chan).then(feedFill) : null,
+    ]);
+  } finally {
+    feedDueBusy = false;
+    flowMixPrimed = true;
+    feedFill();
+    flowRenderRail();
+  }
+}
+
+// One slot of the deal. Markers go first. Otherwise a weighted draw over the
+// phases with a card ready, never the same phase twice running while another
+// has something, so it reads flashcard, lesson, wander, flashcard…
+function flowMixTake() {
+  const mi = feedDueBuffer.findIndex(x => x.slug === 'flow-mark');
+  if (mi !== -1) return feedDueBuffer.splice(mi, 1)[0];
+  // The Scroll's buffer is warm at open; until the owed phases have been
+  // stocked once, the wander stays out of the deal or a sitting would open on
+  // four Discover cards with the flashcards stuck behind them.
+  const ready = FLOW_PHASES.filter(p => p.id === 'discover' ? (flowMixPrimed && feedBuffer.length > 0) : feedDueBuffer.some(x => flowPhaseHas(p, x.slug)));
+  if (!ready.length) return null;
+  // A sitting opens on a flashcard when one is owed.
+  if (!feedMounted.length && ready.some(p => p.id === 'recall')) {
+    const i = feedDueBuffer.findIndex(x => x.slug === 'due-card');
+    if (i !== -1) return feedDueBuffer.splice(i, 1)[0];
+  }
+  const last = feedMounted[feedMounted.length - 1];
+  const lastPh = last ? (FLOW_PHASES.find(p => flowPhaseHas(p, last)) || { id: 'discover' }).id : null;
+  let pool = ready.filter(p => p.id !== lastPh);
+  if (!pool.length) pool = ready;
+  const total = pool.reduce((s, p) => s + (FLOW_MIX_WEIGHT[p.id] || 1), 0);
+  let r = Math.random() * total, pick = pool[pool.length - 1];
+  for (const p of pool) { r -= (FLOW_MIX_WEIGHT[p.id] || 1); if (r < 0) { pick = p; break; } }
+  if (pick.id === 'discover') {
+    const it = feedTake(true);
+    if (it) return it;
+    // The wander held its card back (variety rule). Deal from any phase
+    // that is ready, repeat or not, rather than stall with a card in hand.
+    const rest = ready.filter(p => p.id !== 'discover');
+    if (!rest.length) return null;
+    pick = rest[Math.floor(Math.random() * rest.length)];
+  }
+  const i = feedDueBuffer.findIndex(x => flowPhaseHas(pick, x.slug));
+  return i === -1 ? null : feedDueBuffer.splice(i, 1)[0];
+}
+
+// Narrowed to one phase: only its cards (and markers) come off the buffers.
+function flowFocusTake() {
+  const mi = feedDueBuffer.findIndex(x => x.slug === 'flow-mark');
+  if (mi !== -1) return feedDueBuffer.splice(mi, 1)[0];
+  if (flowFocus === 'discover') return feedTake(true);
+  const ph = FLOW_PHASES.find(p => p.id === flowFocus);
+  const i = ph ? feedDueBuffer.findIndex(x => flowPhaseHas(ph, x.slug)) : -1;
+  return i === -1 ? null : feedDueBuffer.splice(i, 1)[0];
+}
+
+// Tap a step while mixed: narrow to that phase. Tap it again, or Mix, to
+// widen. Cards already dealt ahead of you but not yet reached go back in
+// their buffers so the narrowing is immediate, not three swipes away.
+function flowFocusOn(id) {
+  if (!flowMixed()) return;
+  const ph = FLOW_PHASES.find(p => p.id === id);
+  if (id === 'mix' || id === flowFocus || !ph) flowFocus = null;
+  else if (flowDry[id]) { showToast(ph.done); return; }
+  else flowFocus = id;
+  flowDropAhead();
+  if (flowIsDiscover()) { feedDueLastPos = feedMounted.length; feedDueQuietUntil = 0; }
+  flowRenderRail();
+  feedFill();
+  feedTopUp();
+  feedDueTopUp();
+}
+
+function flowDropAhead() {
+  const items = feedItems();
+  for (let i = items.length - 1; i > feedActiveIdx; i--) {
+    const node = items[i], it = node._item;
+    if (it && !node.dataset.dueDone) {
+      if (it.slug === 'flow-mark') {}
+      else if (CHAN_SLUGS.includes(it.slug)) chanBuffer.unshift(it);
+      else if (FLOW_PHASES.some(p => flowPhaseHas(p, it.slug))) feedDueBuffer.unshift(it);
+      else feedBuffer.unshift(it);
+    }
+    node.remove();
+    feedMounted.pop();
+  }
+}
+
 // Which phase a mounted item belongs to. A marker sits at the boundary and
 // counts as the phase it introduces.
 function flowPhaseOfItem(item) {
@@ -11310,19 +11521,39 @@ function flowPhaseOfItem(item) {
   return i === -1 ? flowPhase : i;
 }
 
+// The counter counts DOWN: cards owed at open minus cards graded, "27 left".
+function flowLeft(id) {
+  const n = flowCounts[id];
+  if (!n) return null;
+  return Math.max(0, n - (flowDone[id] || 0));
+}
+function flowLeftHtml(id) {
+  const left = flowLeft(id);
+  return left == null ? '' : ' <span class="flow-n">' + left + ' left</span>';
+}
+
 function flowRenderRail() {
   const el = document.getElementById('feed-filters');
   if (!el || feedMode !== 'flow') return;
-  const onScreen = feedActiveEl && feedActiveEl.dataset && feedActiveEl.dataset.flowPhase;
-  const shown = onScreen != null && onScreen !== '' ? Math.min(parseInt(onScreen, 10), flowPhase) : flowPhase;
-  el.innerHTML = FLOW_PHASES.map((p, i) => {
-    const n = flowCounts[p.id];
-    const cls = 'flow-step' + (i === shown ? ' on' : (i < shown ? ' done' : ''));
-    return '<button class="' + cls + '" data-flow-skip="' + i + '">' + esc(p.label) +
-      (n && i > shown ? ' <span class="flow-n">' + n + '</span>' : '') +
-      (n && i === shown ? ' <span class="flow-n">' + Math.min(flowDone[p.id] || 0, n) + ' / ' + n + '</span>' : '') +
-      '</button>';
-  }).join('');
+  if (flowMixed()) {
+    const on = flowFocus || 'mix';
+    el.innerHTML = [{ id: 'mix', label: 'Mix' }].concat(FLOW_PHASES).map(p => {
+      const cls = 'flow-step' + (p.id === on ? ' on' : (flowDry[p.id] ? ' done' : ''));
+      return '<button class="' + cls + '" data-flow-focus="' + p.id + '">' + esc(p.label) + flowLeftHtml(p.id) + '</button>';
+    }).join('');
+  } else {
+    const onScreen = feedActiveEl && feedActiveEl.dataset && feedActiveEl.dataset.flowPhase;
+    const shown = onScreen != null && onScreen !== '' ? Math.min(parseInt(onScreen, 10), flowPhase) : flowPhase;
+    el.innerHTML = FLOW_PHASES.map((p, i) => {
+      const cls = 'flow-step' + (i === shown ? ' on' : (i < shown ? ' done' : ''));
+      return '<button class="' + cls + '" data-flow-skip="' + i + '">' + esc(p.label) + flowLeftHtml(p.id) + '</button>';
+    }).join('');
+  }
+  // The flashcard on screen carries the same ticker under its prompt.
+  const left = flowLeft('recall');
+  document.querySelectorAll('.feed-item[data-slug="due-card"] .due-left').forEach(s => {
+    s.textContent = left == null ? '' : left + ' left · ';
+  });
 }
 
 // Jump ahead. Backwards is not offered: everything behind you was either
@@ -11344,6 +11575,9 @@ async function openFlow() {
   flowServedIn = {};
   flowCounts = {};
   flowDone = {};
+  flowFocus = null;
+  flowDry = {};
+  flowMixPrimed = false;
   groundPool = null;   // Ink may have changed since the last sitting
   openFeed();
   if (!hasSession()) return;
@@ -11374,9 +11608,10 @@ function flowUpdateHomeSub() {
   const bits = [];
   if (c) bits.push(c + ' card' + (c === 1 ? '' : 's') + ' due');
   if (q) bits.push(q + ' in the queue');
+  const mixed = flowOrder() === 'mix';
   el.textContent = bits.length
-    ? bits.join(' · ') + ', then lessons, a dive, wander'
-    : 'cards, lessons, queue, a dive, then wander';
+    ? bits.join(' · ') + (mixed ? ', mixed with lessons, a dive, wander' : ', then lessons, a dive, wander')
+    : (mixed ? 'cards, lessons, queue, a dive and wander, mixed' : 'cards, lessons, queue, a dive, then wander');
 }
 (() => {
   const mo = new MutationObserver(flowUpdateHomeSub);
@@ -11389,6 +11624,8 @@ function flowUpdateHomeSub() {
 document.addEventListener('click', async e => {
   const skip = e.target.closest('[data-flow-skip]');
   if (skip) { flowSkipTo(parseInt(skip.dataset.flowSkip, 10)); return; }
+  const focus = e.target.closest('[data-flow-focus]');
+  if (focus) { flowFocusOn(focus.dataset.flowFocus); return; }
 
   // "Let it go": the same status flip Ink's Mind screen does. The row stays;
   // it just stops coming back.
@@ -11423,10 +11660,13 @@ function feedFill() {
     // Cadence is measured here, at mount, not at generation: generation runs
     // ahead by an unpredictable amount, so "every 6th card" only means
     // anything at the position a card actually lands in.
-    const item = feedDueReady() ? feedDueBuffer.shift() : feedTake();
+    // A mixed Flow deals a slot at a time across its phases; otherwise due
+    // work goes first when it is ready.
+    const item = flowMixed() ? (flowFocus ? flowFocusTake() : flowMixTake()) : (feedDueReady() ? feedDueBuffer.shift() : feedTake());
     if (!item) break;              // holding for variety; refills on next batch
     if (isDueSlug(item.slug)) feedDueLastPos = feedMounted.length;
     const node = feedItemNode(item);
+    node._item = item;             // so a narrowed Flow can hand it back to its buffer
     // The rail follows the card on screen, not the prefetch cursor, so each
     // card remembers which phase it was mounted under.
     if (feedMode === 'flow') node.dataset.flowPhase = String(flowPhaseOfItem(item));
@@ -13379,7 +13619,8 @@ CARD_SPECS['chan-recall'] = {
       '<button class="due-btn due-miss" data-chan-rate="miss">Miss</button>' +
       '<button class="due-btn due-hard" data-chan-rate="hard">Hard</button>' +
       '<button class="due-btn due-easy" data-chan-rate="easy">Easy</button>' +
-    '</div>',
+    '</div>' +
+    '<div class="feed-back-acts">' + feedActBtn('data-feed-remember="1"', '☆', 'Make a flashcard') + '</div>',
 };
 
 function chanBack(d) {
@@ -13387,6 +13628,7 @@ function chanBack(d) {
     '<div class="feed-back-topic">' + esc(d.unit.title) + '</div>' +
     '<div class="feed-back-acts">' +
       feedActBtn('data-feed-deeper="1"', '↑', 'Go deeper') +
+      feedActBtn('data-feed-remember="1"', '☆', 'Make a flashcard') +
       feedActBtn('data-chan-more="1"', '▲', 'More from this channel') +
       feedActBtn('data-chan-course="1"', '›', 'Open the course') +
       feedActBtn('data-chan-mute="1"', '×', 'Mute this channel') +

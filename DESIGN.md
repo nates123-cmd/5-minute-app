@@ -18,9 +18,16 @@ Vocabulary's own palette (cream, coral, teal) was **not** used: Nate's palette
 note wins the ground, and WikiTok agrees with it.
 
 **The motif that does real work:** Vocabulary's `0/5` pill is the Flow rail's
-counter. It sits only on the step you are in and counts flashcards you have
-actually graded against the number owed when the sitting opened (`flowDone`
-over `flowCounts`). It is data, never decoration.
+counter. It counts DOWN (`27 left`, 2026-10-05): cards owed when the sitting
+opened minus cards actually graded (`flowCounts` minus `flowDone`). The pill
+styling sits only on the step you are in; the number shows on every step that
+owes something, and again under the prompt of the flashcard on screen. It is
+data, never decoration.
+
+**Flow order (2026-10-05):** Mixed is the default: one card at a time from
+every phase that still has something, so the rail starts with `Mix` and each
+step is a tab you can narrow to. In sequence (home menu, `Flow:`) is the old
+drain-each-phase order.
 
 ## Register
 

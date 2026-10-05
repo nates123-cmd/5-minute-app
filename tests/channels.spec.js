@@ -87,7 +87,7 @@ test('offer card: Keep saves, Skip does not', async ({ page }) => {
 test('in a Flow, channel lessons come right after Cards, not after Discover', async ({ page }) => {
   await stub(page, { units: [unit()] });
   await boot(page);
-  await page.evaluate(() => openFlow());
+  await page.evaluate(() => { localStorage.setItem('break_flow_order', 'sequence'); openFlow(); });
   await page.waitForFunction(() => typeof feedMounted !== 'undefined' && feedMounted.includes('chan-unit'), null, { timeout: 8000 });
   const s = await page.evaluate(() => ({
     phase: FLOW_PHASES[flowPhaseOfItem({ slug: 'chan-unit' })].id,
