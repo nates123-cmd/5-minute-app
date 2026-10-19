@@ -5634,10 +5634,24 @@ function localDateStr(d = new Date()) {
   return y + '-' + m + '-' + day;
 }
 
+// Words looked up in KOReader on the Kindle come first. The Beelink drip
+// pushes them with this source (see ~/kindle-vocab/koreader_sync.py); the
+// rest of the due pile is ordered by how overdue it is, so without this a
+// card created today sits behind every overdue one and never shows while
+// the backlog is deep. Fetched separately so the lead cards never fall
+// outside the 50-card window.
+const SRS_LEAD_SOURCE = 'KOReader Vocabulary Builder';
+
 async function srsGetDue() {
   const today = localDateStr();
-  const rows = await sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=50');
-  return (rows || []).filter(c => !c.next_review || c.next_review <= today);
+  const [lead, rows] = await Promise.all([
+    sbFetch('flashcards?source=eq.' + encodeURIComponent(SRS_LEAD_SOURCE)
+      + '&next_review=lte.' + today + '&order=created_at.desc&limit=20').catch(() => []),
+    sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=50'),
+  ]);
+  const seen = new Set((lead || []).map(c => c.id));
+  const all = (lead || []).concat((rows || []).filter(c => !seen.has(c.id)));
+  return all.filter(c => !c.next_review || c.next_review <= today).slice(0, 50);
 }
 
 async function srsGetDueCount() {
