@@ -2177,6 +2177,9 @@
       font-size: clamp(26px, 7vw, 34px); line-height: 1.15; letter-spacing: -0.4px;
       margin-bottom: 14px;
     }
+    /* The answer leads even when it's a sentence or a paragraph. */
+    .feed-item[data-slug="due-card"] .due-q.due-q-mid  { font-size: clamp(21px, 5.6vw, 26px); line-height: 1.25; letter-spacing: -0.2px; }
+    .feed-item[data-slug="due-card"] .due-q.due-q-long { font-size: 18px; font-weight: 400; line-height: 1.45; letter-spacing: 0; text-align: left; }
     .feed-item[data-slug="due-card"] .due-a {
       font-family: var(--font-sans); font-weight: 400; color: var(--text-muted);
       font-size: 17px; line-height: 1.5; margin-bottom: 38px;
@@ -6346,7 +6349,7 @@ function srsWireRateBtns() {
 function renderSrsFlip(card) {
   srsFlipShell(
     '<span class="srs-card-text">' + esc(card.front) + '</span>', 'Tap to reveal',
-    '<span class="srs-card-text">' + esc(card.back) + '</span>');
+    '<span class="srs-card-text">' + esc(cardAnswerText(card.back)) + '</span>');
 }
 
 // Rung 1 — the definition, produce the term. Costs nothing: no Claude, no cache.
@@ -10906,6 +10909,24 @@ CARD_SOURCES['due-card'] = async (n) => {
 // degrades to a rung it can support. The rung actually shown is stamped on
 // the row (_rung), so a pack that lands later can't buy a rung you weren't
 // asked at.
+// Some cards were saved Jeopardy-style, with the answer phrased as a
+// question ('What does "histrionic" mean?', 'What is a Divan?'). Shown as
+// an answer that reads backwards, so display just the term. Display only:
+// the row is never rewritten.
+function cardAnswerText(s) {
+  const t = String(s || '').trim();
+  const m = t.match(/^what (?:does|is|are)\s+(?:an?\s+|the\s+)?["“'‘]?(.+?)["”'’]?(?:\s+mean)?\s*\??$/i);
+  if (!m || m[1].length > 40) return t;
+  return m[1].charAt(0).toUpperCase() + m[1].slice(1);
+}
+
+// The answer is the bold headline; a long one steps down so a paragraph
+// doesn't fill the screen in display type.
+function dueAnswerSize(s) {
+  const n = String(s || '').length;
+  return n > 160 ? ' due-q-long' : n > 70 ? ' due-q-mid' : '';
+}
+
 function dueRateRow(suggest) {
   return '<div class="due-rate">' +
     ['Miss', 'Hard', 'Easy'].map((l, r) =>
@@ -10947,13 +10968,19 @@ CARD_SPECS['due-card'] = {
     '</div>';
   },
   // Always both sides, so a reversed or reworded front reveals unambiguously.
+  // The Cards screen's hierarchy (Nate, 2026-10-26): the answer leads, bold;
+  // the side you were prompted with sits under it, smaller and lighter. A
+  // plain flip's answer is the back; every harder rung asks you to produce
+  // the front (the term), so there the front leads.
   renderBack: (d) => {
     const rung = d._rung != null ? d._rung : ladderRung(d, FEED_LADDER_CAP);
     const crit = rung === 4 ? ((ladderPack(d) || {}).produce || {}).criteria || [] : [];
+    const answer = cardAnswerText(rung ? d.front : d.back);
+    const prompt = rung ? d.back : d.front;
     return '<div class="feed-back-kind">Due flashcard' +
       (rung ? ' · ' + esc(LADDER_NAMES[rung].toLowerCase()) : '') + '</div>' +
-    '<div class="due-q">' + esc(d.front) + '</div>' +
-    '<div class="due-a">' + esc(d.back) + '</div>' +
+    '<div class="due-q' + dueAnswerSize(answer) + '">' + esc(answer) + '</div>' +
+    '<div class="due-a">' + esc(prompt) + '</div>' +
     (crit.length ? '<ul class="due-points due-crit">' + crit.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' : '') +
     dueRateRow() +
     '<button class="feed-deeper-link is-center" data-feed-deeper="1">Go deeper ↑</button>';
