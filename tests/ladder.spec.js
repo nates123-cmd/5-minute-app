@@ -197,10 +197,16 @@ test.describe('ladderRung degradation', () => {
     expect(await rung(page, 3, FULL)).toBe(3);
   });
 
-  // Rung 4 additionally needs a live session; boot() has none, so it must
-  // degrade to 3 rather than rendering a Produce surface that cannot grade.
-  test('rung 4 signed out degrades to 3', async ({ page }) => {
-    expect(await rung(page, 4, FULL)).toBe(3);
+  // Rung 4 (Explain) is self-graded since 2026-10-26: it needs only its
+  // cached prompt, not a session, so it works signed out and offline.
+  test('rung 4 needs no session, only its prompt', async ({ page }) => {
+    expect(await rung(page, 4, FULL)).toBe(4);
+    expect(await rung(page, 4, { reworded: FULL.reworded, discriminate: FULL.discriminate })).toBe(3);
+  });
+
+  test('the feed no longer caps the ladder', async ({ page }) => {
+    expect(await page.evaluate(() => FEED_LADDER_CAP)).toBe(4);
+    expect(await rung(page, 4, FULL, 4)).toBe(4);
   });
 
   test('the cap ceiling applies before any degradation', async ({ page }) => {

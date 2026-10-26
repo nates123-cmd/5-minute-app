@@ -2,9 +2,8 @@
 // against the live DOM with a hand-built queue, so every rung is exercised
 // without waiting days for an SM-2 interval or spending a model call.
 //
-// No session and a stubbed fetch throughout: rung 4 needs a live session, so
-// these also prove the offline/signed-out degradation actually degrades
-// instead of erroring.
+// No session and a stubbed fetch throughout, which also proves every rung,
+// including the self-graded Explain rung, renders signed out.
 import { test, expect } from '@playwright/test';
 import { boot, stubFetchEmpty } from './helper.js';
 
@@ -107,12 +106,16 @@ test('a wrong pick still reveals the correct option and suggests Miss', async ({
   await expect(page.locator('.srs-btn-miss')).toHaveClass(/srs-rate-suggest/);
 });
 
-// Rung 4 needs hasSession(), which these tests deliberately lack.
-test('rung 4 signed out degrades to Discriminate, but still reads Mastered', async ({ page }) => {
+// Rung 4 is a flip now (2026-10-26): no textarea, no Type/Speak, no grading call.
+test('rung 4 is a self-graded flip with no keyboard, and reads Mastered', async ({ page }) => {
   await showCardAt(page, 4);
-  await expect(page.locator('.srs-mc-btn')).toHaveCount(4);       // rung 3 surface
-  await expect(page.locator('#srs-prod-input')).toHaveCount(0);   // no keyboard
-  // The dots show what you're being asked; the label reflects the card itself.
+  await expect(page.locator('#srs-flip-card .srs-card-face').first()).toContainText('Use it in a sentence about a news story.');
+  await expect(page.locator('#srs-flip-card .srs-card-face').first()).toContainText('Answer in your head');
+  await expect(page.locator('#srs-card-area textarea, [data-prod-mode]')).toHaveCount(0);
+  await page.locator('#srs-flip-wrap').click();
+  await expect(page.locator('.srs-card-back')).toContainText(FRONT);
+  await expect(page.locator('.srs-card-back .srs-explain-crit')).toContainText('names a slant');
+  await expect(page.locator('#srs-rate-btns')).toBeVisible();
   await expect(page.locator('#srs-rung')).toContainText('Mastered');
   await expect(page.locator('#srs-rung')).toHaveClass(/mastered/);
 });
@@ -181,7 +184,7 @@ test('grading a card advances the ladder and counts the promotion', async ({ pag
   await expect(page.locator('.srs-done')).toContainText('1 card moved up a rung.');
 });
 
-test('the scroll feed caps a rung-4 card at the reworded prompt', async ({ page }) => {
+test('the feed asks a rung-4 card at Explain: prompt on the front, criteria on the back', async ({ page }) => {
   const html = await page.evaluate(([front, back]) => {
     const src = ladderFingerprint(front, back);
     const card = {
@@ -190,16 +193,52 @@ test('the scroll feed caps a rung-4 card at the reworded prompt', async ({ page 
         reworded: { kind: 'cloze', prompt: 'His ____ history of the war reads like a brief.' },
         discriminate: { stem: 's', options: [
           { text: 'a', correct: true }, { text: 'b', correct: false }, { text: 'c', correct: false }] },
-        produce: { prompt: 'Use it.', criteria: [] } },
+        produce: { prompt: 'Use it about a newspaper.', criteria: ['names a slant'] } },
       variants_src: src,
     };
-    return { front: CARD_SPECS['due-card'].render(card), back: CARD_SPECS['due-card'].renderBack(card) };
+    return { front: CARD_SPECS['due-card'].render(card), back: CARD_SPECS['due-card'].renderBack(card), rung: card._rung };
   }, [FRONT, BACK]);
-  expect(html.front).toContain('His ____ history of the war');
+  expect(html.rung).toBe(4);
+  expect(html.front).toContain('Use it about a newspaper.');
+  expect(html.front).toContain('answer in your head');
   expect(html.front).not.toContain('<textarea');
-  expect(html.front).not.toContain('srs-mc-btn');
   // The back always carries both sides so the reveal is unambiguous.
   expect(html.back).toContain(FRONT);
   expect(html.back).toContain(BACK);
-  expect(html.back).toContain('reworded');
+  expect(html.back).toContain('names a slant');
+  expect(html.back).toContain('explain');
+});
+
+test('the feed asks rung 3 on the front: options, then a grade row with the right grade marked', async ({ page }) => {
+  await page.evaluate(([front, back]) => {
+    const src = ladderFingerprint(front, back);
+    const card = {
+      id: 'x', front, back, ladder_level: 3, interval: 1, ease_factor: 2.5,
+      variants: { v: 1, src,
+        reworded: { kind: 'cloze', prompt: 'His ____ history.' },
+        discriminate: { stem: 'Which is right?', why: 'It is about an argument.', options: [
+          { text: 'right one', correct: true }, { text: 'wrong b', correct: false }, { text: 'wrong c', correct: false }] } },
+      variants_src: src,
+    };
+    const el = document.createElement('div');
+    el.className = 'feed-item'; el.dataset.slug = 'due-card';
+    el.innerHTML = '<div class="feed-body">' + CARD_SPECS['due-card'].render(card) + '</div>';
+    el._due = card;
+    document.body.appendChild(el);
+  }, [FRONT, BACK]);
+  await expect(page.locator('[data-due-disc]')).toHaveCount(3);
+  await page.locator('[data-due-disc]', { hasText: 'wrong b' }).click();
+  await expect(page.locator('[data-due-disc]', { hasText: 'right one' })).toHaveClass(/is-correct/);
+  await expect(page.locator('[data-due-disc]', { hasText: 'wrong b' })).toHaveClass(/is-wrong/);
+  await expect(page.locator('.due-disc-why')).toContainText('It is about an argument.');
+  await expect(page.locator('.due-verdict [data-due-rate="0"]')).toHaveClass(/is-suggest/);
+  expect(await page.evaluate(() => document.querySelector('.feed-item')._due._rung)).toBe(3);
+});
+
+test('an Easy in the feed credits the rung shown, not one a later pack would allow', async ({ page }) => {
+  const upd = await page.evaluate(() => {
+    const card = { id: 'y', front: 'a', back: 'b', ladder_level: 3, ladder_streak: 0, interval: 1, ease_factor: 2.5, _rung: 1 };
+    return ladderApply(card, 2, card._rung);
+  });
+  expect(upd.ladder_level).toBe(3);   // shown 1 < stored 3: no credit
 });

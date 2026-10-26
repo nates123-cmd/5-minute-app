@@ -847,10 +847,8 @@
     .srs-rung-ghost { opacity: 0.4; }
     .srs-rung.mastered { color: var(--accent-3); opacity: 1; }
     .srs-rate-suggest { outline: 2px solid currentColor; outline-offset: 2px; }
-    /* Produce rung */
-    .srs-prod { display: flex; flex-direction: column; }
-    .srs-prod-fb { background: var(--surface); border-radius: var(--radius); padding: 16px; line-height: 1.5; margin: 14px 0 12px; font-size: 0.92rem; }
-    .srs-prod-answer { line-height: 1.5; font-size: 0.92rem; padding: 0 2px 4px; }
+    /* Explain rung: what a good answer covers, on the back face */
+    .srs-explain-crit { margin: 12px 0 0; padding-left: 18px; text-align: left; font-size: 0.85rem; line-height: 1.5; color: var(--muted); }
     /* Mode toggle in header */
     .srs-mode-toggle { display: flex; gap: 4px; }
     .srs-mode-btn { background: none; border: 1.5px solid var(--border); border-radius: 8px; padding: 4px 10px; font-size: 0.78rem; color: var(--muted); cursor: pointer; font-family: var(--font); }
@@ -1921,6 +1919,14 @@
     .due-opt:disabled { cursor: default; }
     .due-opt.is-correct { background: var(--yes-bg); border-color: var(--yes-bg); color: var(--yes-fg); font-weight: 600; }
     .due-opt.is-wrong   { background: var(--no-bg); border-color: var(--no-bg); color: var(--no-fg); }
+    .chan-go { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+    .chan-go-name { font-weight: 600; }
+    .chan-go-sub { font-size: 12.5px; color: var(--text-muted); line-height: 1.4; }
+    .chan-more-next { font-size: 14px; color: var(--text-muted); margin: 8px 0 14px; }
+    .due-btn.is-suggest { outline: 2px solid currentColor; outline-offset: 2px; }
+    .due-disc-why { margin-bottom: 16px; line-height: 1.5; }
+    .feed-item[data-slug="due-card"] .due-disc-stem { font-size: clamp(19px, 5vw, 24px); margin-bottom: 4px; }
+    .due-crit { text-align: left; font-size: 14px; color: var(--text-muted); margin-top: -18px; }
     .due-verdict:not(:empty) {
       font-family: var(--font-sans);
       font-size: 13.5px;
@@ -5916,7 +5922,11 @@ function sm2(card, rating) {
 //   1 Reversed      back → produce the front
 //   2 Reworded      a paraphrase, or a cloze sentence with the term blanked
 //   3 Discriminate  four near-miss usages, one right
-//   4 Produce       write or speak it; Claude grades hit / partial / miss
+//   4 Explain       use or explain it in your own words, in your head, then check
+//
+// Rung 4 was "Produce": type or speak an answer and Claude graded it. Nate
+// skipped it every time (2026-10-26), so it is now a self-graded flip like the
+// rest, which also makes it work in the Flow and offline.
 //
 // Rungs 2 and up need generated content, cached on the row. Every path here
 // degrades DOWN to a rung the card can actually support rather than erroring,
@@ -5933,12 +5943,15 @@ const LADDER_MAX_INTERVAL = 365;   // ceiling, so the multiplier can't retire a 
 // While a card is still climbing, cap how far SM-2 may throw it. A card you
 // have only ever recognised is not learned however long the interval says, and
 // an unclimbed card parked 83 days out can never show you a harder framing.
-// Lifted entirely once the card reaches Produce, where the real spacing starts.
+// Lifted entirely once the card reaches Explain, where the real spacing starts.
 const LADDER_CLIMB_MAX_INTERVAL = 14;
 const LADDER_PACK_V = 1;           // bump to force every pack to regenerate
 const LADDER_WAIT_MS = 2500;       // longest we hold the screen for a first-time pack
-const FEED_LADDER_CAP = 2;         // the scroll feed never asks above Reworded
-const LADDER_NAMES = ['Recognize', 'Reversed', 'Reworded', 'Discriminate', 'Produce'];
+// The feed asks every rung now (2026-10-26). It was capped at Reworded while
+// rung 4 needed a keyboard, and cards promoted to 3 then froze there, since
+// an Easy below the stored rung earns nothing. Kept as a named ceiling.
+const FEED_LADDER_CAP = LADDER_MAX;
+const LADDER_NAMES = ['Recognize', 'Reversed', 'Reworded', 'Discriminate', 'Explain'];
 
 function ladderLevel(card) {
   const n = Number(card && card.ladder_level);
@@ -5980,8 +5993,9 @@ function ladderRung(card, cap) {
   const ceiling = (cap === null || cap === undefined) ? LADDER_MAX : cap;
   let lvl = Math.min(ladderLevel(card), ceiling);
   const v = ladderPack(card);
-  const live = hasSession() && navigator.onLine;
-  if (lvl === 4 && !(live && v && v.produce && v.produce.prompt)) lvl = 3;
+  // Explain is self-graded, so it needs only its cached prompt: no session,
+  // no network.
+  if (lvl === 4 && !(v && v.produce && v.produce.prompt)) lvl = 3;
   if (lvl === 3 && !(v && v.discriminate && Array.isArray(v.discriminate.options)
                      && v.discriminate.options.length >= 3
                      && v.discriminate.options.some(o => o && o.correct))) lvl = 2;
@@ -6048,8 +6062,8 @@ function ladderPackPrompt(card) {
     + '"discriminate": {"stem":"...","options":[{"text":"...","correct":true},{"text":"...","correct":false},{"text":"...","correct":false},{"text":"...","correct":false}],"why":"..."} — '
     + 'four short sentences, exactly one of which uses or states it correctly. The three wrong ones must be NEAR misses: a neighbouring concept, '
     + 'a common confusion, a subtly wrong scope or intensity. Nothing obviously silly. "why" is one sentence on what separates the right one.\n\n'
-    + '"produce": {"prompt":"...","criteria":["...","..."]} — an instruction to write or say one or two sentences that USE or EXPLAIN this in their own words. '
-    + '2 to 4 short criteria a good answer must satisfy.\n\n'
+    + '"produce": {"prompt":"...","criteria":["...","..."]} — a question or instruction that makes them USE or EXPLAIN this in one or two sentences of their own, '
+    + 'answered in their head (nothing is typed). It must not contain the answer. 2 to 4 short criteria a good answer covers, shown after they check.\n\n'
     + '"mc_distractors": ["...","...","..."] — three wrong answers with the same shape and length as the back, for a plain multiple-choice version of the card.\n\n'
     + 'Plain sentences. No markdown, no emoji, no preamble.';
 }
@@ -6137,10 +6151,13 @@ async function ladderEnsurePack(card) {
 // newly promoted to rung 2. Capped so a big import cannot fan out into spend.
 const LADDER_WARM_MAX = 20;
 let ladderWarmToken = 0;
-async function ladderWarmQueue() {
+// The Flow passes its own due list: it never generates mid-thumb, so its
+// packs have to be on the rows before the cards are dealt.
+async function ladderWarmQueue(list) {
   const token = ++ladderWarmToken;
-  if (!hasSession() || !navigator.onLine || srsMode !== 'ladder') return;
-  const todo = srsQueue.filter(c => ladderLevel(c) >= 2 && !ladderPack(c)).slice(0, LADDER_WARM_MAX);
+  if (!hasSession() || !navigator.onLine) return;
+  if (!list && srsMode !== 'ladder') return;
+  const todo = (list || srsQueue).filter(c => c && ladderLevel(c) >= 2 && !ladderPack(c)).slice(0, LADDER_WARM_MAX);
   for (const card of todo) {
     if (token !== ladderWarmToken || !navigator.onLine) return;
     try { await ladderEnsurePack(card); } catch (e) {}
@@ -6196,10 +6213,6 @@ async function loadSrsReview() {
   document.getElementById('srs-rung').textContent = '';
   document.getElementById('srs-edit-btn').style.display = 'none';
   document.getElementById('srs-controls').innerHTML = '';
-  // A Produce rung abandoned mid-recording would leave the recogniser writing
-  // into a textarea that no longer exists.
-  if (arRecording) arStopRecording();
-  arUseRecTargets(AR_REC_DEFAULT);
   try {
     srsQueue = await srsGetDue();
     srsCurrent = 0; srsStats = { easy:0, hard:0, miss:0, promoted:0, mastered:0 };
@@ -6245,7 +6258,7 @@ function srsRenderRung(card, rung) {
   srsShownLevel = rung;
   srsRenderRungLine(card, rung);
   const pack = ladderPack(card);
-  if (rung === 4)      renderSrsProduce(card, pack);
+  if (rung === 4)      renderSrsExplain(card, pack);
   else if (rung === 3) renderSrsDiscriminate(card, pack);
   else if (rung === 2) renderSrsReworded(card, pack);
   else if (rung === 1) renderSrsReverse(card);
@@ -6253,8 +6266,8 @@ function srsRenderRung(card, rung) {
 }
 
 // One quiet line. The dots are what you're being asked right now; the mastered
-// treatment is a property of the card, so it stays on even when the Produce
-// rung has degraded away because you're offline.
+// treatment is a property of the card, so it stays on even when the Explain
+// rung has degraded away for want of a pack.
 function srsRenderRungLine(card, rung) {
   const el = document.getElementById('srs-rung');
   if (!el) return;
@@ -6381,92 +6394,15 @@ function renderSrsDiscriminate(card, pack) {
   });
 }
 
-// Rung 4 — produce it. Reuses Active Recall's speech recogniser wholesale;
-// only the prompt is card-scoped rather than dive-scoped. #srs-controls stays
-// empty until an answer is submitted, so there's no way to grade this rung
-// without actually attempting it.
-function renderSrsProduce(card, pack) {
-  const area = document.getElementById('srs-card-area');
-  const ctrl = document.getElementById('srs-controls');
-  const canSpeak = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-  area.innerHTML =
-    '<div class="srs-card-mc"><span class="srs-card-text">' + esc(pack.produce.prompt) + '</span></div>' +
-    '<div class="srs-prod">' +
-      (canSpeak ? '<div class="srs-mode-toggle" id="srs-prod-modes" style="justify-content:center;margin-bottom:10px">' +
-        '<button class="srs-mode-btn active" data-prod-mode="type">Type</button>' +
-        '<button class="srs-mode-btn" data-prod-mode="speak">Speak</button>' +
-      '</div>' : '') +
-      '<textarea id="srs-prod-input" class="anki-textarea" rows="5" placeholder="In your own words…"></textarea>' +
-      '<div id="srs-prod-speak" style="display:none;margin-top:10px">' +
-        '<button class="btn btn-outline" id="srs-prod-record" style="width:100%">Start recording</button>' +
-        '<p class="framing" id="srs-prod-state" style="font-size:0.82rem;margin-top:8px"></p>' +
-      '</div>' +
-      '<button class="btn btn-primary" id="srs-prod-submit" style="width:100%;margin-top:12px">Submit</button>' +
-      '<div id="srs-prod-out"></div>' +
-    '</div>';
-  ctrl.innerHTML = '';
-  if (arRecording) arStopRecording();
-  arUseRecTargets({ transcript: 'srs-prod-input', btn: 'srs-prod-record', state: 'srs-prod-state' });
-
-  document.getElementById('srs-prod-modes')?.addEventListener('click', e => {
-    const b = e.target.closest('[data-prod-mode]');
-    if (!b) return;
-    document.querySelectorAll('#srs-prod-modes .srs-mode-btn').forEach(x => x.classList.toggle('active', x === b));
-    document.getElementById('srs-prod-speak').style.display = b.dataset.prodMode === 'speak' ? '' : 'none';
-    if (b.dataset.prodMode !== 'speak' && arRecording) arStopRecording();
-  });
-  document.getElementById('srs-prod-record')?.addEventListener('click', () => {
-    if (arRecording) arStopRecording(); else arStartRecording();
-  });
-  document.getElementById('srs-prod-submit').addEventListener('click', () => srsProduceSubmit(card, pack));
-}
-
-async function srsProduceSubmit(card, pack) {
-  if (arRecording) arStopRecording();
-  const input = document.getElementById('srs-prod-input');
-  const answer = input ? input.value.trim() : '';
-  if (!answer) { showToast('Say or write something first'); return; }
-  const token = srsRenderToken;
-  const btn = document.getElementById('srs-prod-submit');
-  btn.textContent = 'Grading…'; btn.disabled = true;
-  let graded = null;
-  try { graded = await ladderGradeProduce(card, pack, answer); } catch (e) {}
-  if (token !== srsRenderToken) return;   // rated or navigated away mid-grade
-  btn.style.display = 'none';
-  srsProduceShowResult(card, graded);
-}
-
-async function ladderGradeProduce(card, pack, answer) {
-  const crit = pack.produce.criteria || [];
-  return await callClaudeAR(
-    'You are grading one flashcard answered at the hardest level: the user had to produce the idea in their own words.\n\n'
-    + 'The card:\nFRONT: "' + card.front + '"\nBACK: "' + card.back + '"\n\n'
-    + 'They were asked: "' + pack.produce.prompt + '"\n'
-    + (crit.length ? 'A good answer satisfies:\n' + crit.map((c, i) => (i + 1) + '. ' + c).join('\n') + '\n' : '')
-    + '\nTheir answer:\n"' + answer + '"\n\n'
-    + 'Be honest but encouraging. Wording does not have to match — meaning does. Do not penalise brevity if the meaning is right.\n'
-    + 'Return JSON only with exactly two fields: "verdict" (one of "hit", "partial", "miss") and '
-    + '"feedback" (1 to 2 sentences, second person, naming exactly what landed and what was missing — no score, grade, number, letter, or percentage).',
-    500);
-}
-
-// Claude proposes the grade, you confirm it. One tap, and the rating still
-// flows through the single rateSrsCard write path — no second set of books.
-// A failed or unavailable grade lands here too, just without the prose.
-function srsProduceShowResult(card, graded) {
-  const RATING_FOR = { hit: 2, partial: 1, miss: 0 };
-  const suggest = graded && RATING_FOR[graded.verdict] !== undefined ? RATING_FOR[graded.verdict] : undefined;
-  const out = document.getElementById('srs-prod-out');
-  if (!out) return;
-  out.innerHTML =
-    '<div class="srs-prod-fb">' +
-      esc(graded && graded.feedback ? graded.feedback : 'Could not grade that one — rate it yourself.') +
-    '</div>' +
-    '<div class="srs-prod-answer">' +
-      '<strong>' + esc(card.front) + '</strong><br>' + esc(card.back) +
-    '</div>';
-  document.getElementById('srs-controls').innerHTML = srsRateBtnsHtml(false, suggest);
-  srsWireRateBtns();
+// Rung 4 — explain it. The hardest prompt, answered in your head, then the
+// card turns over to the answer and what a good answer covers.
+function renderSrsExplain(card, pack) {
+  const crit = (pack.produce.criteria || []);
+  srsFlipShell(
+    '<span class="srs-card-text">' + esc(pack.produce.prompt) + '</span>', 'Answer in your head, then tap',
+    '<span class="srs-card-text"><strong>' + esc(card.front) + '</strong></span>' +
+    '<span class="srs-card-text" style="margin-top:10px">' + esc(card.back) + '</span>' +
+    (crit.length ? '<ul class="srs-explain-crit">' + crit.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' : ''));
 }
 
 // Shared flip — used by tap (srs-flip-wrap click) and the keyboard path (#14).
@@ -6485,7 +6421,7 @@ function toggleSrsCard() {
 // Guarded to the SRS review screen with no modal/overlay open and focus outside
 // text inputs. preventDefault stops Space page-scroll. There's no mode check:
 // the #srs-flip-card test below is the real gate, and it's true for every rung
-// that has a flip surface (0, 1, 2) and false for the ones that don't (3, 4).
+// that has a flip surface (0, 1, 2, 4) and false for the one that doesn't (3).
 document.addEventListener('keydown', e => {
   if (e.key !== ' ' && e.key !== 'Enter') return;
   const screen = document.getElementById('screen-srs-review');
@@ -8089,7 +8025,7 @@ document.getElementById('ar-type-submit')?.addEventListener('click', async () =>
 // ── Speak ──
 // The recogniser writes into an editable textarea, so any surface that wants
 // speech input just points these ids at its own elements. Active Recall's
-// speak mode is the default; the ladder's Produce rung swaps them out and
+// speak mode is the default; Crux swaps them out and
 // arSetupSpeak() below reclaims them on every AR session.
 const AR_REC_DEFAULT = {
   transcript: 'ar-speak-transcript', btn: 'ar-record',
@@ -10513,7 +10449,7 @@ function feedCardTopic(item) {
 // + questions, one JSON call) and once per question. Never mid-scroll.
 // Threads persist in `card_threads`, and an existing thread for the same card
 // is reused instead of paying for the opening call again.
-const DEEPER_SLUGS_SKIP = new Set(['flow-mark', 'due-card', 'due-quiz', 'due-dive', 'chan-recall', 'card-offer', 'chan-offer']);
+const DEEPER_SLUGS_SKIP = new Set(['flow-mark', 'due-card', 'due-quiz', 'due-dive', 'chan-recall', 'card-offer', 'chan-offer', 'chan-pick', 'chan-more']);
 let deeper = null;   // { item, key, slug, topic, text, more, questions, messages, id, busy }
 
 function deeperCardText(item) {
@@ -10953,42 +10889,89 @@ CARD_SOURCES['due-card'] = async (n) => {
   return fresh.length ? fresh.slice(0, n) : null;
 };
 
-// The feed honours the mastery ladder but caps at Reworded: rung 3 needs four
-// options and rung 4 needs a keyboard, and neither of those is a scroll. It
-// also never GENERATES a pack — paying for a model call mid-thumb is the wrong
-// trade and would stall the scroll — so an uncached rung-2 card quietly
-// degrades to Reversed, which costs nothing and is still a real rung.
+// The feed asks every rung (2026-10-26, Nate wants his flashcards in the
+// Flow). Discriminate answers on the front: tap an option and the grade row
+// appears under it, the right grade outlined. Explain is a plain flip. It
+// still never GENERATES a pack, since a model call mid-thumb would stall the
+// scroll: openFlow warms the due pile instead, and an uncached card quietly
+// degrades to a rung it can support. The rung actually shown is stamped on
+// the row (_rung), so a pack that lands later can't buy a rung you weren't
+// asked at.
+function dueRateRow(suggest) {
+  return '<div class="due-rate">' +
+    ['Miss', 'Hard', 'Easy'].map((l, r) =>
+      '<button class="due-btn due-' + l.toLowerCase() + (suggest === r ? ' is-suggest' : '') + '" data-due-rate="' + r + '">' + l + '</button>').join('') +
+  '</div>';
+}
+
 CARD_SPECS['due-card'] = {
   slug: 'due-card',
   sourceOnly: true,
   render: (d) => {
-    const rung = ladderRung(d, FEED_LADDER_CAP);
-    const prompt = rung === 2 ? ladderPack(d).reworded.prompt : (rung === 1 ? d.back : d.front);
+    const rung = d._rung = ladderRung(d, FEED_LADDER_CAP);
+    const left = '<span class="due-left">' + (feedMode === 'flow' && flowLeft('recall') != null ? flowLeft('recall') + ' left · ' : '') + '</span>';
+    if (rung === 3) {
+      const pack = ladderPack(d);
+      const opts = d._disc = pack.discriminate.options.map(o => ({ text: o.text, correct: o.correct }));
+      for (let i = opts.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1)); [opts[i], opts[j]] = [opts[j], opts[i]];
+      }
+      return '<div class="ai-single">' +
+        '<div class="due-q due-disc-stem">' + esc(pack.discriminate.stem) + '</div>' +
+        '<div class="due-opts">' +
+          opts.map((o, n) => '<button class="due-opt" data-due-disc="' + n + '">' + esc(o.text) + '</button>').join('') +
+        '</div>' +
+        '<div class="due-verdict" data-due-verdict></div>' +
+        '<div class="due-hint">' + left + 'pick the right one</div>' +
+      '</div>';
+    }
+    const prompt = rung === 4 ? ladderPack(d).produce.prompt
+      : rung === 2 ? ladderPack(d).reworded.prompt : (rung === 1 ? d.back : d.front);
     // A word or short term gets the big headword setting (DESIGN.md).
     const short = String(prompt || '').length <= 28 && !/[.?!]\s/.test(prompt || '');
     return '<div class="ai-single">' +
       '<div class="main-text' + (short ? ' due-word' : '') + '">' + esc(prompt) + '</div>' +
       // The ticker ("27 left · ") is filled by flowRenderRail and stays live
       // as cards are graded; empty outside a Flow.
-      '<div class="due-hint"><span class="due-left">' + (feedMode === 'flow' && flowLeft('recall') != null ? flowLeft('recall') + ' left · ' : '') + '</span>' +
-        (rung ? 'tap to check' : 'tap for the answer') + '</div>' +
+      '<div class="due-hint">' + left +
+        (rung === 4 ? 'answer in your head, then tap' : rung ? 'tap to check' : 'tap for the answer') + '</div>' +
     '</div>';
   },
   // Always both sides, so a reversed or reworded front reveals unambiguously.
   renderBack: (d) => {
-    const rung = ladderRung(d, FEED_LADDER_CAP);
+    const rung = d._rung != null ? d._rung : ladderRung(d, FEED_LADDER_CAP);
+    const crit = rung === 4 ? ((ladderPack(d) || {}).produce || {}).criteria || [] : [];
     return '<div class="feed-back-kind">Due flashcard' +
       (rung ? ' · ' + esc(LADDER_NAMES[rung].toLowerCase()) : '') + '</div>' +
     '<div class="due-q">' + esc(d.front) + '</div>' +
     '<div class="due-a">' + esc(d.back) + '</div>' +
-    '<div class="due-rate">' +
-      '<button class="due-btn due-miss" data-due-rate="0">Miss</button>' +
-      '<button class="due-btn due-hard" data-due-rate="1">Hard</button>' +
-      '<button class="due-btn due-easy" data-due-rate="2">Easy</button>' +
-    '</div>' +
+    (crit.length ? '<ul class="due-points due-crit">' + crit.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' : '') +
+    dueRateRow() +
     '<button class="feed-deeper-link is-center" data-feed-deeper="1">Go deeper ↑</button>';
   },
 };
+
+// Discriminate, answered on the front. Correctness is by index into the
+// shuffled list the render kept, never a string compare.
+document.addEventListener('click', e => {
+  const opt = e.target.closest('[data-due-disc]');
+  if (!opt) return;
+  const item = opt.closest('.feed-item');
+  const card = item && item._due;
+  if (!card || !card._disc || item.dataset.dueAnswered || item.dataset.dueDone) return;
+  item.dataset.dueAnswered = '1';
+  const picked = card._disc[Number(opt.dataset.dueDisc)];
+  item.querySelectorAll('[data-due-disc]').forEach((b, n) => {
+    b.disabled = true;
+    if (card._disc[n].correct) b.classList.add('is-correct');
+    else if (b === opt) b.classList.add('is-wrong');
+  });
+  const why = (ladderPack(card) || {}).discriminate?.why;
+  const v = item.querySelector('[data-due-verdict]');
+  if (v) v.innerHTML = '<div class="due-disc-why">' + esc((why ? why + ' ' : '') + card.front + ': ' + card.back) + '</div>' +
+    dueRateRow(picked && picked.correct ? 2 : 0);
+  item.querySelector('.due-hint')?.remove();
+});
 
 // --- 2. A quiz question -------------------------------------------------
 // Open Trivia DB, keyless and free. Graded on the front (tapping an option is
@@ -11128,7 +11111,7 @@ CARD_SPECS['due-dive'] = {
 // capped per sitting for the same reason; the rest stay due for next time.
 const FLOW_PHASES = [
   { id: 'recall',   label: 'Cards',    slug: 'due-card', done: 'Nothing else due.' },
-  { id: 'channels', label: 'Channels', slugs: ['chan-unit', 'chan-recall'], done: 'That\'s today\'s lessons.' },
+  { id: 'channels', label: 'Channels', slugs: ['chan-pick', 'chan-unit', 'chan-recall', 'card-offer', 'chan-more'], done: 'That\'s today\'s lessons.' },
   { id: 'queue',    label: 'Queue',    slug: 'due-lul',  done: 'Queue clear.' },
   { id: 'dive',     label: 'Dive',     slug: 'due-dive', done: 'Dives drilled.' },
   { id: 'ground',   label: 'Ground',   slug: 'ground',   done: 'Grounded.' },
@@ -11137,7 +11120,6 @@ const FLOW_PHASES = [
 const flowPhaseHas = (p, slug) => p.slug === slug || (p.slugs || []).includes(slug);
 const FLOW_ONLY = new Set(['ground', 'flow-mark']);   // never in the Scroll's weighted draw
 const FLOW_GROUND_MAX = 3;          // ground items per sitting
-const FLOW_CHAN_MAX = 6;            // channel lessons per sitting; the rest interleave in Discover
 const FLOW_DIVE_MAX = 2;            // dives per sitting; the rest stay due
 const FLOW_GROUND_REST_DAYS = 14;   // a ground item rests this long before it can come back
 
@@ -11318,19 +11300,13 @@ async function flowTopUp() {
       if (ph.id === 'dive' && (flowServedIn.dive || 0) >= FLOW_DIVE_MAX) { flowAdvance(); continue; }
       if (!hasSession()) { flowAdvance(); continue; }   // every phase is Supabase-backed
       if (ph.id === 'channels') {
-        // Drain today's built lessons from the channel buffer, sweeping for
-        // more when it runs dry. Unbuilt lessons are building in the
-        // background and turn up in Discover (or next sitting) instead.
-        if ((flowServedIn.channels || 0) >= FLOW_CHAN_MAX) { flowAdvance(); continue; }
-        let i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug));
-        if (i === -1) { chanQuietUntil = 0; await chanTopUp(); i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug)); }
-        if (i === -1) { flowAdvance(); continue; }
-        const it = chanBuffer.splice(i, 1)[0];
-        const c = it.data && it.data.chan;
-        if (c) { c.last_shown_at = new Date().toISOString(); chanUpdate(c.id, { last_shown_at: c.last_shown_at }).catch(() => {}); }
-        feedDueBuffer.push(it);
-        flowServedIn.channels = (flowServedIn.channels || 0) + 1;
-        feedFill();
+        // One "pick a channel" card, then on. A pick drops that channel's
+        // run in at the front of the buffer, wherever the phase has got to.
+        if (!flowServedIn.channels) {
+          const pick = await chanPickItem();
+          if (pick) { feedDueBuffer.push(pick); flowServedIn.channels = 1; chanPickShown++; feedFill(); }
+        }
+        flowAdvance();
         continue;
       }
       let items = null;
@@ -11364,7 +11340,7 @@ async function flowTopUp() {
 // through all of them" means all of them.
 function flowCap(ph) {
   if (flowFocus === ph.id) return Infinity;
-  return ph.id === 'dive' ? FLOW_DIVE_MAX : ph.id === 'ground' ? FLOW_GROUND_MAX : ph.id === 'channels' ? FLOW_CHAN_MAX : Infinity;
+  return ph.id === 'dive' ? FLOW_DIVE_MAX : ph.id === 'ground' ? FLOW_GROUND_MAX : Infinity;
 }
 
 // A phase's source gave nothing. Mark it so the deal stops asking, and if you
@@ -11404,19 +11380,18 @@ async function flowMixTopUp() {
       if (room <= 0 || !hasSession()) { flowRunDry(ph); return; }
       let added = 0;
       if (ph.id === 'channels') {
-        for (let k = 0; k < Math.min(need, room); k++) {
-          let i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug));
-          if (i === -1) { chanQuietUntil = 0; await chanTopUp(); i = chanBuffer.findIndex(x => flowPhaseHas(ph, x.slug)); }
-          if (i === -1) break;
-          const it = chanBuffer.splice(i, 1)[0];
-          const c = it.data && it.data.chan;
-          if (c) { c.last_shown_at = new Date().toISOString(); chanUpdate(c.id, { last_shown_at: c.last_shown_at }).catch(() => {}); }
-          feedDueBuffer.push(it);
+        // A run's cards are already in the buffer, in order; otherwise the
+        // phase offers one picker at a time, when chanPickDue() says so.
+        if (chanRun || have) return;
+        if (!chanPickDue()) return;
+        const pick = await chanPickItem();
+        if (pick && !chanRun && !feedDueBuffer.some(x => x.slug === 'chan-pick')) {
+          feedDueBuffer.push(pick);
           flowServedIn.channels = (flowServedIn.channels || 0) + 1;
+          chanPickShown++;
           added++;
         }
-        // Dry means nothing new AND nothing of it still in hand.
-        if (!added && !have && flowFocus === ph.id) flowRunDry(ph);
+        if (!added && (!pick || flowFocus === ph.id)) flowRunDry(ph);
       } else {
         let items = null;
         try { items = await CARD_SOURCES[ph.slug](Math.min(need, room)); } catch (e) { items = null; }
@@ -11428,7 +11403,11 @@ async function flowMixTopUp() {
           flowServedIn[ph.id] = (flowServedIn[ph.id] || 0) + 1;
           added++;
         });
-        if (!added && !have) flowRunDry(ph);
+        // Tapped into: not dry while its cards are still dealt ahead of you,
+        // or the rail says Mix with four flashcards left to swipe.
+        const ahead = flowFocus === ph.id && feedItems().slice(feedActiveIdx + 1)
+          .some(n => n._item && flowPhaseHas(ph, n._item.slug) && !n.dataset.dueDone);
+        if (!added && !have && !ahead) flowRunDry(ph);
       }
     };
     const safe = ph => stock(ph).catch(() => {});
@@ -11450,7 +11429,7 @@ async function flowMixTopUp() {
 // phases with a card ready, never the same phase twice running while another
 // has something, so it reads flashcard, lesson, wander, flashcard…
 function flowMixTake() {
-  const mi = feedDueBuffer.findIndex(x => x.slug === 'flow-mark');
+  const mi = feedDueBuffer.findIndex(x => x.slug === 'flow-mark' || (x.data && x.data._run));
   if (mi !== -1) return feedDueBuffer.splice(mi, 1)[0];
   // The Scroll's buffer is warm at open; until the owed phases have been
   // stocked once, the wander stays out of the deal or a sitting would open on
@@ -11484,7 +11463,7 @@ function flowMixTake() {
 
 // Narrowed to one phase: only its cards (and markers) come off the buffers.
 function flowFocusTake() {
-  const mi = feedDueBuffer.findIndex(x => x.slug === 'flow-mark');
+  const mi = feedDueBuffer.findIndex(x => x.slug === 'flow-mark' || (x.data && x.data._run));
   if (mi !== -1) return feedDueBuffer.splice(mi, 1)[0];
   if (flowFocus === 'discover') return feedTake(true);
   const ph = FLOW_PHASES.find(p => p.id === flowFocus);
@@ -11515,6 +11494,9 @@ function flowDropAhead() {
     const node = items[i], it = node._item;
     if (it && !node.dataset.dueDone) {
       if (it.slug === 'flow-mark') {}
+      // A Flow deals channel cards from its own buffer (picker and runs);
+      // only the Scroll's lessons and offers live in chanBuffer.
+      else if (feedMode === 'flow' && FLOW_PHASES.some(p => flowPhaseHas(p, it.slug))) feedDueBuffer.unshift(it);
       else if (CHAN_SLUGS.includes(it.slug)) chanBuffer.unshift(it);
       else if (FLOW_PHASES.some(p => flowPhaseHas(p, it.slug))) feedDueBuffer.unshift(it);
       else feedBuffer.unshift(it);
@@ -11592,12 +11574,17 @@ async function openFlow() {
   flowFocus = null;
   flowDry = {};
   flowMixPrimed = false;
+  chanRun = null; chanPickShown = 0; chanPickSkipAt = -1; chanPickCache = null;
   groundPool = null;   // Ink may have changed since the last sitting
   openFeed();
   if (!hasSession()) return;
   // Start writing channel lessons now, while the Cards phase is on screen.
   chanQuietUntil = 0;
   chanTopUp();
+  // The feed never generates a pack mid-thumb, so build the due pile's packs
+  // now: cards dealt later this sitting (and every one tomorrow) get their
+  // real rung. Sequential and capped inside ladderWarmQueue.
+  srsGetDue().then(due => ladderWarmQueue(due || [])).catch(() => {});
   try {
     const [n, lul, dives] = await Promise.all([
       srsGetDueCount().catch(() => 0),
@@ -11987,10 +11974,10 @@ document.addEventListener('click', async e => {
     const rating = Number(rateBtn.dataset.dueRate);
     const btns = [...item.querySelectorAll('[data-due-rate]')];
     btns.forEach(b => { b.disabled = true; });
-    // ladderRung is deterministic given the row, so the rung the user actually
-    // saw is recomputed rather than stashed on the element. Capped, so an Easy
-    // here can never promote a card past what the feed is willing to ask.
-    const updates = ladderApply(card, rating, ladderRung(card, FEED_LADDER_CAP));
+    // The rung stamped at render, not a fresh ladderRung(): a pack warmed in
+    // the background since then would otherwise credit a rung never asked.
+    const shown = card._rung != null ? card._rung : ladderRung(card, FEED_LADDER_CAP);
+    const updates = ladderApply(card, rating, shown);
     // Optimistic: the note flashes, the feed moves on, and the save finishes
     // behind it. Offline or flaky, the outbox queues it; only a hard failure
     // surfaces, as a toast.
@@ -13379,7 +13366,7 @@ const CHAN_BUFFER = 2;
 const CHAN_BUILD_MAX = 3;           // background builds per top-up sweep
 const CHAN_OFFER_EVERY = 10;        // at most one offer card per this many cards
 const CHAN_QUIET_MS = 60000;        // back off this long after an empty sweep
-const CHAN_SLUGS = ['chan-unit', 'chan-recall', 'card-offer', 'chan-offer'];
+const CHAN_SLUGS = ['chan-unit', 'chan-recall', 'card-offer', 'chan-offer', 'chan-pick', 'chan-more'];
 
 let chanList = null, chanListAt = 0;
 let chanBuffer = [];
@@ -13447,7 +13434,16 @@ function chanSignal(channelId, kind) {
 // Called by feedScoreExit for channel cards: a quick flick past an untouched
 // card is a skip; anything you did with it already logged an engage.
 function chanOnExit(el, dwell) {
-  if (!el || !el._channelId || el.dataset.engaged) return;
+  if (!el) return;
+  // Swiping past the picker is a "not now": it may come back later in the sitting.
+  if (el.dataset.slug === 'chan-pick' && !el.dataset.picked) {
+    chanPickSkipAt = feedMounted.length;
+    if (flowFocus === 'channels') { flowFocus = null; flowRenderRail(); }
+    return;
+  }
+  // Swiping past the end-of-run card is the same as "Back to Mix".
+  if (el.dataset.slug === 'chan-more' && !el.dataset.dueDone) { chanRunEnd(); return; }
+  if (!el._channelId || el.dataset.engaged) return;
   if (dwell < FEED_DWELL_SHORT && (el.dataset.slug === 'chan-unit' || el.dataset.slug === 'chan-recall')) chanSignal(el._channelId, 'skip');
 }
 function chanEngaged(el, kind) {
@@ -13486,13 +13482,7 @@ async function chanSweepRun() {
   try {
     const chans = (await chanLoad()).filter(c => c.status === 'following' && c.course_id);
     if (!chans.length) { chanQuietUntil = Date.now() + CHAN_QUIET_MS; await chanMaybeFollowOffer(); return; }
-    const ids = chans.map(c => c.course_id).join(',');
-    const [courses, units] = await Promise.all([
-      sbFetch('courses?id=in.(' + ids + ')&select=*'),
-      sbFetch('course_units?course_id=in.(' + ids + ')&order=position.asc&select=*'),
-    ]);
-    const byCourse = {};
-    (courses || []).forEach(c => { byCourse[c.id] = c; });
+    const { byCourse, units } = await chanCourseData(chans);
     const today = localDateStr();
     const newToday = chanNewToday().n;
     const now = Date.now();
@@ -13505,7 +13495,9 @@ async function chanSweepRun() {
     for (const { c } of scored) {
       // A full buffer stops serving, not building: keep starting builds for
       // the channels further down so their lessons are ready later.
-      const room = chanBuffer.length < CHAN_BUFFER;
+      // A Flow serves lessons through the picker, so it only builds here;
+      // buffering would fill chanBuffer and stop the sweeps (and the builds).
+      const room = chanBuffer.length < CHAN_BUFFER && feedMode !== 'flow';
       const course = byCourse[c.course_id];
       const mine = (units || []).filter(u => u.course_id === c.course_id && u.kind === 'unit');
       const due = mine.find(u => u.state !== 'ready' && u.built_at && u.next_review && u.next_review <= today && !chanServed.has('r:' + u.id));
@@ -13535,13 +13527,16 @@ async function chanSweepRun() {
 
 // `units` = the course's teaching units only, so "n of N" ignores the
 // checkpoints and capstone that share the position numbering.
-function chanPush(slug, chan, course, unit, units) {
+function chanItem(slug, chan, course, unit, units) {
   chanServed.add((slug === 'chan-recall' ? 'r:' : 'u:') + unit.id);
-  chanBuffer.push({
+  return {
     slug,
     key: slug + ':' + unit.id,
     data: { _channelId: chan.id, _chip: chan.name + ' · ' + (units.indexOf(unit) + 1) + ' of ' + units.length, chan, course, unit },
-  });
+  };
+}
+function chanPush(slug, chan, course, unit, units) {
+  chanBuffer.push(chanItem(slug, chan, course, unit, units));
 }
 
 // "Follow <topic>?" for a flashcard cluster with 3+ cards and no channel. Once
@@ -13573,7 +13568,8 @@ function chanTake(force) {
   const pos = feedMounted.length;
   const i = chanBuffer.findIndex(it => {
     if (it.slug === 'card-offer' || it.slug === 'chan-offer') return pos - chanLastOfferPos >= CHAN_OFFER_EVERY;
-    return true;
+    // A Flow's lessons come through the channel picker, never one at a time.
+    return feedMode !== 'flow';
   });
   if (i === -1) return null;
   if (!force && Math.random() > chanShare()) return null;
@@ -13584,6 +13580,239 @@ function chanTake(force) {
   setTimeout(chanTopUp, 0);
   return item;
 }
+
+// ── Pick a channel (2026-10-26) ──
+// A Flow no longer drips one lesson at a time from nine channels. It offers
+// one "pick a channel" card a sitting (2-3 choices: weight x time since you
+// last saw it, the sweep's own score), and a pick runs that channel: its due
+// recalls, one new lesson, then "one more?". Run cards jump the deal like
+// markers do, so a run reads straight through; the mix keeps dealing behind
+// the last card, so you can always swipe on.
+const CHAN_PICK_CHOICES = 3;
+const CHAN_PICK_MAX = 2;          // pickers per sitting: one, plus one re-offer after a skip
+const CHAN_PICK_REOFFER = 10;     // cards after a skipped picker before it may come back
+const CHAN_RUN_RECALLS = 3;       // due recalls folded into one run
+const CHAN_RUN_BUILD_WAIT = 30000;
+let chanRun = null;               // the run in progress: { chan, course, units, served, _run }
+let chanPickShown = 0, chanPickSkipAt = -1, chanPickCache = null;
+
+function chanPickDue() {
+  if (chanRun) return false;
+  if (flowFocus === 'channels') return true;
+  if (!chanPickShown) return true;
+  return chanPickShown < CHAN_PICK_MAX && chanPickSkipAt >= 0 && feedMounted.length - chanPickSkipAt >= CHAN_PICK_REOFFER;
+}
+
+async function chanCourseData(chans) {
+  const ids = chans.map(c => c.course_id).join(',');
+  const [courses, units] = await Promise.all([
+    sbFetch('courses?id=in.(' + ids + ')&select=*'),
+    sbFetch('course_units?course_id=in.(' + ids + ')&order=position.asc&select=*'),
+  ]);
+  const byCourse = {};
+  (courses || []).forEach(c => { byCourse[c.id] = c; });
+  return { byCourse, units: units || [] };
+}
+
+const chanRecallsDue = (units, today) =>
+  units.filter(u => u.state !== 'ready' && u.built_at && u.next_review && u.next_review <= today);
+
+// Only channels with something ready right now are offered: a built next
+// lesson or a recall due. Unbuilt ones are being written by the sweep.
+async function chanPickItem() {
+  if (!hasSession()) return null;
+  try {
+    if (!chanPickCache || Date.now() - chanPickCache.at > 60000) {
+      const chans = (await chanLoad()).filter(c => c.status === 'following' && c.course_id);
+      let choices = [];
+      if (chans.length) {
+        const { byCourse, units } = await chanCourseData(chans);
+        const today = localDateStr(), now = Date.now();
+        choices = chans.filter(c => byCourse[c.course_id]).map(c => {
+          const mine = units.filter(u => u.course_id === c.course_id && u.kind === 'unit');
+          const next = mine.find(u => u.state === 'ready');
+          const hrs = c.last_shown_at ? (now - new Date(c.last_shown_at).getTime()) / 3600000 : 24;
+          return { chan: c, course: byCourse[c.course_id], units: mine,
+            recalls: chanRecallsDue(mine, today).length, next: next && next.built_at ? next : null,
+            score: (Number(c.weight) || 1) * Math.min(3, 1 + hrs / 12) * (0.75 + Math.random() * 0.5) };
+        }).filter(x => x.next || x.recalls).sort((a, b) => b.score - a.score);
+      }
+      chanPickCache = { at: Date.now(), choices };
+    }
+  } catch (e) { return null; }
+  const choices = chanPickCache.choices.slice(0, CHAN_PICK_CHOICES);
+  if (!choices.length) return null;
+  return { slug: 'chan-pick', key: 'chan-pick:' + Date.now(), data: { choices } };
+}
+
+function chanPickSub(c) {
+  const bits = [];
+  if (c.next) bits.push('Next: ' + c.next.title + ' · ' + (c.units.indexOf(c.next) + 1) + ' of ' + c.units.length);
+  if (c.recalls) bits.push(c.recalls + ' to review');
+  return bits.join(' · ');
+}
+
+const chanRunNext = run => run.units.find(u => u.state === 'ready' && !run.served.has(u.id));
+
+// Write the lesson if it isn't yet, holding at most CHAN_RUN_BUILD_WAIT.
+async function chanRunBuild(run, unit) {
+  if (unit.built_at) return true;
+  try { await Promise.race([coBuildUnit(run.course, unit), new Promise(r => setTimeout(r, CHAN_RUN_BUILD_WAIT))]); } catch (e) {}
+  return !!unit.built_at;
+}
+
+// Warm the lesson after the one being served, so "one more" is instant.
+function chanRunWarm(run) {
+  const after = run.units.find(u => u.state === 'ready' && !run.served.has(u.id) && !u.built_at);
+  if (after) coBuildUnit(run.course, after).catch(() => {});
+}
+
+function chanRunMoreItem(run) {
+  return { slug: 'chan-more', key: 'chan-more:' + run.chan.id + ':' + run.served.size + ':' + Date.now(), data: run };
+}
+
+// Put a run's cards next in line. Anything already dealt ahead goes back to
+// its buffer first, so the run starts on the very next swipe.
+function chanRunDeal(items) {
+  flowDropAhead();
+  feedDueBuffer = feedDueBuffer.filter(x => x.slug !== 'chan-pick');
+  feedDueBuffer.unshift(...items);
+  flowRenderRail();
+  feedFill();
+}
+
+async function chanRunStart(choice) {
+  const { chan, course, units } = choice;
+  const run = { chan, course, units, served: new Set(), _run: true };
+  const items = chanRecallsDue(units, localDateStr()).slice(0, CHAN_RUN_RECALLS)
+    .map(u => chanItem('chan-recall', chan, course, u, units));
+  const next = chanRunNext(run);
+  if (next && await chanRunBuild(run, next)) {
+    items.push(chanItem('chan-unit', chan, course, next, units));
+    run.served.add(next.id);
+  }
+  if (!items.length) return false;
+  items.forEach(it => { it.data._run = true; });
+  items.push(chanRunMoreItem(run));
+  chanRun = run;
+  if (flowFocus === 'channels') flowFocus = null;   // a run ends back in the mix
+  // The Scroll's copies of this channel's lessons would serve them twice.
+  chanBuffer = chanBuffer.filter(x => !(x.data && x.data._channelId === chan.id));
+  chanPickCache = null;
+  chan.last_shown_at = new Date().toISOString();
+  chanUpdate(chan.id, { last_shown_at: chan.last_shown_at }).catch(() => {});
+  chanSignal(chan.id, 'engage');
+  chanRunDeal(items);
+  chanRunWarm(run);
+  return true;
+}
+
+async function chanRunMore(run) {
+  const next = chanRunNext(run);
+  if (!next || !(await chanRunBuild(run, next))) return false;
+  run.served.add(next.id);
+  const it = chanItem('chan-unit', run.chan, run.course, next, run.units);
+  it.data._run = true;
+  chanRun = run;
+  chanRunDeal([it, chanRunMoreItem(run)]);
+  chanRunWarm(run);
+  return true;
+}
+
+function chanRunEnd() {
+  if (!chanRun) return;
+  chanRun = null;
+  flowRenderRail();
+  feedFill();
+  feedDueTopUp();
+}
+
+FEED_NAMES['chan-pick'] = 'Channels';
+FEED_NAMES['chan-more'] = 'Channel';
+
+CARD_SPECS['chan-pick'] = {
+  slug: 'chan-pick', sourceOnly: true, noOpen: true,
+  render: (d) => '<div class="ai-single chan-card">' +
+      '<div class="chan-unit-title">Your channels</div>' +
+      '<div class="main-text chan-q">Pick one to go into</div>' +
+      '<div class="chan-opts">' + d.choices.map((c, i) =>
+        '<button class="chan-opt chan-go" data-chan-go="' + i + '">' +
+          '<span class="chan-go-name">' + esc(c.chan.name) + '</span>' +
+          '<span class="chan-go-sub">' + esc(chanPickSub(c)) + '</span>' +
+        '</button>').join('') + '</div>' +
+      '<div class="due-hint">or swipe on</div>' +
+    '</div>',
+  renderBack: () => '<div class="feed-back-kind">Channels</div>' +
+    '<div class="feed-back-acts">' + feedActBtn('data-chan-manage="1"', '≡', 'Manage channels') + '</div>',
+};
+
+CARD_SPECS['chan-more'] = {
+  slug: 'chan-more', sourceOnly: true, noOpen: true,
+  render: (run) => {
+    const next = chanRunNext(run);
+    return '<div class="ai-single chan-card">' +
+      '<div class="chan-unit-title">' + esc(run.chan.name) + '</div>' +
+      '<div class="main-text chan-q">' + (next ? 'One more?' : 'That\'s the course so far.') + '</div>' +
+      (next ? '<div class="chan-more-next">Next: ' + esc(next.title) + '</div>' : '') +
+      '<div class="chan-opts">' +
+        (next ? '<button class="chan-opt" data-chan-onemore="1">One more</button>' : '') +
+        '<button class="chan-opt" data-chan-done="1">' + (flowMixed() ? 'Back to Mix' : 'Done') + '</button>' +
+      '</div>' +
+    '</div>';
+  },
+  renderBack: (run) => '<div class="feed-back-kind">' + esc(run.chan.name) + '</div>',
+};
+
+document.addEventListener('click', async e => {
+  const go = e.target.closest('[data-chan-go]');
+  if (go) {
+    const item = go.closest('.feed-item');
+    const d = item && item._item && item._item.data;
+    if (!d || item.dataset.picked) return;
+    const choice = d.choices[Number(go.dataset.chanGo)];
+    item.dataset.picked = '1';
+    item.querySelectorAll('[data-chan-go]').forEach(b => { b.disabled = true; });
+    go.classList.add('is-correct');
+    const ok = await chanRunStart(choice).catch(() => false);
+    if (!ok) {
+      delete item.dataset.picked;
+      item.querySelectorAll('[data-chan-go]').forEach(b => { b.disabled = false; });
+      go.classList.remove('is-correct');
+      showToast('Nothing ready in ' + choice.chan.name + ' yet');
+      return;
+    }
+    feedRetireDue(item, 'Into ' + choice.chan.name);
+    feedAdvancePast(item);
+    return;
+  }
+  const more = e.target.closest('[data-chan-onemore]');
+  if (more) {
+    const item = more.closest('.feed-item');
+    const run = item && item._item && item._item.data;
+    if (!run || item.dataset.dueDone || more.disabled) return;
+    more.disabled = true;
+    more.textContent = 'Writing it…';
+    if (!(await chanRunMore(run).catch(() => false))) {
+      more.disabled = false;
+      more.textContent = 'One more';
+      showToast('Still writing that one. Try again in a minute.');
+      return;
+    }
+    feedRetireDue(item, 'One more');
+    feedAdvancePast(item);
+    return;
+  }
+  const done = e.target.closest('[data-chan-done]');
+  if (done) {
+    const item = done.closest('.feed-item');
+    if (!item || item.dataset.dueDone) return;
+    feedRetireDue(item, flowMixed() ? 'Back to the mix' : 'Done');
+    chanRunEnd();
+    feedAdvancePast(item);
+    return;
+  }
+  if (e.target.closest('[data-chan-manage]')) { channelsOpen(false); return; }
+});
 
 // ── Cards ──
 FEED_NAMES['chan-unit'] = 'Channel';
@@ -13707,8 +13936,11 @@ function chanTeach(item, picked) {
   u.state = 'taught'; u.next_review = localDateStr(tomorrow);
   cuUpdate(u.id, { state: 'taught', next_review: u.next_review }).catch(() => {});
   if (Array.isArray(u.cards) && u.cards.length) {
-    chanBuffer.unshift({ slug: 'card-offer', key: 'card-offer:' + u.id,
-      data: { from: d.chan.name, cards: u.cards.slice(0, 3), unit: u, course: d.course } });
+    const offer = { slug: 'card-offer', key: 'card-offer:' + u.id,
+      data: { from: d.chan.name, cards: u.cards.slice(0, 3), unit: u, course: d.course, _run: d._run } };
+    // In a run the offer is the next card, ahead of the "one more?" card.
+    if (d._run && feedMode === 'flow') { flowDropAhead(); feedDueBuffer.unshift(offer); feedFill(); }
+    else chanBuffer.unshift(offer);
   }
   setTimeout(chanTopUp, 0);
 }
