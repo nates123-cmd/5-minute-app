@@ -1652,7 +1652,14 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      overscroll-behavior: contain;
+      /* A vertical swipe must always be able to leave the card (Nate,
+         2026-10-26: "I should always be able to flick past something").
+         `contain` trapped it: a long card (a channel lesson) scrolled to its
+         end and stopped, and Chromium blocked even cards that fit. So a
+         swipe that runs out of card chains on to the feed and snaps to the
+         next one. Sideways stays contained. */
+      overscroll-behavior-y: auto;
+      overscroll-behavior-x: contain;
       scrollbar-width: none;
       /* Short cards sit centered; long ones scroll from the top without
          clipping (justify-content:center would cut off the overflow). */
@@ -1742,7 +1749,9 @@
     .feed-back-face {
       justify-content: safe center;
       overflow-y: auto;
-      overscroll-behavior: contain;
+      /* Same as .feed-body: the back of a card must never trap a swipe. */
+      overscroll-behavior-y: auto;
+      overscroll-behavior-x: contain;
       scrollbar-width: none;
     }
     .feed-back-face::-webkit-scrollbar { display: none; }

@@ -147,6 +147,9 @@ test('no channels with anything ready: no picker, and the Flow carries on', asyn
   await stub(page, { units: [unit({ id: 'b1', course_id: 'k2', built_at: null })] });
   await boot(page);
   await page.evaluate(() => openFlow());
-  await reach(page, () => feedMounted.length >= 6);
+  // The source itself offers nothing (no built lesson, no recall due)...
+  expect(await page.evaluate(() => chanPickItem())).toBe(null);
+  // ...and the Flow still deals, with no picker in it.
+  await reach(page, () => feedMounted.length >= 3, 15000);
   expect(await page.evaluate(() => feedMounted.includes('chan-pick'))).toBe(false);
 });
