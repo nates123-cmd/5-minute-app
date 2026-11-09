@@ -2078,6 +2078,8 @@
     .flow-mark .due-tag { margin-bottom: 18px; }
     .flow-mark .main-text { font-family: var(--font-serif); font-size: 24px; line-height: 1.35; }
     .flow-mark .flow-next { margin-top: 18px; font-size: 13.5px; color: var(--text-muted); }
+    .flow-mark .flow-more { flex: none; margin-top: 22px; padding: 13px 22px; }
+    .srs-more-btn { margin-top: 4px; }
 
     /* ══ Black and white feed (DESIGN.md) ══════════════════════════════
        WikiTok owns the frame: a wordmark top-left, text-only navigation
@@ -5660,16 +5662,60 @@ function localDateStr(d = new Date()) {
 // outside the 50-card window.
 const SRS_LEAD_SOURCE = 'KOReader Vocabulary Builder';
 
+// ── Daily cap ─────────────────────────────────────────────────────────────
+// A week away leaves two hundred cards due at once, and a pile that size is
+// the reason the next day gets skipped too. So a day deals at most
+// SRS_DAY_CAP grades (Review screen and Flow share the budget); the rest
+// stay due in the table and come up over the following days, cap a day,
+// until the backlog is gone. Nothing is rescheduled: sm2() works from the
+// stored interval, not from how late the card is, so an overdue card that
+// waits a few more days is graded exactly as it would have been today.
+// "Do 50 more" at the end of a sitting lifts the cap by one more round,
+// for that day only. State is one localStorage row, reset on the first
+// read of a new day (Nate, 2026-11-09).
+const SRS_DAY_CAP = 50;
+const SRS_DAY_KEY = 'break_srs_day';
+function srsDayState() {
+  const today = localDateStr();
+  let st = null;
+  try { st = JSON.parse(localStorage.getItem(SRS_DAY_KEY) || 'null'); } catch (e) { st = null; }
+  if (!st || st.d !== today) st = { d: today, graded: 0, extra: 0 };
+  return st;
+}
+function srsDaySave(st) { try { localStorage.setItem(SRS_DAY_KEY, JSON.stringify(st)); } catch (e) {} }
+// Grades left in today's budget.
+function srsBudgetLeft() {
+  const st = srsDayState();
+  return Math.max(0, SRS_DAY_CAP + (st.extra || 0) - (st.graded || 0));
+}
+// One grade spent, from either surface.
+function srsBudgetSpend() {
+  const st = srsDayState(); st.graded = (st.graded || 0) + 1; srsDaySave(st);
+}
+// "Do 50 more": another round, today only.
+function srsBudgetExtend(n = SRS_DAY_CAP) {
+  const st = srsDayState(); st.extra = (st.extra || 0) + n; srsDaySave(st);
+}
+// What the day looks like: `today` is what will still be dealt, `behind`
+// is what waits past the cap (the figure the done screens quote).
+function srsDaySplit(rawDue) {
+  const left = srsBudgetLeft();
+  const today = Math.min(rawDue, left);
+  return { today, behind: Math.max(0, rawDue - left), left };
+}
+
 async function srsGetDue() {
   const today = localDateStr();
+  const budget = srsBudgetLeft();
+  if (!budget) return [];
   const [lead, rows] = await Promise.all([
     sbFetch('flashcards?source=eq.' + encodeURIComponent(SRS_LEAD_SOURCE)
-      + '&next_review=lte.' + today + '&order=created_at.desc&limit=20').catch(() => []),
-    sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=50'),
+      + '&next_review=lte.' + today + '&order=created_at.desc&limit=' + Math.min(20, budget)).catch(() => []),
+    sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=' + budget),
   ]);
   const seen = new Set((lead || []).map(c => c.id));
   const all = (lead || []).concat((rows || []).filter(c => !seen.has(c.id)));
-  return all.filter(c => !c.next_review || c.next_review <= today).slice(0, 50);
+  return all.filter(c => !c.next_review || c.next_review <= today).slice(0, budget);
 }
 
 async function srsGetDueCount() {
@@ -6208,9 +6254,14 @@ async function updateDueBadge() {
   const subEl = document.getElementById('srs-due-sub');
   if (!numEl || !subEl) return;
   try {
-    const n = await srsGetDueCount();
+    const raw = await srsGetDueCount();
+    const { today: n, behind } = srsDaySplit(raw);
     numEl.textContent = String(n);
-    subEl.textContent = n === 0 ? 'all caught up' : (n === 1 ? 'card due' : 'cards due');
+    // The number is what today will deal; the backlog past the cap is named
+    // but never shown as the headline figure (the pile is the problem).
+    subEl.textContent = behind
+      ? (n === 0 ? 'done for today · ' + behind + ' waiting' : 'cards today · ' + behind + ' more waiting')
+      : (n === 0 ? 'all caught up' : (n === 1 ? 'card due' : 'cards due'));
   } catch(e) {
     numEl.textContent = '–';
     subEl.textContent = 'tap to review';
@@ -6499,12 +6550,26 @@ async function rateSrsCard(rating) {
   if (updates.ladder_level > before) srsStats.promoted++;
   if (updates.ladder_level >= LADDER_MAX && before < LADDER_MAX) srsStats.mastered++;
   Object.assign(card, updates);   // after ladderApply, which reads the pre-update row
+  srsBudgetSpend();
   try { await srsUpdate(card.id, updates); } catch(e) {}
   srsCurrent++;
   renderSrsCard();
 }
 
-function renderSrsDone() {
+// The done screen's words depend on whether the cap stopped you: a capped day
+// says so and offers another round; a clean finish reads as before.
+function srsDoneHtml(total, behind) {
+  const capped = behind > 0;
+  const title = capped ? (total ? 'That\'s ' + total + ' for today' : 'Done for today') : 'Session complete';
+  const sub = capped
+    ? behind + ' more waiting · the rest come up over the next days'
+    : total + ' card' + (total === 1 ? '' : 's') + ' reviewed';
+  return '<div class="srs-done-title">' + title + '</div>' +
+    '<div class="srs-done-sub">' + sub + '</div>' +
+    (capped ? '<button class="btn srs-more-btn" id="srs-more-btn" data-srs-more="1">Do ' + Math.min(SRS_DAY_CAP, behind) + ' more</button>' : '');
+}
+
+async function renderSrsDone() {
   const area = document.getElementById('srs-card-area');
   const prog = document.getElementById('srs-progress');
   document.getElementById('srs-edit-btn').style.display = 'none';
@@ -6513,11 +6578,12 @@ function renderSrsDone() {
   if (rungEl) { rungEl.textContent = ''; rungEl.className = 'srs-rung'; }
   document.getElementById('srs-controls').innerHTML = '';
   const total = srsStats.easy + srsStats.hard + srsStats.miss;
+  let behind = 0;
+  try { behind = srsDaySplit(await srsGetDueCount()).behind; } catch (e) { behind = 0; }
   area.innerHTML =
     '<div class="srs-done">' +
       '<div class="srs-done-icon">✓</div>' +
-      '<div class="srs-done-title">Session complete</div>' +
-      '<div class="srs-done-sub">' + total + ' card' + (total===1?'':'s') + ' reviewed</div>' +
+      srsDoneHtml(total, behind) +
       '<div class="srs-done-stats">' +
         '<span class="srs-stat-easy">✓ ' + srsStats.easy + '</span>' +
         '<span class="srs-stat-hard">~ ' + srsStats.hard + '</span>' +
@@ -6532,6 +6598,13 @@ function renderSrsDone() {
     '</div>';
   updateDueBadge();
 }
+
+// "Do 50 more" on the Review screen: lift the cap one round, deal again.
+document.getElementById('srs-card-area').addEventListener('click', e => {
+  if (!e.target.closest('[data-srs-more]')) return;
+  srsBudgetExtend();
+  loadSrsReview();
+});
 
 // Mode toggle
 document.querySelectorAll('[data-srs-mode]').forEach(btn => {
@@ -11154,6 +11227,33 @@ const FLOW_PHASES = [
   { id: 'discover', label: 'Discover' },
 ];
 const flowPhaseHas = (p, slug) => p.slug === slug || (p.slugs || []).includes(slug);
+// The Cards mark names the cap when it is what stopped the deal, and offers
+// another round. Any other phase's mark is just its done line.
+function flowMarkData(ph, next) {
+  const d = { label: ph.label, text: ph.done, next };
+  if (ph.id === 'recall' && flowBehind > 0) {
+    d.text = 'That\'s ' + (flowDone.recall || flowCounts.recall || 0) + ' for today. ' + flowBehind + ' more waiting.';
+    d.more = 'Do ' + Math.min(SRS_DAY_CAP, flowBehind) + ' more';
+  }
+  return d;
+}
+// "Do 50 more" from the Flow: lift the cap, un-dry Cards, deal again.
+async function flowMoreCards() {
+  srsBudgetExtend();
+  flowDry.recall = false;
+  try {
+    const split = srsDaySplit(await srsGetDueCount());
+    flowBehind = split.behind;
+    flowCounts.recall = (flowDone.recall || 0) + split.today;
+  } catch (e) {}
+  flowDropAhead();
+  if (!flowMixed()) flowPhase = 0;
+  else flowFocus = 'recall';
+  feedDueQuietUntil = 0;
+  flowRenderRail();
+  feedFill();
+  feedDueTopUp();
+}
 const FLOW_ONLY = new Set(['ground', 'flow-mark']);   // never in the Scroll's weighted draw
 const FLOW_GROUND_MAX = 3;          // ground items per sitting
 const FLOW_DIVE_MAX = 2;            // dives per sitting; the rest stay due
@@ -11162,6 +11262,7 @@ const FLOW_GROUND_REST_DAYS = 14;   // a ground item rests this long before it c
 let feedMode    = 'scroll';   // 'scroll' | 'flow'
 let flowPhase   = 0;
 let flowCounts  = {};         // phase id -> owed at open, for the rail
+let flowBehind  = 0;          // cards due past today's cap, for the Cards mark
 let flowDone    = {};         // phase id -> cards dealt with this sitting (what the counter counts down)
 let flowServedIn = {};        // phase id -> cards served this sitting
 
@@ -11289,6 +11390,7 @@ CARD_SPECS['flow-mark'] = {
   render: (d) => '<div class="ai-single flow-mark">' +
     '<div class="due-tag">' + esc(d.label) + '</div>' +
     '<div class="main-text">' + esc(d.text) + '</div>' +
+    (d.more ? '<button class="due-btn due-easy flow-more" data-srs-more="1">' + esc(d.more) + '</button>' : '') +
     (d.next ? '<div class="flow-next">Next: ' + esc(d.next) + '</div>' : '') +
     '<div class="due-hint">swipe on</div>' +
   '</div>',
@@ -11306,7 +11408,7 @@ function flowAdvance() {
   if (did) {
     feedDueBuffer.push({
       slug: 'flow-mark',
-      data: { label: ph.label, text: ph.done, next: next.label },
+      data: flowMarkData(ph, next.label),
       key: 'flow-mark:' + ph.id + ':' + Date.now(),
     });
   }
@@ -11386,7 +11488,7 @@ function flowRunDry(ph) {
   flowDry[ph.id] = true;
   if (flowFocus === ph.id) {
     if (flowServedIn[ph.id]) {
-      feedDueBuffer.unshift({ slug: 'flow-mark', data: { label: ph.label, text: ph.done, next: 'Mix' }, key: 'flow-mark:' + ph.id + ':' + Date.now() });
+      feedDueBuffer.unshift({ slug: 'flow-mark', data: flowMarkData(ph, 'Mix'), key: 'flow-mark:' + ph.id + ':' + Date.now() });
     }
     flowFocus = null;
   }
@@ -11606,6 +11708,7 @@ async function openFlow() {
   flowPhase = 0;
   flowServedIn = {};
   flowCounts = {};
+  flowBehind = 0;
   flowDone = {};
   flowFocus = null;
   flowDry = {};
@@ -11627,9 +11730,11 @@ async function openFlow() {
       lulFetch().catch(() => []),
       sbFetch('deep_dives?select=id,status,next_review,resurface_at').catch(() => []),
     ]);
+    const split = srsDaySplit(n || 0);
+    flowBehind = split.behind;
     flowCounts = {
       queue:  (lul || []).length,
-      recall: n || 0,
+      recall: split.today,
       dive:   (dives || []).filter(d => d && (ddIsDue(d) || ddIsResurfaced(d))).length,
     };
   } catch (e) { flowCounts = {}; }
@@ -11661,6 +11766,7 @@ function flowUpdateHomeSub() {
 document.addEventListener('click', async e => {
   const skip = e.target.closest('[data-flow-skip]');
   if (skip) { flowSkipTo(parseInt(skip.dataset.flowSkip, 10)); return; }
+  if (feedMode === 'flow' && e.target.closest('.feed-item [data-srs-more]')) { flowMoreCards(); return; }
   const focus = e.target.closest('[data-flow-focus]');
   if (focus) { flowFocusOn(focus.dataset.flowFocus); return; }
 
@@ -12014,6 +12120,7 @@ document.addEventListener('click', async e => {
     // the background since then would otherwise credit a rung never asked.
     const shown = card._rung != null ? card._rung : ladderRung(card, FEED_LADDER_CAP);
     const updates = ladderApply(card, rating, shown);
+    srsBudgetSpend();
     // Optimistic: the note flashes, the feed moves on, and the save finishes
     // behind it. Offline or flaky, the outbox queues it; only a hard failure
     // surfaces, as a toast.
