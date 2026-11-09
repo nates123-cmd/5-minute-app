@@ -825,6 +825,21 @@
     .srs-btn-miss { background: var(--no-bg); color: var(--no-fg); }
     .srs-btn-hard { background: var(--card-bg); color: var(--text); border: 1.5px solid var(--border) !important; }
     .srs-btn-easy { background: var(--yes-bg); color: var(--yes-fg); }
+    .srs-btn-cold { background: var(--card-bg); color: var(--text-muted); border: 1.5px dashed var(--border) !important; }
+    /* Kind picker in the edit modal: Word / Fact / Concept */
+    .srs-kind-row { display: flex; gap: 6px; margin-top: 10px; }
+    .srs-kind-row button { flex: 1; padding: 9px 4px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--font-sans); font-size: 13px; cursor: pointer; }
+    .srs-kind-row button.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .srs-kind-hint { font-size: 12px; color: var(--text-faint); margin-top: 6px; }
+    /* Tidy screen */
+    .tidy-stats { font-size: 14px; color: var(--text-muted); line-height: 1.6; margin: 6px 0 14px; }
+    .tidy-row { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .tidy-row input { margin-top: 4px; flex: none; width: 18px; height: 18px; accent-color: var(--text); }
+    .tidy-front { font-family: var(--font-serif); font-size: 16px; line-height: 1.35; }
+    .tidy-why { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+    .tidy-kind { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); margin-left: 8px; }
+    .tidy-actions { display: flex; gap: 8px; margin: 16px 0 24px; }
+    .tidy-restore { flex: none; font-size: 13px; padding: 6px 10px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--text); cursor: pointer; }
     /* MC options */
     .srs-mc-options { display: flex; flex-direction: column; gap: 10px; }
     .srs-mc-btn { background: var(--card-bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: left; font-size: 0.93rem; color: var(--text); cursor: pointer; font-family: var(--font); transition: background 0.15s; }
@@ -2198,7 +2213,18 @@
     .due-miss { background: transparent; color: var(--text-muted); border-color: var(--border-strong); }
     .due-hard { background: transparent; color: var(--text); }
     .due-easy { background: var(--yes-bg); color: var(--yes-fg); border-color: var(--yes-bg); }
+    .due-cold { background: transparent; color: var(--text-muted); border-style: dashed; }
     .due-done { font-family: var(--font-serif); color: var(--text-faint); }
+    /* Passage card: five due words in one paragraph */
+    .pass-text { font-family: var(--font-serif); font-size: 18px; line-height: 1.55; text-align: left; }
+    .pass-text mark { background: transparent; color: inherit; font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+    .pass-list { text-align: left; margin: 0 0 14px; }
+    .pass-row { display: flex; gap: 10px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--border); cursor: pointer; }
+    .pass-row .pass-word { font-family: var(--font-serif); font-weight: 700; font-size: 16px; flex: none; min-width: 34%; }
+    .pass-row .pass-def { font-size: 13.5px; color: var(--text-muted); line-height: 1.35; }
+    .pass-row.missed .pass-word { text-decoration: line-through; color: var(--no-fg); }
+    .pass-row.missed .pass-def { opacity: 0.6; }
+    .pass-hint { font-size: 12.5px; color: var(--text-faint); margin-bottom: 10px; text-align: left; }
     /* Graded flashcard: the note blinks in and fades while the feed glides
        to the next card (feedAdvancePast). No flip-back link on the way out. */
     /* Flat on the way out: no flip transition, and the fade is opacity only.
@@ -2503,6 +2529,7 @@
       <button class="btn-icon" id="btn-home-overflow" title="More" aria-haspopup="true">⋯</button>
       <div class="home-overflow-menu hidden" id="home-overflow-menu" role="menu">
         <button class="overflow-item" id="btn-channels">Channels</button>
+        <button class="overflow-item" id="btn-tidy">Tidy cards</button>
         <button class="overflow-item" id="btn-activity-settings">Activities</button>
         <button class="overflow-item" id="btn-settings">API key</button>
         <button class="overflow-item" id="btn-theme">Theme: <span id="theme-label">Sun</span></button>
@@ -2804,6 +2831,15 @@
 
 <!-- COURSES (Deep Dives v2) — see break-courses-spec.md -->
 <!-- CHANNELS: topics you follow; each runs a slow course into the feed -->
+<div id="screen-tidy" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title">Tidy cards</span>
+  </div>
+  <p class="framing">Every card gets a kind, which sets how far up the ladder it is worth taking. Then a pass over the deck proposes what to retire: words you will never meet again, numbers you would look up anyway, duplicates. Nothing changes until you apply.</p>
+  <div id="tidy-body"></div>
+</div>
+
 <div id="screen-channels" class="screen">
   <div class="activity-header">
     <button class="btn-back" data-back="home">←</button>
@@ -3423,6 +3459,13 @@
     <textarea id="srs-edit-front" class="anki-textarea" rows="3"></textarea>
     <label class="srs-label">Back (answer / definition)</label>
     <textarea id="srs-edit-back" class="anki-textarea" rows="5"></textarea>
+    <label class="srs-label" style="margin-top:12px">Kind</label>
+    <div class="srs-kind-row" id="srs-edit-kind">
+      <button type="button" data-kind="vocab">Word</button>
+      <button type="button" data-kind="fact">Fact</button>
+      <button type="button" data-kind="concept">Concept</button>
+    </div>
+    <div class="srs-kind-hint">Words stop at Reworded, facts at Reversed, concepts climb the whole ladder.</div>
     <button class="btn btn-outline" id="srs-edit-swap" style="margin-top:10px;width:100%">⇄ Swap front &amp; back</button>
     <button class="btn btn-outline" id="srs-edit-reword" style="margin-top:8px;width:100%">Reword</button>
     <button class="btn btn-outline" id="srs-edit-delete" style="margin-top:8px;width:100%;color:var(--accent)">Delete card</button>
@@ -5710,18 +5753,18 @@ async function srsGetDue() {
   if (!budget) return [];
   const [lead, rows] = await Promise.all([
     sbFetch('flashcards?source=eq.' + encodeURIComponent(SRS_LEAD_SOURCE)
-      + '&next_review=lte.' + today + '&order=created_at.desc&limit=' + Math.min(20, budget)).catch(() => []),
-    sbFetch('flashcards?next_review=lte.' + today + '&order=next_review.asc&limit=' + budget),
+      + '&next_review=lte.' + today + '&or=(status.is.null,status.neq.retired)&order=created_at.desc&limit=' + Math.min(20, budget)).catch(() => []),
+    sbFetch('flashcards?next_review=lte.' + today + '&or=(status.is.null,status.neq.retired)&order=next_review.asc&limit=' + budget),
   ]);
   const seen = new Set((lead || []).map(c => c.id));
   const all = (lead || []).concat((rows || []).filter(c => !seen.has(c.id)));
-  return all.filter(c => !c.next_review || c.next_review <= today).slice(0, budget);
+  return all.filter(c => c.status !== 'retired' && (!c.next_review || c.next_review <= today)).slice(0, budget);
 }
 
 async function srsGetDueCount() {
   const today = localDateStr();
   const _bearer = await sbBearer();
-  const res = await sync.fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + '&select=id', {
+  const res = await sync.fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + '&or=(status.is.null,status.neq.retired)&select=id', {
     headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + _bearer, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
   });
   const count = res.headers.get('content-range');
@@ -5755,7 +5798,7 @@ async function clSnapshot() {
   let cards, clusters;
   try {
     [cards, clusters] = await Promise.all([
-      sbFetch('flashcards?context=eq.fun&select=id,cluster_id,next_review,last_missed_at&limit=2000'),
+      sbFetch('flashcards?context=eq.fun&or=(status.is.null,status.neq.retired)&select=id,cluster_id,next_review,last_missed_at&limit=2000'),
       sbFetch('clusters?select=id,name&order=created_at.desc'),
     ]);
   } catch (e) { return { dueCount: 0, clusters: [] }; }
@@ -5924,6 +5967,7 @@ sync.attach();
 
 async function srsCreate(front, back, source) {
   const card = { front, back, source: source || 'Break', created_at: new Date().toISOString() };
+  card.kind = kindGuess(card);
   const res = await sbFetch('flashcards', {
     method: 'POST',
     prefer: 'return=representation',
@@ -6011,6 +6055,67 @@ const LADDER_WAIT_MS = 2500;       // longest we hold the screen for a first-tim
 const FEED_LADDER_CAP = LADDER_MAX;
 const LADDER_NAMES = ['Recognize', 'Reversed', 'Reworded', 'Discriminate', 'Explain'];
 
+// ── Card kinds: how high is this card worth taking? ───────────────────────
+// Five rungs for every card was the complaint (Nate, 2026-11-09): a word met
+// once in a novel does not need to be discriminated and explained, and
+// "4 fl oz = ? cup" needs neither. A card's kind sets its ceiling. The
+// ladder's rules are unchanged below the ceiling; reaching it counts as
+// mastered for that card (mastery multiplier, climb cap lifted).
+//   vocab   -> 2  recognise it, produce it, know it reworded / in a sentence
+//   fact    -> 1  both directions
+//   concept -> 4  the whole ladder
+// `kind` is a column; null means unsorted and is treated as concept until
+// kindSortUnsorted() files it (daily, on open) or the edit modal sets it.
+const KIND_CAP   = { vocab: 2, fact: 1, concept: LADDER_MAX };
+const KIND_NAMES = { vocab: 'Word', fact: 'Fact', concept: 'Concept' };
+function cardKind(card) { const k = card && card.kind; return KIND_CAP[k] ? k : 'concept'; }
+function ladderCap(card) { return KIND_CAP[cardKind(card)]; }
+function ladderMastered(card) { return ladderLevel(card) >= ladderCap(card); }
+
+// Rule-based sort: source first, then the shape of the text. Good enough to
+// file a deck; the edit modal is the override.
+const KIND_VOCAB_SOURCES = /vocabulary builder|koreader|new-word|etymology|\bword\b/i;
+const KIND_FACT_SOURCES  = /cooking temps|kitchen|geography|^course:|presidents|nato|conversion|ratio/i;
+function kindGuess(card) {
+  const src = String((card && card.source) || '');
+  const front = String((card && card.front) || '').trim();
+  const back = String((card && card.back) || '').trim();
+  if (KIND_VOCAB_SOURCES.test(src)) return 'vocab';
+  if (KIND_FACT_SOURCES.test(src)) return 'fact';
+  if (/^[A-Za-z][A-Za-z'’-]*$/.test(front)) return 'vocab';                    // one word
+  if (/^what (does|is)\b.*\bmean\??$/i.test(front)) return 'vocab';
+  if (/^[A-Za-z][A-Za-z'’-]*$/.test(back) && back.length <= 24) return 'vocab';  // definition-first word card
+  if (/[=→]\s*\?|\?\s*(cups?|oz|g|ml|°|tbsp|tsp|%)\b|(%|°[FC]?|\b(cups?|oz|g|ml|tbsp|tsp))\s*\??\s*$|^root:/i.test(front)) return 'fact';
+  if (/^(who|what|which|when|where|how many|how much)\b/i.test(front) && back.length <= 40 && !/[.;]/.test(back)) return 'fact';
+  return 'concept';
+}
+
+// File every unsorted card, once a day. Three PATCHes (one per kind), ids in
+// chunks so the URL stays sane. Silent: a failure just leaves cards unsorted
+// (= concept), which is what they were before.
+const KIND_SORT_KEY = 'break_kind_sorted_d';
+async function kindSortUnsorted(force) {
+  if (!hasSession() || !navigator.onLine) return 0;
+  try { if (!force && localStorage.getItem(KIND_SORT_KEY) === localDateStr()) return 0; } catch (e) {}
+  let rows = [];
+  try { rows = await sbFetch('flashcards?kind=is.null&select=id,front,back,source&limit=2000') || []; } catch (e) { return 0; }
+  const groups = { vocab: [], fact: [], concept: [] };
+  rows.forEach(c => groups[kindGuess(c)].push(c.id));
+  for (const kind of Object.keys(groups)) {
+    const ids = groups[kind];
+    for (let i = 0; i < ids.length; i += 80) {
+      const chunk = ids.slice(i, i + 80);
+      try {
+        await sbFetch('flashcards?kind=is.null&id=in.(' + chunk.join(',') + ')', {
+          method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ kind }),
+        });
+      } catch (e) {}
+    }
+  }
+  try { localStorage.setItem(KIND_SORT_KEY, localDateStr()); } catch (e) {}
+  return rows.length;
+}
+
 function ladderLevel(card) {
   const n = Number(card && card.ladder_level);
   return Number.isFinite(n) ? Math.max(0, Math.min(LADDER_MAX, Math.trunc(n))) : 0;
@@ -6048,7 +6153,7 @@ function ladderPack(card) {
 // finds one this card can support right now. `cap` is the ceiling a surface
 // imposes — the scroll feed passes FEED_LADDER_CAP.
 function ladderRung(card, cap) {
-  const ceiling = (cap === null || cap === undefined) ? LADDER_MAX : cap;
+  const ceiling = Math.min((cap === null || cap === undefined) ? LADDER_MAX : cap, ladderCap(card));
   let lvl = Math.min(ladderLevel(card), ceiling);
   const v = ladderPack(card);
   // Explain is self-graded, so it needs only its cached prompt: no session,
@@ -6066,13 +6171,18 @@ function ladderRung(card, cap) {
 // can never buy a rung you weren't tested on, which is what keeps the scroll
 // feed's rung-2 cap honest.
 function ladderNext(card, rating, shown) {
-  const lvl = ladderLevel(card), streak = ladderStreak(card);
+  const lvl = ladderLevel(card), streak = ladderStreak(card), cap = ladderCap(card);
+  // Cold ("I know this cold"): straight to the card's ceiling.
+  if (rating === 3) return { ladder_level: Math.max(lvl, cap), ladder_streak: 0 };
   if (rating === 0) return { ladder_level: Math.max(0, lvl - 1), ladder_streak: 0 };
   if (rating === 1) return { ladder_level: lvl, ladder_streak: 0 };
-  if (shown !== null && shown !== undefined && shown < lvl)
+  // An Easy at a framing below the stored rung earns nothing. A card stored
+  // ABOVE its ceiling (it climbed before kinds existed) is only ever asked at
+  // the ceiling, so there the ceiling is the bar.
+  if (shown !== null && shown !== undefined && shown < Math.min(lvl, cap))
     return { ladder_level: lvl, ladder_streak: streak };   // easier framing, no credit
   const s = streak + 1;
-  if (s >= LADDER_PROMOTE_STREAK && lvl < LADDER_MAX)
+  if (s >= LADDER_PROMOTE_STREAK && lvl < cap)
     return { ladder_level: lvl + 1, ladder_streak: 0 };
   return { ladder_level: lvl, ladder_streak: Math.min(s, LADDER_PROMOTE_STREAK) };
 }
@@ -6081,15 +6191,21 @@ function ladderNext(card, rating, shown) {
 // screen and the scroll feed so the two can't drift. sm2() is untouched, and
 // the mastery multiplier lives here rather than in it, so the SM-2 tests stay
 // a clean regression canary.
+// Rating 3 = Cold: "I know this cold". Schedules as an Easy, jumps the card to
+// its ceiling, and will not show it again for at least SRS_COLD_MIN_DAYS. For
+// an obviously-known card the alternative was walking every rung anyway.
+const SRS_COLD_MIN_DAYS = 60;
 function ladderApply(card, rating, shown) {
+  const cap = ladderCap(card);
   const next = ladderNext(card, rating, shown);
-  const upd = sm2(card, rating);
-  if (next.ladder_level >= LADDER_MAX && rating === 2)
+  const upd = sm2(card, rating === 3 ? 2 : rating);
+  if (next.ladder_level >= cap && rating >= 2)
     upd.interval = Math.round(upd.interval * LADDER_MASTERY_MULT);
+  if (rating === 3) upd.interval = Math.max(upd.interval, SRS_COLD_MIN_DAYS);
   // The climb cap is applied to the interval only, never to ease_factor: a card
   // that comes back sooner must not also be re-taught as if it were hard, or a
   // long-mature card would have its ease quietly unwound by the ladder.
-  const ceiling = next.ladder_level >= LADDER_MAX
+  const ceiling = next.ladder_level >= cap
     ? LADDER_MAX_INTERVAL
     : Math.min(LADDER_MAX_INTERVAL, LADDER_CLIMB_MAX_INTERVAL);
   upd.interval = Math.max(1, Math.min(ceiling, upd.interval));
@@ -6097,9 +6213,26 @@ function ladderApply(card, rating, shown) {
   upd.next_review = localDateStr(d);
   upd.ladder_level = next.ladder_level;
   upd.ladder_streak = next.ladder_streak;
-  if (next.ladder_level >= LADDER_MAX && !card.mastered_at) upd.mastered_at = new Date().toISOString();
+  if (next.ladder_level >= cap && !card.mastered_at) upd.mastered_at = new Date().toISOString();
   if (rating === 0) upd.last_missed_at = new Date().toISOString();  // fresh-gap signal for cluster ripeness
   return upd;
+}
+
+// ── Review log ─────────────────────────────────────────────────────────────
+// One row per grade, from every surface. Nothing reads it yet: it exists so
+// a fitted scheduler (FSRS) has history to fit when the time comes. Call it
+// BEFORE the card object is mutated with the update, it reads the "before".
+function srsLogReview(card, rating, shown, updates, surface) {
+  if (!card || !card.id || !hasSession()) return;
+  const row = {
+    card_id: card.id, rating, shown_rung: shown == null ? null : shown,
+    level_before: ladderLevel(card),
+    interval_before: Number.isFinite(Number(card.interval)) ? Number(card.interval) : null,
+    ease_before: Number.isFinite(Number(card.ease_factor)) ? Number(card.ease_factor) : null,
+    interval_after: updates && Number.isFinite(Number(updates.interval)) ? Number(updates.interval) : null,
+    surface: surface || 'review',
+  };
+  sbFetch('review_log', { method: 'POST', prefer: 'return=minimal', body: JSON.stringify(row) }).catch(() => {});
 }
 
 // ── Variant pack: generated once per card, cached on the row ──────────────
@@ -6342,20 +6475,22 @@ function srsRenderRungLine(card, rung) {
   //   solid  ●  asked at, here and below
   //   ghost  ●  earned but not being asked right now (degraded)
   //   empty  ○  not earned
-  const earned = Math.max(rung, stored);
+  const cap = ladderCap(card);
+  const earned = Math.min(cap, Math.max(rung, stored));
   const dots = '<span class="srs-rung-dots">'
     + '●'.repeat(rung + 1)
     + (earned > rung ? '<span class="srs-rung-ghost">' + '●'.repeat(earned - rung) + '</span>' : '')
-    + '○'.repeat(LADDER_MAX - earned)
+    + '○'.repeat(Math.max(0, cap - earned))
     + '</span>';
   // Mastered stays a property of the CARD, so it survives a degrade — that is
   // deliberate and tested. Below the top, the label names what you're actually
   // being asked, with the held rung as a trailing note, so a degrade reads as
   // "still yours, just not today" instead of looking like lost ground.
-  const label = stored >= LADDER_MAX
-    ? 'Mastered'
-    : LADDER_NAMES[rung] + (earned > rung ? ' · holding ' + LADDER_NAMES[earned] : '');
-  el.className = 'srs-rung' + (stored >= LADDER_MAX ? ' mastered' : '');
+  const kindNote = card && card.kind ? KIND_NAMES[cardKind(card)] + ' · ' : '';
+  const label = stored >= cap
+    ? kindNote + 'Mastered'
+    : kindNote + LADDER_NAMES[rung] + (earned > rung ? ' · holding ' + LADDER_NAMES[earned] : '');
+  el.className = 'srs-rung' + (stored >= cap ? ' mastered' : '');
   el.innerHTML = dots + esc(label);
 }
 
@@ -6387,6 +6522,7 @@ function srsRateBtnsHtml(hidden, suggest) {
     '<button class="' + cls(0) + '" data-rate="0">Miss</button>' +
     '<button class="' + cls(1) + '" data-rate="1">Hard</button>' +
     '<button class="' + cls(2) + '" data-rate="2">Easy</button>' +
+    '<button class="btn srs-btn-cold" data-rate="3" title="I know this cold: jump to the top, rest 60 days">Cold</button>' +
   '</div>';
 }
 
@@ -6543,12 +6679,13 @@ async function rateSrsCard(rating) {
   if (rating === 0) srsStats.miss++;
   else if (rating === 1) srsStats.hard++;
   else srsStats.easy++;
-  const before = ladderLevel(card);
+  const before = ladderLevel(card), cap = ladderCap(card);
   // srsShownLevel, not the stored level: a rung you weren't actually asked at
   // earns no credit.
   const updates = ladderApply(card, rating, srsShownLevel);
   if (updates.ladder_level > before) srsStats.promoted++;
-  if (updates.ladder_level >= LADDER_MAX && before < LADDER_MAX) srsStats.mastered++;
+  if (updates.ladder_level >= cap && before < cap) srsStats.mastered++;
+  srsLogReview(card, rating, srsShownLevel, updates, 'review');
   Object.assign(card, updates);   // after ladderApply, which reads the pre-update row
   srsBudgetSpend();
   try { await srsUpdate(card.id, updates); } catch(e) {}
@@ -6650,9 +6787,21 @@ function openSrsEdit() {
   if (!card) { showToast('No card to edit'); return; }
   document.getElementById('srs-edit-front').value = card.front || '';
   document.getElementById('srs-edit-back').value  = card.back  || '';
+  srsEditKind = card.kind && KIND_CAP[card.kind] ? card.kind : kindGuess(card);
+  srsEditRenderKind();
   resetSrsDeleteBtn();
   document.getElementById('srs-edit-modal').classList.remove('hidden');
 }
+let srsEditKind = 'concept';
+function srsEditRenderKind() {
+  document.querySelectorAll('#srs-edit-kind [data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === srsEditKind));
+}
+document.getElementById('srs-edit-kind').addEventListener('click', e => {
+  const b = e.target.closest('[data-kind]');
+  if (!b) return;
+  srsEditKind = b.dataset.kind;
+  srsEditRenderKind();
+});
 function closeSrsEdit() { document.getElementById('srs-edit-modal').classList.add('hidden'); }
 
 document.getElementById('srs-edit-btn').addEventListener('click', openSrsEdit);
@@ -6763,6 +6912,7 @@ document.getElementById('srs-edit-save').addEventListener('click', async () => {
   const changed = (card.front !== front) || (card.back !== back);
   card.front = front; card.back = back;
   const patch = { front, back };
+  if (srsEditKind !== card.kind) { patch.kind = srsEditKind; card.kind = srsEditKind; }
   // Changed text means the cached variant pack quizzes you on wording that no
   // longer exists. ladderPack's fingerprint check would already reject it, but
   // clearing the column stops a stale blob sitting on the row forever and
@@ -6940,7 +7090,7 @@ async function ddGenerateTopic(title, contextText) {
 // Assemble a concept from existing flashcards (the auto-cluster path — kept as a
 // secondary source). Key points carry cardId so misses can resurface those cards.
 async function ddGenerateFromCards() {
-  const cards = await sbFetch('flashcards?context=eq.fun&order=next_review.asc&limit=15');
+  const cards = await sbFetch('flashcards?context=eq.fun&or=(status.is.null,status.neq.retired)&order=next_review.asc&limit=15');
   if (!cards || cards.length < CLUSTER_MIN_CARDS) throw new Error('need at least ' + CLUSTER_MIN_CARDS + ' cards first');
   const payload = cards.map(c => ({ id: c.id, front: c.front, back: c.back }));
   const out = await callClaudeAR(
@@ -10968,10 +11118,116 @@ function feedRetireDue(item, note) {
 // is the same card the Review screen would show you, so grading it here is
 // the same grade — same sm2(), same srsUpdate(), same last_missed_at stamp
 // feeding cluster ripeness.
+// ── Passage cards: five due words in one paragraph ─────────────────────────
+// Word cards are the bulk of the pile (82 of 216 due on 2026-11-09), and the
+// skill they stand for is recognising the word in running text, not flipping
+// it. So in a Flow, due word cards are dealt five at a time as ONE paragraph
+// that uses all five; you read, flip, and tick off any you did not get. One
+// card grades five rows. The paragraphs are written at Flow open (never
+// mid-thumb), capped per sitting, cached for the day. Flow only: the Cards
+// screen still deals words singly.
+const PASSAGE_WORDS = 5;
+const PASSAGE_MAX_PER_SITTING = 3;
+const PASSAGE_KEY = 'break_passages';
+let passagePool = [];                 // { id, cards, text, ready, failed }
+let passageReserved = new Set();      // card ids spoken for by a passage
+let passagePlanned = false;
+let passageBuilding = null;           // promise, so a dry source can wait
+
+function passageIsWord(c) {
+  const front = String((c && c.front) || '').trim();
+  const kind = c && c.kind ? cardKind(c) : kindGuess(c);
+  return kind === 'vocab' && /^[A-Za-z][A-Za-z'’ -]{1,30}$/.test(front) && front.split(/\s+/).length <= 2;
+}
+
+function passageReset() {
+  passagePool = []; passageReserved = new Set(); passagePlanned = false; passageBuilding = null;
+}
+
+// Decide which due words ride together. Idempotent per Flow; called by the
+// due-card source, which is the only dealer, so a word can't also go out
+// singly. A cached paragraph is reused only if every one of its words is
+// still due.
+function passagePlan(due) {
+  if (passagePlanned) return;
+  passagePlanned = true;
+  if (!hasSession() || !navigator.onLine) return;
+  const byId = new Map((due || []).filter(c => c && c.id).map(c => [c.id, c]));
+  let cached = [];
+  try { const c = JSON.parse(localStorage.getItem(PASSAGE_KEY) || 'null'); if (c && c.d === localDateStr()) cached = c.items || []; } catch (e) {}
+  cached.forEach(it => {
+    if (passagePool.length >= PASSAGE_MAX_PER_SITTING) return;
+    if (!it.ids || !it.ids.every(id => byId.has(id))) return;
+    const cards = it.ids.map(id => byId.get(id));
+    cards.forEach(c => passageReserved.add(c.id));
+    passagePool.push({ id: 'p:' + it.ids.join(','), cards, text: it.text, ready: true, _passage: true });
+  });
+  const words = (due || []).filter(c => passageIsWord(c) && !passageReserved.has(c.id));
+  const todo = [];
+  while (passagePool.length + todo.length < PASSAGE_MAX_PER_SITTING && words.length >= PASSAGE_WORDS) {
+    const cards = words.splice(0, PASSAGE_WORDS);
+    cards.forEach(c => passageReserved.add(c.id));
+    const item = { id: 'p:' + cards.map(c => c.id).join(','), cards, text: '', ready: false, _passage: true };
+    passagePool.push(item); todo.push(item);
+  }
+  if (todo.length) passageBuilding = passageBuildAll(todo);
+}
+
+function passagePrompt(cards) {
+  return 'Write ONE short paragraph (70 to 110 words) of vivid, natural prose, literary nonfiction or fiction, that uses each of these words exactly once, in its ordinary sense, so that a reader could infer each meaning from context. ' +
+    'Inflections are fine (plural, past tense). Wrap each target word, as it appears in the text, in double angle quotes like «this». No other markup. ' +
+    'Return JSON: {"passage": "..."}.\n\nWords:\n' +
+    cards.map(c => '- ' + c.front + ' (' + String(cardAnswerText(c.back)).slice(0, 80) + ')').join('\n');
+}
+
+function passageMentionsAll(text, cards) {
+  const t = String(text || '').toLowerCase();
+  return cards.every(c => {
+    const stem = String(c.front).toLowerCase().replace(/(ly|ed|ing|es|s)$/, '').slice(0, Math.max(4, String(c.front).length - 2));
+    return t.includes(stem.slice(0, 5));
+  });
+}
+
+async function passageBuildAll(items) {
+  for (const it of items) {
+    try {
+      const out = await callClaude(passagePrompt(it.cards), { max_tokens: 600 });
+      const text = out && typeof out.passage === 'string' ? out.passage.trim() : '';
+      if (!text || !passageMentionsAll(text, it.cards)) throw new Error('passage missed a word');
+      it.text = text; it.ready = true;
+    } catch (e) {
+      // Give the words back to the single-card deal.
+      it.failed = true;
+      it.cards.forEach(c => passageReserved.delete(c.id));
+    }
+  }
+  passagePool = passagePool.filter(p => !p.failed);
+  try {
+    localStorage.setItem(PASSAGE_KEY, JSON.stringify({ d: localDateStr(), items: passagePool.filter(p => p.ready).map(p => ({ ids: p.cards.map(c => c.id), text: p.text })) }));
+  } catch (e) {}
+  passageBuilding = null;
+}
+
+// «word» markers become underlined marks; everything else is escaped text.
+function passageHtml(text) {
+  return esc(String(text || '')).replace(/«([^»]+)»/g, '<mark>$1</mark>');
+}
+
 CARD_SOURCES['due-card'] = async (n) => {
   const due = await srsGetDue();
-  const fresh = (due || []).filter(c => c && c.id && c.front && !feedDueSeen.has('due-card:' + c.id));
-  return fresh.length ? fresh.slice(0, n) : null;
+  if (feedMode === 'flow') passagePlan(due);
+  const unseen = p => !feedDueSeen.has('due-card:' + p.id);
+  let passages = feedMode === 'flow' ? passagePool.filter(p => p.ready && unseen(p)) : [];
+  let fresh = (due || []).filter(c => c && c.id && c.front && !passageReserved.has(c.id) && !feedDueSeen.has('due-card:' + c.id));
+  // Nothing single left but paragraphs still being written: wait for them
+  // rather than letting the phase run dry under the words it reserved.
+  if (!passages.length && !fresh.length && passageBuilding) {
+    try { await passageBuilding; } catch (e) {}
+    passages = passagePool.filter(p => p.ready && unseen(p));
+    fresh = (due || []).filter(c => c && c.id && c.front && !passageReserved.has(c.id) && !feedDueSeen.has('due-card:' + c.id));
+  }
+  const all = passages.concat(fresh);
+  return all.length ? all.slice(0, n) : null;
 };
 
 // The feed asks every rung (2026-10-26, Nate wants his flashcards in the
@@ -11002,7 +11258,7 @@ function dueAnswerSize(s) {
 
 function dueRateRow(suggest) {
   return '<div class="due-rate">' +
-    ['Miss', 'Hard', 'Easy'].map((l, r) =>
+    ['Miss', 'Hard', 'Easy', 'Cold'].map((l, r) =>
       '<button class="due-btn due-' + l.toLowerCase() + (suggest === r ? ' is-suggest' : '') + '" data-due-rate="' + r + '">' + l + '</button>').join('') +
   '</div>';
 }
@@ -11011,6 +11267,13 @@ CARD_SPECS['due-card'] = {
   slug: 'due-card',
   sourceOnly: true,
   render: (d) => {
+    if (d._passage) {
+      const left = '<span class="due-left">' + (feedMode === 'flow' && flowLeft('recall') != null ? flowLeft('recall') + ' left · ' : '') + '</span>';
+      return '<div class="ai-single">' +
+        '<div class="pass-text">' + passageHtml(d.text) + '</div>' +
+        '<div class="due-hint">' + left + d.cards.length + ' words · tap to check</div>' +
+      '</div>';
+    }
     const rung = d._rung = ladderRung(d, FEED_LADDER_CAP);
     const left = '<span class="due-left">' + (feedMode === 'flow' && flowLeft('recall') != null ? flowLeft('recall') + ' left · ' : '') + '</span>';
     if (rung === 3) {
@@ -11046,6 +11309,14 @@ CARD_SPECS['due-card'] = {
   // plain flip's answer is the back; every harder rung asks you to produce
   // the front (the term), so there the front leads.
   renderBack: (d) => {
+    if (d._passage) {
+      return '<div class="feed-back-kind">' + d.cards.length + ' words</div>' +
+        '<div class="pass-hint">Tap any you did not get, then Done.</div>' +
+        '<div class="pass-list">' + d.cards.map((c, i) =>
+          '<div class="pass-row" data-pass-row="' + i + '" data-no-flip><span class="pass-word">' + esc(c.front) + '</span>' +
+          '<span class="pass-def">' + esc(cardAnswerText(c.back)) + '</span></div>').join('') + '</div>' +
+        '<div class="due-rate"><button class="due-btn due-easy" data-passage-done="1">Done</button></div>';
+    }
     const rung = d._rung != null ? d._rung : ladderRung(d, FEED_LADDER_CAP);
     const crit = rung === 4 ? ((ladderPack(d) || {}).produce || {}).criteria || [] : [];
     const answer = cardAnswerText(rung ? d.front : d.back);
@@ -11715,8 +11986,11 @@ async function openFlow() {
   flowMixPrimed = false;
   chanRun = null; chanPickShown = 0; chanPickSkipAt = -1; chanPickCache = null;
   groundPool = null;   // Ink may have changed since the last sitting
+  passageReset();
   openFeed();
   if (!hasSession()) return;
+  // File any unsorted cards (daily) so the passage plan can see which are words.
+  try { await kindSortUnsorted(false); } catch (e) {}
   // Start writing channel lessons now, while the Cards phase is on screen.
   chanQuietUntil = 0;
   chanTopUp();
@@ -12106,6 +12380,39 @@ document.addEventListener('click', async e => {
   // That is the whole point: the home tally moves because the work was
   // actually done, not because the feed kept a second set of books.
 
+  // A passage word row: toggle "didn't get it".
+  const passRow = e.target.closest('[data-pass-row]');
+  if (passRow) { passRow.classList.toggle('missed'); return; }
+  // A passage, graded: every ticked word is a Miss, the rest an Easy at the
+  // word's current rung (capped at Reworded, which is what reading it in a
+  // sentence is). Same ladderApply(), one write per card, budget spent per
+  // card, the Flow counter ticks per card.
+  const passDone = e.target.closest('[data-passage-done]');
+  if (passDone) {
+    const item = passDone.closest('.feed-item');
+    const pass = item && item._due;
+    if (!pass || !pass._passage || item.dataset.dueDone) return;
+    passDone.disabled = true;
+    const missed = new Set([...item.querySelectorAll('[data-pass-row].missed')].map(r => Number(r.dataset.passRow)));
+    let nMiss = 0;
+    pass.cards.forEach((card, i) => {
+      const rating = missed.has(i) ? 0 : 2;
+      if (!rating) nMiss++;
+      const shown = Math.min(ladderLevel(card), KIND_CAP.vocab);
+      const updates = ladderApply(card, rating, shown);
+      srsBudgetSpend();
+      srsLogReview(card, rating, shown, updates, 'passage');
+      srsUpdate(card.id, updates).catch(() => showToast('Couldn\'t save a grade'));
+    });
+    item.classList.add('is-spent');
+    feedRetireDue(item, nMiss ? nMiss + ' back tomorrow, ' + (pass.cards.length - nMiss) + ' moved on' : 'All ' + pass.cards.length + ' moved on');
+    // feedRetireDue ticked one; a passage is worth its word count.
+    if (feedMode === 'flow') { flowDone.recall = (flowDone.recall || 0) + pass.cards.length - 1; flowRenderRail(); }
+    feedAdvancePast(item);
+    updateDueBadge();
+    return;
+  }
+
   // A flashcard, graded. Same ladderApply() the Review screen uses — one write
   // shape for both surfaces, so cluster ripeness and the ladder can't drift.
   const rateBtn = e.target.closest('[data-due-rate]');
@@ -12121,6 +12428,7 @@ document.addEventListener('click', async e => {
     const shown = card._rung != null ? card._rung : ladderRung(card, FEED_LADDER_CAP);
     const updates = ladderApply(card, rating, shown);
     srsBudgetSpend();
+    srsLogReview(card, rating, shown, updates, 'flow');
     // Optimistic: the note flashes, the feed moves on, and the save finishes
     // behind it. Offline or flaky, the outbox queues it; only a hard failure
     // surfaces, as a toast.
@@ -14266,6 +14574,160 @@ async function chanRenderSuggestions(chans) {
 }
 
 document.getElementById('btn-channels')?.addEventListener('click', () => channelsOpen(false));
+document.getElementById('btn-tidy')?.addEventListener('click', () => tidyOpen());
+
+// ── Tidy: sort kinds, propose retirements, restore ─────────────────────────
+// The cull is AI-proposed and hand-approved: the model names what it would
+// retire and why, every row is a checkbox, nothing moves until Apply. A
+// retired card keeps its row (status 'retired') and can come back from the
+// list at the bottom. Proposals are cached per day so reopening is free;
+// a card you untick is remembered and not proposed again.
+const TIDY_PROPOSALS_KEY = 'break_tidy_proposals';
+const TIDY_KEPT_KEY = 'break_tidy_kept';
+let tidyCards = [], tidyRetired = [], tidyProposals = null;
+
+async function tidyOpen() {
+  showScreen('tidy');
+  const body = document.getElementById('tidy-body');
+  if (!body) return;
+  if (!hasSession()) { body.innerHTML = '<div class="cu-note">Sign in to tidy your cards.</div>'; return; }
+  body.innerHTML = '<p class="tidy-stats">Sorting…</p>';
+  try {
+    await kindSortUnsorted(true);
+    [tidyCards, tidyRetired] = await Promise.all([
+      sbFetch('flashcards?select=id,front,back,source,kind,status,interval,ease_factor,ladder_level' + '&or=(status.is.null,status.neq.retired)' + '&order=created_at.desc&limit=2000'),
+      sbFetch('flashcards?status=eq.retired&select=id,front,back,kind&order=created_at.desc&limit=500'),
+    ]);
+  } catch (e) {
+    body.innerHTML = '<div class="cu-note">Couldn\'t load cards (' + esc(e.message || 'offline') + ').</div>';
+    return;
+  }
+  try {
+    const cached = JSON.parse(localStorage.getItem(TIDY_PROPOSALS_KEY) || 'null');
+    tidyProposals = cached && cached.d === localDateStr() ? cached.items : null;
+  } catch (e) { tidyProposals = null; }
+  tidyRender();
+}
+
+function tidyKept() { try { return new Set(JSON.parse(localStorage.getItem(TIDY_KEPT_KEY) || '[]')); } catch (e) { return new Set(); } }
+
+function tidyRender() {
+  const body = document.getElementById('tidy-body');
+  if (!body) return;
+  const counts = { vocab: 0, fact: 0, concept: 0 };
+  tidyCards.forEach(c => { counts[cardKind(c)]++; });
+  const live = new Set(tidyCards.map(c => c.id));
+  const kept = tidyKept();
+  const props = (tidyProposals || []).filter(p => live.has(p.id) && !kept.has(p.id));
+  let html = '<p class="tidy-stats">' + tidyCards.length + ' cards: ' + counts.vocab + ' words, ' + counts.fact + ' facts, ' + counts.concept + ' concepts.' +
+    (tidyRetired.length ? ' ' + tidyRetired.length + ' retired.' : '') +
+    '<br>Words stop at Reworded, facts at Reversed, concepts climb all five rungs. Fix a wrong kind from the card\'s edit sheet.</p>';
+  if (!tidyProposals) {
+    html += '<div class="tidy-actions"><button class="btn btn-primary" id="tidy-propose" style="flex:1">Propose what to retire</button></div>';
+  } else if (!props.length) {
+    html += '<p class="tidy-stats">Nothing left to propose today.</p>';
+  } else {
+    html += '<div class="ch-section-label">Proposed to retire (' + props.length + ')</div>';
+    html += props.map(p => {
+      const c = tidyCards.find(x => x.id === p.id);
+      return '<label class="tidy-row"><input type="checkbox" data-tidy-id="' + esc(p.id) + '" checked>' +
+        '<div><div class="tidy-front">' + esc(c.front) + '<span class="tidy-kind">' + esc(KIND_NAMES[cardKind(c)]) + '</span></div>' +
+        '<div class="tidy-why">' + esc(p.why || '') + '</div></div></label>';
+    }).join('');
+    html += '<div class="tidy-actions"><button class="btn btn-primary" id="tidy-apply" style="flex:2">Retire the ticked</button>' +
+      '<button class="btn btn-outline" id="tidy-keep-all" style="flex:1">Keep all</button></div>';
+  }
+  if (tidyRetired.length) {
+    html += '<div class="ch-section-label">Retired</div>' + tidyRetired.map(c =>
+      '<div class="tidy-row"><div style="flex:1"><div class="tidy-front">' + esc(c.front) + '</div><div class="tidy-why">' + esc(cardAnswerText(c.back)) + '</div></div>' +
+      '<button class="tidy-restore" data-tidy-restore="' + esc(c.id) + '">Restore</button></div>').join('');
+  }
+  body.innerHTML = html;
+}
+
+function tidyPrompt(cards) {
+  const lines = cards.map((c, i) => i + ' | ' + KIND_NAMES[cardKind(c)] + ' | ' + String(c.front).slice(0, 90).replace(/\n/g, ' ') + ' => ' + String(c.back).slice(0, 90).replace(/\n/g, ' '));
+  return 'This is a personal flashcard deck. The owner reads literary fiction and nonfiction, cooks seriously, and likes history, geography and science. ' +
+    'Propose cards to RETIRE from spaced repetition. Retire a card only if it is: ' +
+    '(a) a word so rare, archaic, dialectal or niche that he is unlikely to meet it again in a decade of reading; ' +
+    '(b) a number or conversion he would look up anyway and gains nothing by memorising; ' +
+    '(c) a duplicate or near-duplicate of another card in the list (retire the weaker one); ' +
+    '(d) a card whose "answer" is not checkable (an opinion, a mindset, advice). ' +
+    'Keep ordinary literary vocabulary, every concept from a book, history, science or geography card, and anything with a story behind it. ' +
+    'Be selective: at most a quarter of the deck. ' +
+    'Return ONLY a JSON array: [{"i": <index>, "why": "<under 10 words>"}]. Empty array if nothing qualifies.\n\n' + lines.join('\n');
+}
+
+async function tidyPropose() {
+  const btn = document.getElementById('tidy-propose');
+  if (btn) { btn.textContent = 'Reading the deck…'; btn.disabled = true; }
+  try {
+    const out = await callClaude(tidyPrompt(tidyCards), { max_tokens: 4000 });
+    const arr = Array.isArray(out) ? out : (out && Array.isArray(out.retire) ? out.retire : []);
+    tidyProposals = arr.map(x => ({ i: Number(x.i), why: String(x.why || '') }))
+      .filter(x => Number.isInteger(x.i) && tidyCards[x.i])
+      .map(x => ({ id: tidyCards[x.i].id, why: x.why }));
+    try { localStorage.setItem(TIDY_PROPOSALS_KEY, JSON.stringify({ d: localDateStr(), items: tidyProposals })); } catch (e) {}
+  } catch (e) {
+    showToast('Couldn\'t get proposals (' + (e.message || 'offline') + ')');
+    if (btn) { btn.textContent = 'Propose what to retire'; btn.disabled = false; }
+    return;
+  }
+  tidyRender();
+}
+
+async function tidyRetire(ids) {
+  if (!ids.length) return;
+  for (let i = 0; i < ids.length; i += 80) {
+    const chunk = ids.slice(i, i + 80);
+    await sbFetch('flashcards?id=in.(' + chunk.join(',') + ')', { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ status: 'retired' }) });
+  }
+}
+
+document.getElementById('tidy-body').addEventListener('click', async e => {
+  if (e.target.closest('#tidy-propose')) { tidyPropose(); return; }
+  if (e.target.closest('#tidy-keep-all')) {
+    const kept = tidyKept();
+    (tidyProposals || []).forEach(p => kept.add(p.id));
+    try { localStorage.setItem(TIDY_KEPT_KEY, JSON.stringify([...kept])); } catch (err) {}
+    tidyRender();
+    return;
+  }
+  if (e.target.closest('#tidy-apply')) {
+    const boxes = [...document.querySelectorAll('#tidy-body [data-tidy-id]')];
+    const retire = boxes.filter(b => b.checked).map(b => b.dataset.tidyId);
+    const keep = boxes.filter(b => !b.checked).map(b => b.dataset.tidyId);
+    const kept = tidyKept(); keep.forEach(id => kept.add(id));
+    try { localStorage.setItem(TIDY_KEPT_KEY, JSON.stringify([...kept])); } catch (err) {}
+    const btn = document.getElementById('tidy-apply');
+    if (btn) { btn.textContent = 'Retiring…'; btn.disabled = true; }
+    try {
+      await tidyRetire(retire);
+      const moved = tidyCards.filter(c => retire.includes(c.id));
+      tidyCards = tidyCards.filter(c => !retire.includes(c.id));
+      tidyRetired = moved.map(c => ({ ...c, status: 'retired' })).concat(tidyRetired);
+      showToast(retire.length + ' card' + (retire.length === 1 ? '' : 's') + ' retired');
+      updateDueBadge();
+    } catch (err) {
+      showToast('Couldn\'t retire (' + (err.message || 'offline') + ')');
+    }
+    tidyRender();
+    return;
+  }
+  const restore = e.target.closest('[data-tidy-restore]');
+  if (restore) {
+    const id = restore.dataset.tidyRestore;
+    restore.textContent = '…'; restore.disabled = true;
+    try {
+      await sbFetch('flashcards?id=eq.' + id, { method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ status: 'review' }) });
+      const c = tidyRetired.find(x => x.id === id);
+      tidyRetired = tidyRetired.filter(x => x.id !== id);
+      if (c) tidyCards.unshift({ ...c, status: 'review' });
+      updateDueBadge();
+    } catch (err) { showToast('Couldn\'t restore'); }
+    tidyRender();
+  }
+});
 document.getElementById('ch-add')?.addEventListener('submit', async e => {
   e.preventDefault();
   const input = document.getElementById('ch-add-input');

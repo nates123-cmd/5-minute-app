@@ -21,7 +21,8 @@ function stubCards(page, { due = 200 } = {}) {
       const path = u.split('/rest/v1/')[1];
       window.__sbCalls.push({ path, method: opts.method || 'GET', body: opts.body || null });
       if (path.startsWith('flashcards')) {
-        if (opts.method === 'PATCH') { window.__due = Math.max(0, window.__due - 1); return json(null); }
+        if (opts.method === 'PATCH') { if (path.includes('id=eq.')) window.__due = Math.max(0, window.__due - 1); return json(null); }
+        if (path.includes('kind=is.null')) return json([]);
         const hdr = (opts.headers || {});
         if (hdr['Prefer'] === 'count=exact') return json([], { 'Content-Range': '0-0/' + window.__due });
         if (path.includes('source=eq.')) return json([]);
