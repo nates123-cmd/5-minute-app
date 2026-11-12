@@ -2215,6 +2215,23 @@
     .due-easy { background: var(--yes-bg); color: var(--yes-fg); border-color: var(--yes-bg); }
     .due-cold { background: transparent; color: var(--text-muted); border-style: dashed; }
     .due-done { font-family: var(--font-serif); color: var(--text-faint); }
+    /* Card context: a quiet text row under the grades (Vocabulary's row of
+       actions under the word), and the example sentence it can write. */
+    .card-ctx { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px 18px; margin-top: 16px; }
+    .card-ctx-btn {
+      background: none; border: none; padding: 9px 0; cursor: pointer;
+      font-family: var(--font-sans); font-size: 13px; font-weight: 600; color: var(--text-muted);
+    }
+    .card-ctx-btn:disabled { color: var(--text-faint); cursor: default; }
+    /* The sentence takes its own line, so the ways out never wrap to an orphan. */
+    .card-ctx-btn[data-card-ctx="sentence"] { flex-basis: 100%; }
+    .card-sent { font-family: var(--font-serif); font-size: 17px; line-height: 1.5; color: var(--text-muted); }
+    .card-sent strong { color: var(--text); font-weight: 700; }
+    .card-sent:empty { display: none; }
+    .feed-item[data-slug="due-card"] .card-sent { margin: -18px 0 30px; }
+    .due-verdict .card-sent { margin: 0 0 16px; }
+    .srs-controls .card-sent { text-align: center; padding: 4px 6px 12px; }
+    .srs-controls .card-ctx { margin: 0 0 6px; }
     /* Passage card: five due words in one paragraph */
     .pass-text { font-family: var(--font-serif); font-size: 18px; line-height: 1.55; text-align: left; }
     .pass-text mark { background: transparent; color: inherit; font-weight: 700; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
@@ -6510,9 +6527,18 @@ function srsFlipShell(frontHtml, frontHint, backHtml, backHint) {
         '</div>' +
       '</div>' +
     '</div>';
-  ctrl.innerHTML = srsRateBtnsHtml(true);
+  ctrl.innerHTML = srsCtxHtml(true) + srsRateBtnsHtml(true);
   document.getElementById('srs-flip-wrap').addEventListener('click', toggleSrsCard);
   srsWireRateBtns();
+}
+
+// The same context row the Flow card back carries (cardCtxRow), minus Go
+// deeper: that sheet lives on the feed screen.
+function srsCtxHtml(hidden) {
+  const card = srsQueue && srsQueue[srsCurrent];
+  if (!card) return '';
+  return '<div id="srs-ctx"' + (hidden ? ' style="display:none"' : '') + '>' +
+    '<div class="card-sent" data-card-sent></div>' + cardCtxRow(card, false) + '</div>';
 }
 
 function srsRateBtnsHtml(hidden, suggest) {
@@ -6588,7 +6614,7 @@ function renderSrsDiscriminate(card, pack) {
     const why = document.getElementById('srs-disc-why');
     why.style.display = '';
     why.textContent = (pack.discriminate.why ? pack.discriminate.why + ' ' : '') + card.back;
-    ctrl.innerHTML = srsRateBtnsHtml(false, picked.correct ? 2 : 0);
+    ctrl.innerHTML = srsCtxHtml(false) + srsRateBtnsHtml(false, picked.correct ? 2 : 0);
     srsWireRateBtns();
   });
 }
@@ -6613,7 +6639,11 @@ function toggleSrsCard() {
   srsFlipped = !srsFlipped;
   cardEl.classList.toggle('flipped', srsFlipped);
   if (srsFlipped) srsRevealed = true;
-  if (srsRevealed) rateEl.style.display = 'flex';
+  if (srsRevealed) {
+    rateEl.style.display = 'flex';
+    const ctx = document.getElementById('srs-ctx');
+    if (ctx) ctx.style.display = '';
+  }
 }
 
 // #14 — Space / Enter flips the flashcard, parity with a tap (both ways).
@@ -11256,6 +11286,130 @@ function dueAnswerSize(s) {
   return n > 160 ? ' due-q-long' : n > 70 ? ' due-q-mid' : '';
 }
 
+// ── Card context ─────────────────────────────────────────────────────────
+// After the answer is showing: a way to hear a word used, and ways out to
+// more (the Go deeper sheet, a Claude conversation, a search). Shared by the
+// Flow card back and the Cards screen. Nothing here grades or reschedules.
+function cardIsVocab(c) { return !!c && (c.kind ? cardKind(c) : kindGuess(c)) === 'vocab'; }
+
+// The word itself, whichever side it was saved on (definition-first cards and
+// Jeopardy-style backs both exist). '' when no side is a clean term.
+function cardVocabWord(c) {
+  if (!cardIsVocab(c)) return '';
+  const termish = t => /^[A-Za-z][A-Za-z'’ -]{1,40}$/.test(t) && t.split(/\s+/).length <= 3;
+  let best = '';
+  for (const side of [c.front, c.back]) {
+    const raw = String(side || '').trim();
+    const t = termish(raw) ? raw : cardAnswerText(raw);
+    if (!termish(t)) continue;
+    if (!best || t.split(/\s+/).length < best.split(/\s+/).length) best = t;
+  }
+  return best;
+}
+function cardVocabMeaning(c, word) {
+  const f = String(c.front || '').trim(), b = String(c.back || '').trim();
+  return (f === word || cardAnswerText(f) === word) ? b : f;
+}
+
+function cardCtxRow(card, withDeeper) {
+  const b = (act, label, extra) => '<button class="card-ctx-btn" data-card-ctx="' + act + '"' + (extra || '') + '>' + label + '</button>';
+  return '<div class="card-ctx" data-no-flip>' +
+    (cardVocabWord(card) ? b('sentence', 'Use it in a sentence') : '') +
+    (withDeeper ? b('deeper', 'Go deeper', ' data-feed-deeper="1"') : '') +
+    b('claude', 'Ask Claude') +
+    b('google', 'Google it') +
+  '</div>';
+}
+
+// Three sentences per word, written once on the first tap and kept on the
+// device, so "another" is instant and a word met again costs nothing.
+const SENT_KEY = 'break_sentences', SENT_KEEP = 200;
+function sentCacheGet(card, word) {
+  try {
+    const hit = (JSON.parse(localStorage.getItem(SENT_KEY) || '{}'))[card.id];
+    return hit && hit.w === word && Array.isArray(hit.s) && hit.s.length ? hit.s : null;
+  } catch (e) { return null; }
+}
+function sentCachePut(card, word, list) {
+  try {
+    const all = JSON.parse(localStorage.getItem(SENT_KEY) || '{}');
+    delete all[card.id];
+    all[card.id] = { w: word, s: list };
+    const ids = Object.keys(all);
+    ids.slice(0, Math.max(0, ids.length - SENT_KEEP)).forEach(id => { delete all[id]; });
+    localStorage.setItem(SENT_KEY, JSON.stringify(all));
+  } catch (e) {}
+}
+async function cardSentences(card) {
+  const word = cardVocabWord(card);
+  if (!word) return [];
+  const cached = sentCacheGet(card, word);
+  if (cached) return cached;
+  const d = await callClaude(
+    'Word: "' + word + '"\nMeaning on the learner\'s flashcard: ' + cardVocabMeaning(card, word) + '\n\n'
+    + 'Write three example sentences that use this word in exactly that sense, to help an adult remember it. '
+    + 'Each sentence: 12 to 24 words, a different setting (one everyday, one from history, science or the news, '
+    + 'one vivid or wry), concrete enough that the meaning could be worked out from the context alone, and natural, '
+    + 'not a dictionary gloss. Use the word itself (inflected if needed), never a synonym, and wrap it in asterisks '
+    + 'like *this*. Return JSON {"sentences": [string, string, string]}.',
+    { model: FEED_MODEL, max_tokens: 400 });
+  const list = (Array.isArray(d && d.sentences) ? d.sentences : []).map(x => String(x || '').trim()).filter(Boolean).slice(0, 3);
+  if (!list.length) throw new Error('empty');
+  sentCachePut(card, word, list);
+  return list;
+}
+function sentenceHtml(t) { return esc(t).replace(/\*([^*]+)\*/g, '<strong>$1</strong>'); }
+
+function cardCtxSeed(card) {
+  const word = cardVocabWord(card);
+  if (word) {
+    return 'I\'m learning the word "' + word + '" from a flashcard. My card says: ' + cardVocabMeaning(card, word)
+      + '\n\nGive me what will make it stick: where it comes from, how it is actually used (a few real-feeling '
+      + 'examples), the words it gets confused with, and anything memorable about it.';
+  }
+  return 'I\'m reviewing this flashcard and want more context so it sticks:\n\n' + card.front + '\n' + card.back
+    + '\n\nExplain the background, why it is true or matters, and one memorable hook or example.';
+}
+
+document.addEventListener('click', async e => {
+  const btn = e.target.closest('[data-card-ctx]');
+  if (!btn) return;
+  const act = btn.dataset.cardCtx;
+  if (act === 'deeper') return;                       // the Go deeper handler owns it
+  const item = btn.closest('.feed-item');
+  const card = item ? item._due : (srsQueue ? srsQueue[srsCurrent] : null);
+  if (!card) return;
+  if (act === 'claude') {
+    const seed = cardCtxSeed(card);
+    try { navigator.clipboard.writeText(seed); } catch (err) {}
+    window.open('https://claude.ai/new?q=' + encodeURIComponent(seed), '_blank', 'noopener');
+    return;
+  }
+  if (act === 'google') {
+    const word = cardVocabWord(card);
+    window.open('https://www.google.com/search?q=' + encodeURIComponent(word ? 'define ' + word : card.front), '_blank', 'noopener');
+    return;
+  }
+  if (act === 'sentence') {
+    const out = (item || document.getElementById('srs-controls'))?.querySelector('[data-card-sent]');
+    if (!out || btn.disabled) return;
+    btn.disabled = true; btn.textContent = 'Writing…';
+    try {
+      const list = await cardSentences(card);
+      if (!btn.isConnected) return;
+      const n = Number(btn.dataset.n || 0);
+      out.innerHTML = sentenceHtml(list[n % list.length]);
+      btn.dataset.n = n + 1;
+      btn.textContent = list.length > 1 ? 'Another sentence' : 'Use it in a sentence';
+    } catch (err) {
+      if (!btn.isConnected) return;
+      btn.textContent = 'Use it in a sentence';
+      showToast(navigator.onLine ? 'Couldn\'t write a sentence. Try again.' : 'Sentences need a connection');
+    }
+    btn.disabled = false;
+  }
+});
+
 function dueRateRow(suggest) {
   return '<div class="due-rate">' +
     ['Miss', 'Hard', 'Easy', 'Cold'].map((l, r) =>
@@ -11326,8 +11480,9 @@ CARD_SPECS['due-card'] = {
     '<div class="due-q' + dueAnswerSize(answer) + '">' + esc(answer) + '</div>' +
     '<div class="due-a">' + esc(prompt) + '</div>' +
     (crit.length ? '<ul class="due-points due-crit">' + crit.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' : '') +
+    '<div class="card-sent" data-card-sent></div>' +
     dueRateRow() +
-    '<button class="feed-deeper-link is-center" data-feed-deeper="1">Go deeper ↑</button>';
+    cardCtxRow(d, true);
   },
 };
 
@@ -11349,7 +11504,9 @@ document.addEventListener('click', e => {
   const why = (ladderPack(card) || {}).discriminate?.why;
   const v = item.querySelector('[data-due-verdict]');
   if (v) v.innerHTML = '<div class="due-disc-why">' + esc((why ? why + ' ' : '') + card.front + ': ' + card.back) + '</div>' +
-    dueRateRow(picked && picked.correct ? 2 : 0);
+    '<div class="card-sent" data-card-sent></div>' +
+    dueRateRow(picked && picked.correct ? 2 : 0) +
+    cardCtxRow(card, true);
   item.querySelector('.due-hint')?.remove();
 });
 
