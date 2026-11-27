@@ -156,10 +156,66 @@ Shows `#screen-{id}`, hides all others. Dispatches `screenchange` CustomEvent (u
 
 ---
 
+## Today's Five, the shelf, journeys, the library (2026-11-27)
+Nate: "the saved learning content is by far the strongest part ... the backlog felt bad."
+The app had no way to end and opened on a countdown from 207, so it stopped being opened
+(last grade 11/11). Four changes, one PR:
+
+- **Today's Five** is the default sitting (`flowOrder()` = `five` | `mix` | `sequence`,
+  cycled from home ⋯ "Sitting:"; a device that had picked an order before is moved to
+  Five once via `break_five_migrated`). `fivePlan()` builds a fixed plan at open: two
+  due cards, one **Re-meet** off the shelf, one journey step, one **new arrival** (a
+  `status='new'` card under `FIVE_ARRIVAL_DAYS` old), then a `flow-mark` with
+  `data.five` ("That's five." / Five more / Wander / Library). **Nothing restocks**
+  (`flowTopUp` returns in Five) and the loading sentinel is removed once the ending
+  card is mounted, so "done" is real. The rail is five ticks and `n of 5`: position,
+  never a count of what is owed. `fiveSeen` keeps "Five more" from re-dealing today's
+  cards. Needs a session; signed out, `flowFive()` is false and the old Flow runs.
+- **The shelf** replaces "the backlog stays due behind the cap". `shelfSweep()` (once a
+  day, on a Five open) stamps `flashcards.shelved_at` on every live card more than
+  `SHELF_AFTER_DAYS` (7) overdue. The schedule is untouched, so clearing the stamp
+  undoes it. Every due query carries `SHELF_OFF` (`&shelved_at=is.null`), `shelfGet(n)`
+  deals Re-meets, and `ladderApply` clears the stamp on any grade. **Never show a
+  number of shelved or overdue cards anywhere.** The Break MCP's `due=true` listing
+  does not know about the shelf yet.
+- **Provenance.** `cardProv(card)` is one quiet line under every flashcard prompt:
+  where it came from and when ("Kindle lookup · Nov 27", "Re-meet · ...", "New · ...").
+  `cardShelf(card)` files a card on a library shelf from its `source`. Kindle cards
+  carry no book title today; the Beelink sync would have to send it.
+- **Journeys** are channels whose lessons end on **doors** (see the `// ── Journeys`
+  block). Onward = the next unit of the course plan, which is now a hidden spine (no
+  "4 of 12" chip). Deeper and Sideways are written per step by one `FEED_MODEL` call
+  in `jrnyEnsureDoors`, made while the sitting is planned and saved to
+  `course_units.doors` only when whole. Taking one (`jrnyTakeDoor`) creates a side step:
+  a `course_units` row with `parent_id` and a position past 1000, `picked_at` stamped,
+  built in the background. `jrnyNextStep()` serves the picked step next time, else each
+  started journey's frontier in turn; a suggested channel never opened stays out.
+  Canonical courses get Onward only. "Keep going now" waits for the build and deals the
+  step next; "Keep a flashcard from this step" deals the offer card. The **trail**
+  (`#screen-trail`, Journeys → Trail) lists steps walked with passed doors still open.
+  `chanTeach` stamps `taught_at`; a journey step never auto-deals an offer card.
+- **Library home.** Home = Today's five (the one fill), Capture, shelves
+  (`libRender`, one thin query, cached `LIB_TTL_MS`), Journeys / Look-ups / Dives, and
+  **Wander**, which holds the whole previous home (Scroll, Courses, Crux, pillars,
+  grid; `break_home_wander`). A shelf (`#screen-shelf`) is a list; "Go through what
+  needs a look" runs only its due and shelved cards through the Cards screen
+  (`srsQueueOverride`), so browsing never writes an early grade.
+- **Deeplinks** are hashes (a hash never reaches the service worker): `#home`, `#five`,
+  `#card=<flashcard id>` (leads the sitting with that card; if it is not due it is a
+  `_peek`: answer shown, no grade row). Manifest shortcuts use them.
+- Migration `supabase/migrations/20261127_shelf_and_journeys.sql` is **already applied**
+  to prod (additive columns only).
+- Tests: `tests/five.spec.js` + `tests/five-stub.js`. `tests/helper.js` pins the old
+  defaults (mixed Flow, Wander open) for every older suite; a test opts into the new
+  ones by setting `break_flow_order` / `break_home_wander` itself.
+
 ## Boot
-`boot()` opens a **Flow** straight away (flashcards first), not home. Home is the **Break** wordmark in the feed's top-left; opening at `#home` lands on home (the Playwright helper `boot(page)` defaults to `/#home`; pass `'/'` to test the real boot).
+`boot()` opens **Today's Five** straight away (a Flow in `five` order), not home. Home is the **Break** wordmark in the feed's top-left; opening at `#home` lands on home (the Playwright helper `boot(page)` defaults to `/#home`; pass `'/'` to test the real boot).
 
 ## Home screen layout
+**Superseded 2026-11-27 by the library home above.** Everything listed below still
+exists with the same ids, inside `#home-wander`, except Flow (now the "Today's five"
+fill at the top) and Capture (outlined, second).
 - **Header**: "Break" wordmark + date; timer icon
 - **Capture button** (full-width, `--ink`) → opens the **Add menu** modal: Add Card / Recommendation / Look Up Later / Listen Later
 - **Flow button** (outlined, accent border, directly below Capture) → `openFlow()`. Same feed engine as Scroll in `feedMode = 'flow'`: drains `due-card` (Cards) → **Channels** (`chan-unit`/`chan-recall` drained from `chanBuffer`, max `FLOW_CHAN_MAX`=6, phase has `slugs` not `slug`; match with `flowPhaseHas`) → `due-lul` (Queue) → `due-dive` (max `FLOW_DIVE_MAX`=2 per sitting; capped phases slice each batch to what's left of the cap) → `ground` (Ink mantras/insights + `reflections` tagged `book-review`, 3 per sitting, 14-day rest in `localStorage.flow_ground_seen`) → hands over to the ordinary scroll. No caps on the due phases. `flowTopUp()` replaces the every-6th due cadence; `feedTake()` returns nothing until Discover; `flow-mark` cards separate phases that served something; the rail (`flowRenderRail`) follows the on-screen card's `data-flow-phase`, and the step you are in shows an `n / N` counter (`flowDone` graded this sitting over `flowCounts` owed at open; `feedRetireDue` ticks it). `FLOW_ONLY` slugs never enter `feedEligible()`. Sub-line follows the Queue/Flashcards pillar numbers via a MutationObserver.
