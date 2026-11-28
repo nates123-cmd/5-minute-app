@@ -37,8 +37,22 @@ progress bars, encouragement copy), it is wrong.**
 
 ## Behaviour that belongs to the design
 
-- `boot()` opens a **Flow**, not home. Flow's first phase is **Cards** (due
-  flashcards), then Queue, Dive, Ground, Discover.
+- **A sitting ends (2026-11-27).** The default open is Today's Five: five items, then a
+  card that says "That's five." and offers Five more, Wander, Library. Nothing loads
+  after it. The rail is five hairline ticks and `2 of 5`: where you are, never what
+  you owe. No number of overdue or shelved cards appears anywhere in the app.
+- **Every flashcard says where it came from.** One faint sans line under the prompt
+  (`.due-prov`): source, then date, led by `New` or `Re-meet` when that applies. This
+  is provenance, not a kind label; the ban on kind labels stands.
+- **Doors are hairline rows**, the step's title in sans 600 on the left, its role
+  (`ONWARD`, `DEEPER`, `SIDEWAYS`) as small caps chrome on the right. A door you did
+  not take is dimmed, never struck through: it stays open on the trail.
+- **Home is a library.** One white fill (Today's five), Capture outlined, then
+  hairline rows: shelves with a faint count, Journeys, Look-ups, Dives, Wander. A shelf
+  count is how much you have saved, not how much is due.
+
+- `boot()` opens **Today's Five**, not home. The older open-ended Flows (Mixed, In
+  sequence: Cards, then Queue, Dive, Ground, Discover) are on the home `⋯` menu.
 - Home is one tap away on the **Break** wordmark. Opening the app at `#home`
   lands on home instead (the test harness boots that way).
 

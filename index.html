@@ -2090,6 +2090,66 @@
     .flow-step.on .flow-n { background: rgba(255,255,255,.22); }
 
     /* Phase marker card */
+    /* Library home: the one fill is Today's Five; everything saved is a shelf. */
+    #screen-home .btn-flow { background: var(--accent); border-color: var(--accent); color: var(--ink-on); margin-bottom: 10px; }
+    #screen-home .btn-flow .btn-scroll-sub { color: inherit; opacity: .62; font-family: var(--font-sans); }
+    #screen-shelf .lib-rows { border-top: 0; }
+    #screen-home .btn-capture { background: none; color: var(--text); border: 1px solid var(--border-strong); padding: 13px 18px; }
+    .lib { margin-top: 22px; }
+    .lib-rows { display: flex; flex-direction: column; border-top: 1px solid var(--border); }
+    .lib-rows + .lib-rows { margin-top: 22px; }
+    .lib-row {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px; width: 100%;
+      background: none; border: 0; border-bottom: 1px solid var(--border); padding: 14px 2px;
+      color: var(--text); font: inherit; font-family: var(--font-sans); font-size: 16px; font-weight: 600; text-align: left; cursor: pointer;
+    }
+    .lib-row.dim { color: var(--text-muted); font-weight: 500; }
+    .lib-n { flex: none; color: var(--text-faint); font-weight: 400; font-variant-numeric: tabular-nums; }
+    .lib-note { padding: 14px 2px; font-size: 13.5px; color: var(--text-faint); }
+    #home-wander { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+    #home-wander[hidden] { display: none; }
+    .shelf-card { padding: 14px 0; border-bottom: 1px solid var(--border); }
+    .shelf-front { font-family: var(--font-serif); font-weight: 600; font-size: 19px; line-height: 1.25; }
+    .shelf-back { margin-top: 4px; color: var(--text-muted); font-size: 14.5px; line-height: 1.45; }
+    .shelf-card .due-prov { margin-top: 6px; }
+    /* Journeys: a step ends on doors; the trail is the path walked. */
+    .jrny-doors { margin-top: 24px; border-top: 1px solid var(--border); display: flex; flex-direction: column; text-align: left; }
+    .jrny-door, .trail-row {
+      display: flex; justify-content: space-between; align-items: baseline; gap: 12px; width: 100%;
+      background: none; border: 0; border-bottom: 1px solid var(--border); padding: 13px 0;
+      color: var(--text); font: inherit; font-family: var(--font-sans); font-size: 15.5px; font-weight: 600; text-align: left; cursor: pointer;
+    }
+    .jrny-door small, .trail-row small {
+      flex: none; font-size: 10.5px; letter-spacing: .07em; text-transform: uppercase; color: var(--text-faint); font-weight: 600;
+    }
+    /* Dimmed, not struck through: a door you passed stays open on the trail. */
+    .jrny-door.unpicked { color: var(--text-faint); }
+    .jrny-door:disabled { cursor: default; }
+    .jrny-note { padding-top: 12px; font-family: var(--font-sans); font-size: 13px; line-height: 1.5; color: var(--text-faint); }
+    .jrny-go, .jrny-cards {
+      background: none; border: 0; padding: 0; color: var(--text); font: inherit; font-weight: 600;
+      text-decoration: underline; text-underline-offset: 3px; cursor: pointer;
+    }
+    .jrny-cards { display: block; margin-top: 10px; color: var(--text-muted); font-family: var(--font-sans); font-size: 13px; }
+    .trail-row { cursor: default; font-size: 16px; }
+    .trail-row.road { padding-left: 18px; color: var(--text-faint); font-weight: 500; cursor: pointer; }
+    .trail-foot { padding: 18px 0; font-size: 13px; color: var(--text-faint); }
+    .ch-btn[data-ch-trail] { text-decoration: none; }
+    /* Today's Five: the rail is five ticks, the last card is an ending. */
+    .five-rail { display: inline-flex; gap: 5px; align-items: center; vertical-align: middle; }
+    .five-rail i { display: block; width: 16px; height: 2px; background: var(--border-strong); }
+    .five-rail i.on { background: var(--text); }
+    .five-n { margin-left: 10px; font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+    .due-prov { margin-top: 12px; font-family: var(--font-sans); font-size: 12px; line-height: 1.4; color: var(--text-faint); }
+    .five-end .main-text { font-size: 34px; font-weight: 700; }
+    .five-acts { display: flex; flex-direction: column; width: 100%; max-width: 300px; margin-top: 28px; border-top: 1px solid var(--border); }
+    .five-act {
+      background: none; border: 0; border-bottom: 1px solid var(--border); color: var(--text-muted);
+      padding: 14px 2px; text-align: left; font: inherit; font-family: var(--font-sans); font-size: 16px; font-weight: 600; cursor: pointer;
+      display: flex; justify-content: space-between;
+    }
+    .five-act:first-child { color: var(--text); }
+    .five-act::after { content: '›'; color: var(--text-faint); font-weight: 400; }
     .flow-mark .due-tag { margin-bottom: 18px; }
     .flow-mark .main-text { font-family: var(--font-serif); font-size: 24px; line-height: 1.35; }
     .flow-mark .flow-next { margin-top: 18px; font-size: 13.5px; color: var(--text-muted); }
@@ -2545,26 +2605,39 @@
       <button class="btn-icon" id="btn-timer-menu" title="Set timer">⏱</button>
       <button class="btn-icon" id="btn-home-overflow" title="More" aria-haspopup="true">⋯</button>
       <div class="home-overflow-menu hidden" id="home-overflow-menu" role="menu">
-        <button class="overflow-item" id="btn-channels">Channels</button>
+        <button class="overflow-item" id="btn-channels">Journeys</button>
         <button class="overflow-item" id="btn-tidy">Tidy cards</button>
         <button class="overflow-item" id="btn-activity-settings">Activities</button>
         <button class="overflow-item" id="btn-settings">API key</button>
         <button class="overflow-item" id="btn-theme">Theme: <span id="theme-label">Sun</span></button>
-        <button class="overflow-item" id="btn-flow-order">Flow: <span id="flow-order-label">Mixed</span></button>
+        <button class="overflow-item" id="btn-flow-order">Sitting: <span id="flow-order-label">Five</span></button>
       </div>
     </div>
   </div>
+
+  <button class="btn-scroll btn-flow" id="btn-flow">
+    <span class="btn-scroll-label" id="flow-label">Today's five</span>
+    <span class="btn-scroll-sub" id="flow-sub">three cards, a step on a journey, something new</span>
+  </button>
 
   <button class="btn-capture" id="btn-add-menu">
     <span class="btn-capture-icon">+</span>
     <span>Capture</span>
   </button>
 
-  <button class="btn-scroll btn-flow" id="btn-flow">
-    <span class="btn-scroll-label">Flow</span>
-    <span class="btn-scroll-sub" id="flow-sub">cards, lessons, queue, a dive, then wander</span>
-  </button>
+  <!-- Library: what you saved, by where it came from. Generated activities
+       live behind Wander (closed by default, remembered per device). -->
+  <div class="lib" id="home-lib">
+    <div class="lib-rows" id="lib-shelves"><div class="lib-note">Your shelves appear here.</div></div>
+    <div class="lib-rows">
+      <button class="lib-row" id="lib-journeys"><span>Journeys</span><span class="lib-n" id="lib-journeys-n"></span></button>
+      <button class="lib-row" id="lib-lookups"><span>Look-ups waiting</span><span class="lib-n" id="lib-lul-n"></span></button>
+      <button class="lib-row" id="lib-dives"><span>Dives</span><span class="lib-n" id="lib-dd-n"></span></button>
+      <button class="lib-row dim" id="lib-wander" aria-expanded="false" aria-controls="home-wander"><span>Wander</span><span class="lib-n" id="lib-wander-n">›</span></button>
+    </div>
+  </div>
 
+  <div id="home-wander" hidden>
   <button class="btn-scroll" id="btn-scroll">
     <span class="btn-scroll-label">Scroll</span>
     <span class="btn-scroll-sub">one card at a time, as long as you want</span>
@@ -2614,6 +2687,19 @@
   <div class="section-label">Wander</div>
 
   <div class="activity-grid" id="activity-grid"><!-- rendered from ACTIVITY_REGISTRY by renderActivityGrid() --></div>
+  </div>
+</div>
+
+<!-- A LIBRARY SHELF -->
+<div id="screen-shelf" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" data-back="home">←</button>
+    <span class="activity-title" id="shelf-title">Shelf</span>
+  </div>
+  <div class="lib-rows">
+    <button class="lib-row" id="shelf-run"><span>Go through what needs a look</span><span class="lib-n" id="shelf-run-n"></span></button>
+  </div>
+  <div id="shelf-list"></div>
 </div>
 
 <!-- SOURCE-BACKED ACTIVITIES (no model call — see CARD_SOURCES) -->
@@ -2860,9 +2946,9 @@
 <div id="screen-channels" class="screen">
   <div class="activity-header">
     <button class="btn-back" data-back="home">←</button>
-    <span class="activity-title">Channels</span>
+    <span class="activity-title">Journeys</span>
   </div>
-  <p class="framing">Topics you follow. Each one runs a short course in the background, one small unit at a time, mixed into your feed.</p>
+  <p class="framing">Topics you follow. Each one moves a step at a time, and every step ends on doors: you choose where it goes next.</p>
   <form class="ch-add" id="ch-add">
     <input id="ch-add-input" type="text" placeholder="Follow a topic: all the US presidents, how vaccines work…" autocomplete="off" enterkeyhint="go">
     <button type="submit" id="ch-add-go">Follow</button>
@@ -2871,6 +2957,15 @@
   <div id="ch-following"></div>
   <div class="ch-section-label">Suggested for you</div>
   <div id="ch-suggested"></div>
+</div>
+
+<div id="screen-trail" class="screen">
+  <div class="activity-header">
+    <button class="btn-back" id="trail-back">←</button>
+    <span class="activity-title" id="trail-title">Trail</span>
+  </div>
+  <p class="framing">Where you have been. Roads you passed are still open: tap one to take it next.</p>
+  <div id="trail-body"></div>
 </div>
 
 <div id="screen-courses" class="screen">
@@ -4117,15 +4212,21 @@ applyTheme();
 // Flow order: Mixed (one card at a time from every phase) or In sequence
 // (drain each phase before the next). Flips on the home menu; the Flow
 // button's sub-line follows it.
+const FLOW_ORDER_LABEL = { five: 'Five', mix: 'Mixed', sequence: 'In sequence' };
 function renderFlowOrderLabel() {
   const el = document.getElementById('flow-order-label');
-  if (el) el.textContent = flowOrder() === 'mix' ? 'Mixed' : 'In sequence';
+  if (el) el.textContent = FLOW_ORDER_LABEL[flowOrder()];
   if (typeof flowUpdateHomeSub === 'function') flowUpdateHomeSub();
 }
 document.getElementById('btn-flow-order')?.addEventListener('click', () => {
-  setFlowOrder(flowOrder() === 'mix' ? 'sequence' : 'mix');
+  const order = ['five', 'mix', 'sequence'];
+  setFlowOrder(order[(order.indexOf(flowOrder()) + 1) % order.length]);
   renderFlowOrderLabel();
-  showToast(flowOrder() === 'mix' ? 'Flow: mixed, one card at a time from everything' : 'Flow: in sequence, cards first, then lessons, queue, a dive, wander');
+  showToast({
+    five: 'Sitting: five. Three cards, a step, something new, then it ends',
+    mix: 'Flow: mixed, one card at a time from everything',
+    sequence: 'Flow: in sequence, cards first, then lessons, queue, a dive, wander',
+  }[flowOrder()]);
 });
 renderFlowOrderLabel();
 
@@ -5644,8 +5745,22 @@ function boot() {
   if (!hasSession()) { showOtpGate(); return; }
   sync.resume();
   if (location.hash === '#home') showScreen('home');
-  else openFlow();
+  else { bootLead(); openFlow(); }
 }
+// #card=<flashcard id> opens the sitting on that card (the Suite widget's
+// tap). Hash, not a query string: a hash never reaches the service worker.
+function bootLead() {
+  const m = (location.hash || '').match(/^#card=([0-9a-f-]{8,64})$/i);
+  if (m) fiveLead = m[1];
+  if (m || location.hash === '#five') { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
+  return !!m || location.hash === '#five';
+}
+window.addEventListener('hashchange', () => {
+  if (!hasSession()) return;
+  if (location.hash === '#home') { showScreen('home'); return; }
+  const five = location.hash === '#five';
+  if (bootLead() || five) openFlow();
+});
 
 // ── Offline outbox + read snapshots (shared suite-sync.js) ─────────────
 // Every Supabase REST call below goes through sync.fetch. Offline (or while
@@ -5770,23 +5885,95 @@ async function srsGetDue() {
   if (!budget) return [];
   const [lead, rows] = await Promise.all([
     sbFetch('flashcards?source=eq.' + encodeURIComponent(SRS_LEAD_SOURCE)
-      + '&next_review=lte.' + today + '&or=(status.is.null,status.neq.retired)&order=created_at.desc&limit=' + Math.min(20, budget)).catch(() => []),
-    sbFetch('flashcards?next_review=lte.' + today + '&or=(status.is.null,status.neq.retired)&order=next_review.asc&limit=' + budget),
+      + '&next_review=lte.' + today + SHELF_OFF + '&or=(status.is.null,status.neq.retired)&order=created_at.desc&limit=' + Math.min(20, budget)).catch(() => []),
+    sbFetch('flashcards?next_review=lte.' + today + SHELF_OFF + '&or=(status.is.null,status.neq.retired)&order=next_review.asc&limit=' + budget),
   ]);
   const seen = new Set((lead || []).map(c => c.id));
   const all = (lead || []).concat((rows || []).filter(c => !seen.has(c.id)));
-  return all.filter(c => c.status !== 'retired' && (!c.next_review || c.next_review <= today)).slice(0, budget);
+  return all.filter(c => c.status !== 'retired' && !c.shelved_at && (!c.next_review || c.next_review <= today)).slice(0, budget);
 }
 
 async function srsGetDueCount() {
   const today = localDateStr();
   const _bearer = await sbBearer();
-  const res = await sync.fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + '&or=(status.is.null,status.neq.retired)&select=id', {
+  const res = await sync.fetch(SB_URL + '/rest/v1/flashcards?next_review=lte.' + today + SHELF_OFF + '&or=(status.is.null,status.neq.retired)&select=id', {
     headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + _bearer, 'Prefer': 'count=exact', 'Range-Unit': 'items', 'Range': '0-0' },
   });
   const count = res.headers.get('content-range');
   if (count) { const m = count.match(/\/(\d+)/); return m ? parseInt(m[1]) : 0; }
   return 0;
+}
+
+// ── The shelf ─────────────────────────────────────────────────────────────
+// The pile was the reason the app stopped being opened (Nate, 2026-11-27:
+// "the backlog felt bad"). So a card more than SHELF_AFTER_DAYS overdue stops
+// being due at all: it is stamped `shelved_at` and left exactly as it was
+// (next_review, interval and ease untouched, so clearing the stamp undoes
+// it). Shelved cards come back a few a day as a "Re-meet" in Today's Five,
+// and a grade takes the card off the shelf (ladderApply clears the stamp).
+// Nothing is ever shown as owed. This replaces the 2026-11-09 rule that the
+// backlog stays due behind the cap; the cap itself still bounds a day.
+const SHELF_AFTER_DAYS = 7;
+const SHELF_OFF = '&shelved_at=is.null';
+const SHELF_SWEPT_KEY = 'break_shelf_swept';
+async function shelfSweep() {
+  if (!hasSession()) return;
+  const today = localDateStr();
+  try { if (localStorage.getItem(SHELF_SWEPT_KEY) === today) return; } catch (e) {}
+  const cut = new Date(); cut.setDate(cut.getDate() - SHELF_AFTER_DAYS);
+  await sbFetch('flashcards?next_review=lt.' + localDateStr(cut) + SHELF_OFF + '&or=(status.is.null,status.neq.retired)', {
+    method: 'PATCH', prefer: 'return=minimal', body: JSON.stringify({ shelved_at: new Date().toISOString() }),
+  });
+  try { localStorage.setItem(SHELF_SWEPT_KEY, today); } catch (e) {}
+}
+// A few shelved cards to re-meet. Drawn at random from the longest-shelved
+// so the same three do not lead every sitting.
+async function shelfGet(n) {
+  if (!hasSession() || n <= 0) return [];
+  const rows = await sbFetch('flashcards?shelved_at=not.is.null&or=(status.is.null,status.neq.retired)&order=shelved_at.asc,next_review.asc&limit=40');
+  const pool = (rows || []).filter(c => c && c.id && c.front && c.shelved_at && c.status !== 'retired');
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  return pool.slice(0, n);
+}
+
+// ── Where a card came from ────────────────────────────────────────────────
+// "Mine" is the draw (DESIGN.md: no streaks, no badges), so every flashcard
+// says where it came from and when. cardShelf() files it on a library shelf;
+// cardProv() is the one quiet line under the prompt.
+function cardShelf(c) {
+  const src = String((c && c.source) || '').trim();
+  if (/vocabulary builder/i.test(src) || /^book\s*:/i.test(src)) return { id: 'books', label: 'Books and Kindle lookups' };
+  if (/^(kitchen|cooking)/i.test(src)) return { id: 'kitchen', label: 'Kitchen' };
+  if (/anki/i.test(src)) return { id: 'anki', label: 'From Anki' };
+  if (/^geography/i.test(src)) return { id: 'geography', label: 'Geography' };
+  const m = src.match(/^(?:course|channel)\s*:\s*(.+)$/i);
+  if (m) return { id: 'j:' + m[1].trim().toLowerCase(), label: m[1].trim() };
+  return { id: 'rest', label: 'Everything else' };
+}
+function provDate(iso) {
+  const d = iso ? new Date(iso) : null;
+  if (!d || isNaN(d)) return '';
+  return d.toLocaleDateString('en-US', d.getFullYear() === new Date().getFullYear() ? { month: 'short', day: 'numeric' } : { month: 'short', year: 'numeric' });
+}
+function cardProvSource(c) {
+  const src = String((c && c.source) || '').trim();
+  if (/vocabulary builder/i.test(src)) return 'Kindle lookup';
+  let m = src.match(/^book\s*:\s*(.+)$/i); if (m) return m[1].trim();
+  m = src.match(/^(?:course|channel)\s*:\s*(.+)$/i); if (m) return m[1].trim();
+  if (/anki/i.test(src)) return 'From Anki';
+  if (/^manual$/i.test(src)) return 'Added by hand';
+  if (/voice capture/i.test(src)) return 'Said to your watch';
+  if (/\(MCP\)/i.test(src)) return 'Added in Claude';
+  if (/^deep dive$/i.test(src)) return 'From a dive';
+  if (/^lul$/i.test(src)) return 'From a look-up';
+  if (!src || /^break$/i.test(src)) return 'Saved in Break';
+  return src.length > 44 ? src.slice(0, 42).trim() + '…' : src;
+}
+function cardProv(c) {
+  if (!c) return '';
+  // A card shelved before it was ever graded has not been met, so say so.
+  const lead = c._arrival ? 'New' : (c._remeet || c.shelved_at) ? (c.status === 'new' ? 'Not met yet' : 'Re-meet') : '';
+  return [lead, cardProvSource(c), provDate(c.created_at)].filter(Boolean).join(' · ');
 }
 
 // ── Concept clusters + ripeness ───────────────────────────────────────────
@@ -6232,6 +6419,7 @@ function ladderApply(card, rating, shown) {
   upd.ladder_streak = next.ladder_streak;
   if (next.ladder_level >= cap && !card.mastered_at) upd.mastered_at = new Date().toISOString();
   if (rating === 0) upd.last_missed_at = new Date().toISOString();  // fresh-gap signal for cluster ripeness
+  if (card.shelved_at) upd.shelved_at = null;   // a grade takes it off the shelf
   return upd;
 }
 
@@ -6418,6 +6606,7 @@ async function updateDueBadge() {
   }
 }
 
+let srsQueueOverride = null;   // a shelf run hands the Cards screen its own queue, once
 async function loadSrsReview() {
   const area = document.getElementById('srs-card-area');
   const prog = document.getElementById('srs-progress');
@@ -6427,7 +6616,8 @@ async function loadSrsReview() {
   document.getElementById('srs-edit-btn').style.display = 'none';
   document.getElementById('srs-controls').innerHTML = '';
   try {
-    srsQueue = await srsGetDue();
+    srsQueue = srsQueueOverride || await srsGetDue();
+    srsQueueOverride = null;
     srsCurrent = 0; srsStats = { easy:0, hard:0, miss:0, promoted:0, mastered:0 };
     if (!srsQueue || !srsQueue.length) { renderSrsDone(); return; }
     renderSrsCard();
@@ -10813,7 +11003,7 @@ function deeperRender() {
     '<button class="deeper-act" data-deeper-act="card">Make a flashcard</button>' +
     '<button class="deeper-act" data-deeper-act="dive">Save as deep dive</button>' +
     (typeof channelStartFromTopic === 'function'
-      ? '<button class="deeper-act" data-deeper-act="channel">Start a channel on this</button>' : '');
+      ? '<button class="deeper-act" data-deeper-act="channel">Start a journey from this</button>' : '');
 }
 
 async function deeperAsk(q) {
@@ -10909,7 +11099,7 @@ document.addEventListener('click', async e => {
     } else if (kind === 'channel' && typeof channelStartFromTopic === 'function') {
       act.disabled = true; act.textContent = 'Starting…';
       try { await channelStartFromTopic(t.topic, deeperContext(t)); act.textContent = 'Channel started'; }
-      catch (err) { act.disabled = false; act.textContent = 'Start a channel on this'; showToast('Couldn\'t start that channel'); }
+      catch (err) { act.disabled = false; act.textContent = 'Start a journey from this'; showToast('Couldn\'t start that channel'); }
     }
   }
 });
@@ -11428,7 +11618,7 @@ CARD_SPECS['due-card'] = {
         '<div class="due-hint">' + left + d.cards.length + ' words · tap to check</div>' +
       '</div>';
     }
-    const rung = d._rung = ladderRung(d, FEED_LADDER_CAP);
+    const rung = d._rung = d._peek ? 0 : ladderRung(d, FEED_LADDER_CAP);
     const left = '<span class="due-left">' + (feedMode === 'flow' && flowLeft('recall') != null ? flowLeft('recall') + ' left · ' : '') + '</span>';
     if (rung === 3) {
       const pack = ladderPack(d);
@@ -11451,6 +11641,7 @@ CARD_SPECS['due-card'] = {
     const short = String(prompt || '').length <= 28 && !/[.?!]\s/.test(prompt || '');
     return '<div class="ai-single">' +
       '<div class="main-text' + (short ? ' due-word' : '') + '">' + esc(prompt) + '</div>' +
+      '<div class="due-prov">' + esc(cardProv(d)) + '</div>' +
       // The ticker ("27 left · ") is filled by flowRenderRail and stays live
       // as cards are graded; empty outside a Flow.
       '<div class="due-hint">' + left +
@@ -11475,13 +11666,13 @@ CARD_SPECS['due-card'] = {
     const crit = rung === 4 ? ((ladderPack(d) || {}).produce || {}).criteria || [] : [];
     const answer = cardAnswerText(rung ? d.front : d.back);
     const prompt = rung ? d.back : d.front;
-    return '<div class="feed-back-kind">Due flashcard' +
+    return '<div class="feed-back-kind">' + (d._peek ? 'Not due yet' : d._remeet ? 'Re-meet' : d._arrival ? 'New' : 'Due flashcard') +
       (rung ? ' · ' + esc(LADDER_NAMES[rung].toLowerCase()) : '') + '</div>' +
     '<div class="due-q' + dueAnswerSize(answer) + '">' + esc(answer) + '</div>' +
     '<div class="due-a">' + esc(prompt) + '</div>' +
     (crit.length ? '<ul class="due-points due-crit">' + crit.map(c => '<li>' + esc(c) + '</li>').join('') + '</ul>' : '') +
     '<div class="card-sent" data-card-sent></div>' +
-    dueRateRow() +
+    (d._peek ? '<div class="due-hint">Not due yet, so nothing to grade.</div>' : dueRateRow()) +
     cardCtxRow(d, true);
   },
 };
@@ -11704,16 +11895,32 @@ let flowServedIn = {};        // phase id -> cards served this sitting
 // Flow block's consts exist.
 const FLOW_MIX_STOCK = 2;     // per phase, cards kept ready while mixed
 const FLOW_MIX_WEIGHT = { recall: 3, channels: 2, discover: 2, queue: 1, dive: 1, ground: 1 };
-function flowOrder() { try { return localStorage.getItem('break_flow_order') === 'sequence' ? 'sequence' : 'mix'; } catch (e) { return 'mix'; } }
+// Three sittings (2026-11-27): "five" is the default, a fixed plan of five
+// items that ends. "mix" and "sequence" are the open-ended Flows above and
+// stay on the home menu. A device that had picked an order before Five
+// existed is moved to Five once (break_five_migrated), then left alone.
+function flowOrder() {
+  try {
+    if (!localStorage.getItem('break_five_migrated')) {
+      localStorage.removeItem('break_flow_order');
+      localStorage.setItem('break_five_migrated', '1');
+    }
+    const o = localStorage.getItem('break_flow_order');
+    return o === 'sequence' || o === 'mix' ? o : 'five';
+  } catch (e) { return 'five'; }
+}
 function setFlowOrder(o) { try { localStorage.setItem('break_flow_order', o); } catch (e) {} }
 let flowFocus = null;         // mixed: the phase id you tapped into, or null for the mix
 let flowDry   = {};           // mixed: phase id -> true once its source ran dry this sitting
 let flowMixPrimed = false;    // mixed: the first stock has landed, so the wander may join the deal
 
+// Five needs a session (every slot is Supabase-backed); signed out, the
+// sitting falls through to the sequence Flow, which ends in bundled Discover.
+const flowFive  = () => feedMode === 'flow' && flowOrder() === 'five' && hasSession();
 const flowMixed = () => feedMode === 'flow' && flowOrder() === 'mix';
 // Mixed: the wander is just one more thing in the deal, so "Discover" only
 // takes over outright when you tap into it or when every owed phase is dry.
-const flowIsDiscover = () => feedMode === 'flow' && (flowMixed()
+const flowIsDiscover = () => feedMode === 'flow' && !flowFive() && (flowMixed()
   ? (flowFocus === 'discover' || (!flowFocus && FLOW_PHASES.every(p => p.id === 'discover' || flowDry[p.id])))
   : FLOW_PHASES[flowPhase].id === 'discover');
 const flowActive     = () => feedMode === 'flow' && !flowIsDiscover();
@@ -11815,7 +12022,7 @@ CARD_SPECS['flow-mark'] = {
   slug: 'flow-mark',
   sourceOnly: true,
   noOpen: true,
-  render: (d) => '<div class="ai-single flow-mark">' +
+  render: (d) => d.five ? fiveEndHtml(d) : '<div class="ai-single flow-mark">' +
     '<div class="due-tag">' + esc(d.label) + '</div>' +
     '<div class="main-text">' + esc(d.text) + '</div>' +
     (d.more ? '<button class="due-btn due-easy flow-more" data-srs-more="1">' + esc(d.more) + '</button>' : '') +
@@ -11854,6 +12061,7 @@ function flowAdvance() {
 // from the Queue all the way to Discover if there is nothing owed.
 async function flowTopUp() {
   if (!feedOpen || feedDueBusy || !flowActive()) return;
+  if (flowFive()) return;            // the plan is the whole sitting
   if (flowMixed()) return flowMixTopUp();
   feedDueBusy = true;
   try {
@@ -12097,6 +12305,16 @@ function flowLeftHtml(id) {
 function flowRenderRail() {
   const el = document.getElementById('feed-filters');
   if (!el || feedMode !== 'flow') return;
+  if (flowFive()) {
+    // Position, not a debt: which of the five is on screen.
+    const n = five && five.planned ? five.total : 0;
+    const raw = feedActiveEl && feedActiveEl.dataset ? feedActiveEl.dataset.five : '';
+    const at = raw != null && raw !== '' ? Number(raw) : 0;
+    let h = '';
+    for (let k = 0; k < n; k++) h += '<i class="' + (k <= at ? 'on' : '') + '"></i>';
+    el.innerHTML = n ? '<span class="five-rail">' + h + '</span><span class="five-n">' + (at < n ? (at + 1) + ' of ' + n : 'done') + '</span>' : '';
+    return;
+  }
   if (flowMixed()) {
     const on = flowFocus || 'mix';
     el.innerHTML = [{ id: 'mix', label: 'Mix' }].concat(FLOW_PHASES).map(p => {
@@ -12131,6 +12349,231 @@ function flowSkipTo(i) {
   feedDueTopUp();
 }
 
+// ── Library home ──────────────────────────────────────────────────────────
+// Home is what you saved, by where it came from (2026-11-27: "the saved
+// learning content is by far the strongest part"). One light query for every
+// live card, grouped by cardShelf(). A shelf opens as a plain list; "Go
+// through what needs a look" runs only its due and shelved cards through the
+// Cards screen, so a browse never writes an early grade. The old home
+// (Scroll, Courses, Crux, the pillars, the activity grid) sits behind Wander.
+const LIB_ORDER = ['books', 'kitchen', 'anki', 'geography'];
+const LIB_TTL_MS = 60000;
+let libCards = null, libAt = 0, libShelfId = null;
+
+async function libLoad(force) {
+  if (!force && libCards && Date.now() - libAt < LIB_TTL_MS) return libCards;
+  const rows = await sbFetch('flashcards?select=id,front,back,source,status,shelved_at,next_review,created_at,kind'
+    + '&or=(status.is.null,status.neq.retired)&order=created_at.desc&limit=3000');
+  libCards = (rows || []).filter(c => c && c.id && c.status !== 'retired');
+  libAt = Date.now();
+  return libCards;
+}
+function libShelves(cards) {
+  const by = new Map();
+  cards.forEach(c => {
+    const s = cardShelf(c);
+    if (!by.has(s.id)) by.set(s.id, { id: s.id, label: s.label, cards: [] });
+    by.get(s.id).cards.push(c);
+  });
+  const rank = s => s.id === 'rest' ? 2 : LIB_ORDER.includes(s.id) ? 0 : 1;
+  return [...by.values()].sort((a, b) => rank(a) - rank(b)
+    || (rank(a) === 0 ? LIB_ORDER.indexOf(a.id) - LIB_ORDER.indexOf(b.id) : b.cards.length - a.cards.length));
+}
+async function libRender(force) {
+  const el = document.getElementById('lib-shelves');
+  if (!el) return;
+  if (!hasSession()) { el.innerHTML = '<div class="lib-note">Sign in to see your library.</div>'; return; }
+  try {
+    const shelves = libShelves(await libLoad(force));
+    el.innerHTML = shelves.length ? shelves.map(s =>
+      '<button class="lib-row" data-shelf="' + esc(s.id) + '"><span>' + esc(s.label) + '</span><span class="lib-n">' + s.cards.length + '</span></button>').join('')
+      : '<div class="lib-note">Nothing saved yet. Capture adds the first card.</div>';
+  } catch (e) {
+    if (!libCards) el.innerHTML = '<div class="lib-note">Couldn\'t load your library.</div>';
+  }
+  try {
+    const n = (await chanLoad()).filter(c => c.status === 'following').length;
+    const jn = document.getElementById('lib-journeys-n');
+    if (jn) jn.textContent = n ? String(n) : '';
+  } catch (e) {}
+}
+const libNeedsLook = c => !!c.shelved_at || !c.next_review || c.next_review <= localDateStr();
+
+function shelfOpen(id) {
+  const shelf = libShelves(libCards || []).find(s => s.id === id);
+  if (!shelf) return;
+  libShelfId = id;
+  showScreen('shelf');
+  document.getElementById('shelf-title').textContent = shelf.label;
+  const look = shelf.cards.filter(libNeedsLook).length;
+  document.getElementById('shelf-run-n').textContent = look ? String(look) : 'none';
+  document.getElementById('shelf-list').innerHTML = shelf.cards.slice(0, 400).map(c =>
+    '<div class="shelf-card"><div class="shelf-front">' + esc(c.front) + '</div>' +
+    '<div class="shelf-back">' + esc(cardAnswerText(c.back)) + '</div>' +
+    '<div class="due-prov">' + esc(cardProv(c)) + '</div></div>').join('');
+}
+// Full rows for the cards that need a look (the list query is deliberately
+// thin), due first, at most a sitting's worth.
+async function shelfRun() {
+  const shelf = libShelves(libCards || []).find(s => s.id === libShelfId);
+  if (!shelf) return;
+  const ids = shelf.cards.filter(libNeedsLook)
+    .sort((a, b) => (a.shelved_at ? 1 : 0) - (b.shelved_at ? 1 : 0)).slice(0, 20).map(c => c.id);
+  if (!ids.length) { showToast('Nothing on this shelf needs a look'); return; }
+  try {
+    const rows = await sbFetch('flashcards?id=in.(' + ids.join(',') + ')');
+    const order = new Map(ids.map((id, i) => [id, i]));
+    srsQueueOverride = (rows || []).filter(c => c && c.status !== 'retired').sort((a, b) => order.get(a.id) - order.get(b.id));
+    if (!srsQueueOverride.length) { srsQueueOverride = null; showToast('Nothing on this shelf needs a look'); return; }
+    libAt = 0;                                   // grades are about to change the shelf
+    navigateToActivity('srs-review');
+  } catch (e) { showToast('Couldn\'t load that shelf'); }
+}
+
+function wanderSet(open) {
+  const box = document.getElementById('home-wander'), row = document.getElementById('lib-wander');
+  if (!box || !row) return;
+  box.hidden = !open;
+  row.setAttribute('aria-expanded', open ? 'true' : 'false');
+  const n = document.getElementById('lib-wander-n');
+  if (n) n.textContent = open ? 'close' : '›';
+  try { localStorage.setItem('break_home_wander', open ? '1' : '0'); } catch (e) {}
+}
+(() => {
+  let open = false;
+  try { open = localStorage.getItem('break_home_wander') === '1'; } catch (e) {}
+  wanderSet(open);
+  document.getElementById('lib-wander')?.addEventListener('click', () => wanderSet(document.getElementById('home-wander').hidden));
+  document.getElementById('lib-journeys')?.addEventListener('click', () => channelsOpen(false));
+  document.getElementById('lib-lookups')?.addEventListener('click', () => navigateToActivity('look-up-later'));
+  document.getElementById('lib-dives')?.addEventListener('click', () => navigateToActivity('deep-dives'));
+  document.getElementById('shelf-run')?.addEventListener('click', shelfRun);
+  document.getElementById('lib-shelves')?.addEventListener('click', e => {
+    const row = e.target.closest('[data-shelf]');
+    if (row) shelfOpen(row.dataset.shelf);
+  });
+  // The two counts already live on the pillars; mirror them, zero shows as nothing.
+  const mirror = (from, to) => {
+    const a = document.getElementById(from), b = document.getElementById(to);
+    if (!a || !b) return;
+    const copy = () => { const n = parseInt(a.textContent, 10) || 0; b.textContent = n ? String(n) : ''; };
+    new MutationObserver(copy).observe(a, { childList: true, characterData: true, subtree: true });
+    copy();
+  };
+  mirror('lul-count', 'lib-lul-n');
+  mirror('dd-count', 'lib-dd-n');
+  document.addEventListener('screenchange', e => { if (e.detail === 'home') libRender(false); });
+})();
+
+// ── Today's Five ──────────────────────────────────────────────────────────
+// A sitting that ends (Nate, 2026-11-27). Three flashcards, one step on a
+// journey, one new arrival, then a card that says so. No count of what is
+// owed anywhere: the rail shows which of the five is on screen. The plan is
+// made once at open and never restocked, so "done" is a real state.
+//   cards    two that are due, one Re-meet off the shelf
+//   step     the next step of a journey (jrnyNextStep), with its doors
+//   arrival  the newest card you have not seen yet (a lookup from last night)
+// Short of any of these, the slot goes to whatever else is waiting; with
+// nothing at all the ending card says that instead.
+const FIVE_SIZE = 5;
+const FIVE_ARRIVAL_DAYS = 3;
+let five = null;                 // { planned, total, tomorrow }
+let fiveSeen = { d: '', ids: new Set() };   // dealt today, so "Five more" deals others
+let fiveLead = null;             // a card id asked for by a deeplink (#card=<id>)
+
+function fiveSeenToday() {
+  const today = localDateStr();
+  if (fiveSeen.d !== today) fiveSeen = { d: today, ids: new Set() };
+  return fiveSeen.ids;
+}
+function fiveIsArrival(c) {
+  if (!c || c.status !== 'new' || !c.created_at) return false;
+  return Date.now() - new Date(c.created_at).getTime() < FIVE_ARRIVAL_DAYS * 86400000;
+}
+function fiveEndText(n) {
+  return n >= FIVE_SIZE ? 'That\'s five.' : n ? 'That\'s it for now.' : 'Nothing waiting today.';
+}
+function fiveEndHtml(d) {
+  return '<div class="ai-single flow-mark five-end">' +
+    '<div class="main-text">' + esc(d.text) + '</div>' +
+    '<div class="flow-next" data-five-tomorrow>' + esc(d.tomorrow || '') + '</div>' +
+    '<div class="five-acts" data-no-flip>' +
+      '<button class="five-act" data-five-more="1">Five more</button>' +
+      '<button class="five-act" data-five-wander="1">Wander</button>' +
+      '<button class="five-act" data-five-home="1">Library</button>' +
+    '</div>' +
+  '</div>';
+}
+// A door was picked: the ending card (already mounted ahead) says what waits.
+function fiveSetTomorrow(text) {
+  if (five) five.tomorrow = text;
+  document.querySelectorAll('[data-five-tomorrow]').forEach(el => { el.textContent = text; });
+}
+
+async function fivePlan() {
+  const mine = five = { planned: false, total: 0, tomorrow: '' };
+  flowRenderRail();
+  try { await kindSortUnsorted(false); } catch (e) {}
+  try { await shelfSweep(); } catch (e) {}
+  const leadId = fiveLead; fiveLead = null;
+  const [due, shelf, step, lead] = await Promise.all([
+    srsGetDue().catch(() => []),
+    shelfGet(FIVE_SIZE).catch(() => []),
+    (typeof jrnyNextStep === 'function' ? jrnyNextStep() : Promise.resolve(null)).catch(() => null),
+    leadId ? sbFetch('flashcards?id=eq.' + encodeURIComponent(leadId)).then(r => (r && r[0]) || null).catch(() => null) : null,
+  ]);
+  if (five !== mine || !feedOpen || !flowFive()) return;
+  const seen = fiveSeenToday();
+  const today = localDateStr();
+  const fresh = c => c && c.id && c.front && !seen.has(c.id);
+  const pool = (due || []).filter(fresh);
+  const arrivals = pool.filter(fiveIsArrival).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
+  const regular = pool.filter(c => !fiveIsArrival(c));
+  const remeet = (shelf || []).filter(fresh);
+  arrivals.forEach(c => { c._arrival = true; });
+  remeet.forEach(c => { c._remeet = true; });
+
+  const cards = [];
+  const has = c => cards.some(x => x.id === c.id);
+  const take = (list, n) => { for (const c of list) { if (n <= 0) break; if (!has(c)) { cards.push(c); n--; } } };
+  // A card asked for by name (the widget) leads. Not due yet = a look, no grade.
+  if (lead && lead.front && lead.status !== 'retired') {
+    if (!lead.shelved_at && lead.next_review && lead.next_review > today) lead._peek = true;
+    if (lead.shelved_at) lead._remeet = true;
+    cards.push(lead);
+  }
+  const arrival = arrivals.find(c => !has(c)) || null;
+  const body = FIVE_SIZE - (step ? 1 : 0) - (arrival ? 1 : 0);   // card slots before the arrival
+  take(regular, body - 1 - cards.length);                         // keep one slot for a Re-meet
+  take(remeet, Math.min(1, body - cards.length));
+  take(regular, body - cards.length);
+  take(remeet, body - cards.length);
+  take(arrivals.filter(c => c !== arrival), body - cards.length);
+
+  const cardItem = c => ({ slug: 'due-card', data: c, key: 'due-card:' + c.id });
+  const items = cards.map(cardItem);
+  if (step) items.splice(Math.min(3, items.length), 0, step);
+  if (arrival) items.push(cardItem(arrival));
+  items.forEach((it, i) => { it._five = i; feedDueSeen.add(it.key); });
+  cards.concat(arrival ? [arrival] : []).forEach(c => seen.add(c.id));
+  mine.total = items.length;
+  mine.planned = true;
+  feedDueBuffer = items.concat([{
+    slug: 'flow-mark', _five: items.length, key: 'flow-mark:five:' + Date.now(),
+    data: { five: true, _chip: 'Today', label: 'Today', text: fiveEndText(items.length), tomorrow: mine.tomorrow },
+  }]);
+  // Packs for the next sitting; the feed itself never waits on a model.
+  try { ladderWarmQueue(cards.filter(c => !c._peek)); } catch (e) {}
+  feedFill();
+  flowRenderRail();
+}
+
+document.addEventListener('click', e => {
+  if (e.target.closest('[data-five-more]'))   { openFlow(); return; }
+  if (e.target.closest('[data-five-wander]')) { feedMode = 'scroll'; openFeed(); return; }
+  if (e.target.closest('[data-five-home]'))   { showScreen('home'); return; }
+});
+
 async function openFlow() {
   feedMode = 'flow';
   flowPhase = 0;
@@ -12146,6 +12589,7 @@ async function openFlow() {
   passageReset();
   openFeed();
   if (!hasSession()) return;
+  if (flowFive()) { fivePlan(); return; }
   // File any unsorted cards (daily) so the passage plan can see which are words.
   try { await kindSortUnsorted(false); } catch (e) {}
   // Start writing channel lessons now, while the Cards phase is on screen.
@@ -12176,6 +12620,9 @@ async function openFlow() {
 function flowUpdateHomeSub() {
   const el = document.getElementById('flow-sub');
   if (!el) return;
+  const lab = document.getElementById('flow-label');
+  if (lab) lab.textContent = flowOrder() === 'five' ? 'Today\'s five' : 'Flow';
+  if (flowOrder() === 'five') { el.textContent = 'three cards, a step on a journey, something new'; return; }
   const q = parseInt(document.getElementById('lul-count')?.textContent, 10) || 0;
   const c = parseInt(document.getElementById('srs-due-count')?.textContent, 10) || 0;
   const bits = [];
@@ -12244,6 +12691,7 @@ function feedFill() {
     // The rail follows the card on screen, not the prefetch cursor, so each
     // card remembers which phase it was mounted under.
     if (feedMode === 'flow') node.dataset.flowPhase = String(flowPhaseOfItem(item));
+    if (item._five != null) node.dataset.five = String(item._five);
     if (sentinel) track.insertBefore(node, sentinel); else track.appendChild(node);
     feedMounted.push(item.slug);
     ahead++;
@@ -12261,6 +12709,8 @@ function feedFill() {
       feedShowHint(first);
     }
   }
+  // Five ends: once the ending card is mounted there is no "next one" to find.
+  if (flowFive() && five && five.planned && !feedDueBuffer.length && sentinel && sentinel.isConnected) sentinel.remove();
   feedPersist();
   feedTrim();
   // Cheap when there's nothing to do (busy / buffer full / quiet guards).
@@ -13115,7 +13565,8 @@ async function coBuildUnit(course, unit) {
     const out = await callClaudeAR(
       'You are writing ONE unit of a short course. It is a single card someone reads in about three minutes.\n\n'
       + 'Course: "' + course.title + '" (shape: ' + (course.shape || 'process') + ')\n'
-      + 'Unit ' + unit.position + ': "' + unit.title + '"' + (unit.one_line ? ' — ' + unit.one_line : '') + '\n'
+      + (unit.parent_id ? 'A side step the learner chose to take off the main sequence' : 'Unit ' + unit.position)
+      + ': "' + unit.title + '"' + (unit.one_line ? ' — ' + unit.one_line : '') + '\n'
       + (course.brief ? 'What the learner asked for overall: "' + String(course.brief).slice(0, 600) + '"\n' : '')
       + coGuidanceBlock(course.guidance)
       + coPriorBlock(unit)
@@ -14335,6 +14786,286 @@ function chanRunEnd() {
   feedDueTopUp();
 }
 
+// ── Journeys: choose your own adventure ───────────────────────────────────
+// Channels died as a second backlog (2026-11-27: nine followed, the furthest
+// reached unit 4). The syllabus decided everything and all you did was press
+// next. So a lesson now ends on DOORS and you choose where it goes:
+//   Onward    the next step on the main road (the course plan, now a hidden
+//             spine: it is never shown as "4 of 12")
+//   Deeper    how or why something in this step works
+//   Sideways  a tangent the step brushed against
+// Deeper and Sideways are written per step by one small call (jrnyEnsureDoors,
+// made when a sitting is planned, never mid-thumb). Taking one creates a side
+// step: a course_units row with parent_id set, off the spine. The step you
+// picked is written in the background and is the journey's step next time
+// ("choice today, payoff tomorrow"); "Keep going now" waits for it instead.
+// Canonical courses (the presidents) stay a straight road: Onward only,
+// because a list beats a model there.
+// Nothing here is ever due. A journey you leave alone just waits.
+const JRNY_ROLES = { onward: 'Onward', deeper: 'Deeper', sideways: 'Sideways' };
+const JRNY_DOORS_WAIT = 9000;
+const JRNY_BUILD_WAIT = 45000;
+const jrnySpine   = units => (units || []).filter(u => u.kind === 'unit' && !u.parent_id);
+const jrnyIsCanon = course => !!course && course.source === 'canonical';
+const jrnyDoors   = u => (u && (u.doors || u._doors)) || [];
+const jrnyWait    = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]);
+
+// The next step of the journey whose turn it is, as a feed item, or null.
+// A door you picked leads. Otherwise the journeys you started take turns,
+// least recently visited first. A suggested channel you never opened is not
+// a journey yet and stays out.
+async function jrnyNextStep() {
+  if (!hasSession()) return null;
+  const chans = (await chanLoad()).filter(c => c.status === 'following' && c.course_id);
+  if (!chans.length) return null;
+  const { byCourse, units } = await chanCourseData(chans);
+  const cands = [];
+  for (const c of chans) {
+    const course = byCourse[c.course_id];
+    if (!course) continue;
+    const mine = units.filter(u => u.course_id === c.course_id && u.kind === 'unit');
+    const started = mine.some(u => u.state !== 'ready');
+    if (c.seeded_from === 'suggestion' && !started) continue;
+    const picked = mine.filter(u => u.picked_at && u.state === 'ready')
+      .sort((a, b) => String(b.picked_at).localeCompare(String(a.picked_at)))[0];
+    const next = picked || jrnySpine(mine).find(u => u.state === 'ready');
+    if (!next) continue;
+    // Not written yet: start it now so it is there for the next sitting.
+    if (!next.built_at) { coBuildUnit(course, next).catch(() => {}); continue; }
+    cands.push({ chan: c, course, units: mine, unit: next, picked: picked ? 1 : 0 });
+  }
+  if (!cands.length) return null;
+  cands.sort((a, b) => (b.picked - a.picked) || String(a.chan.last_shown_at || '').localeCompare(String(b.chan.last_shown_at || '')));
+  const pick = cands[0];
+  await jrnyWait(jrnyEnsureDoors(pick.course, pick.unit, pick.units).catch(() => null), JRNY_DOORS_WAIT);
+  return jrnyItem(pick);
+}
+
+function jrnyItem(x) {
+  const it = chanItem('chan-unit', x.chan, x.course, x.unit, x.units);
+  it.data._jrny = true;
+  it.data.units = x.units;
+  it.data._chip = x.chan.name;         // no "n of N": the spine is not a syllabus
+  return it;
+}
+
+function jrnyDoorsPrompt(course, unit, units, onward) {
+  const walked = units.filter(u => u.state !== 'ready' && u.id !== unit.id).map(u => u.title);
+  return 'A self-directed learner is on a journey called "' + course.title + '". They just read this step.\n\n'
+    + 'Step: "' + unit.title + '"\n' + String(unit.body || '').slice(0, 1400) + '\n\n'
+    + (walked.length ? 'Steps already walked (do not repeat): ' + walked.join('; ') + '\n' : '')
+    + (onward ? 'The main road continues to "' + onward.title + '" (do not repeat that either).\n' : '')
+    + '\nWrite two other doors they could take next. Each is a step title of 3 to 8 words, concrete and specific '
+    + '(a named person, event, mechanism or a sharp question), never generic like "More about X" or "The history of Y":\n'
+    + '- "deeper": explains HOW or WHY something in this step works or happened.\n'
+    + '- "sideways": a tangent this step brushed against that leads somewhere else entirely.\n'
+    + 'Give each a "one_line" of at most 20 words saying what that step would cover.\n'
+    + 'Return JSON only: {"deeper":{"title":"...","one_line":"..."},"sideways":{"title":"...","one_line":"..."}}';
+}
+
+// Make sure a built step has its doors. Onward is free (the spine); the other
+// two cost one small call. A set is saved to the row only when it is whole,
+// so a failed call is simply tried again the next time the step is planned.
+async function jrnyEnsureDoors(course, unit, units) {
+  if (Array.isArray(unit.doors)) return unit.doors;
+  const spine = jrnySpine(units);
+  const onward = spine.find(u => u.id !== unit.id && u.state === 'ready' && (unit.parent_id || Number(u.position) > Number(unit.position)));
+  const doors = [];
+  if (onward) doors.push({ role: 'onward', title: onward.title, unit_id: onward.id });
+  let whole = jrnyIsCanon(course);
+  if (!whole && unit.body) {
+    try {
+      const out = await callClaude(jrnyDoorsPrompt(course, unit, units, onward), { model: FEED_MODEL, max_tokens: 400 });
+      ['deeper', 'sideways'].forEach(role => {
+        const d = out && out[role];
+        const title = d && typeof d.title === 'string' ? d.title.trim().replace(/[.\s]+$/, '') : '';
+        if (title) doors.push({ role, title: title.slice(0, 90), one_line: String((d && d.one_line) || '').trim().slice(0, 220) });
+      });
+      whole = doors.some(d => d.role === 'deeper') && doors.some(d => d.role === 'sideways');
+    } catch (e) {}
+  }
+  unit._doors = doors;
+  if (whole) { unit.doors = doors; cuUpdate(unit.id, { doors }).catch(() => {}); }
+  return doors;
+}
+
+function jrnyDoorsHtml(d) {
+  const u = d.unit, doors = jrnyDoors(u), picked = u.door_picked;
+  const label = door => door.role === 'onward' && u.parent_id ? 'Main road' : JRNY_ROLES[door.role] || '';
+  const rows = doors.map((door, i) =>
+    '<button class="jrny-door' + (picked ? (picked === door.role ? ' picked' : ' unpicked') : '') + '" data-jrny-door="' + i + '"' + (picked ? ' disabled' : '') + '>' +
+      '<span>' + esc(door.title) + '</span><small>' + esc(label(door)) + '</small></button>').join('');
+  const cards = Array.isArray(u.cards) && u.cards.length
+    ? '<button class="jrny-cards" data-jrny-cards="1">Keep a flashcard from this step</button>' : '';
+  return '<div class="jrny-doors" data-no-flip>' + rows +
+    '<div class="jrny-note" data-jrny-note>' + (!doors.length ? 'End of this road.' : picked ? 'Ready next time.' : 'Pick a door. It is written for next time.') + '</div>' +
+    cards + '</div>';
+}
+
+// Take a door: make its step if it has none yet, mark it as the one picked,
+// start writing it. `first` is false when an open road is taken later from
+// the trail, so the step's original choice is not rewritten.
+async function jrnyTakeDoor(course, unit, door, units, first) {
+  let target = door.unit_id ? units.find(x => x.id === door.unit_id) : null;
+  if (!target) {
+    const pos = Math.max(1000, ...units.map(x => Number(x.position) || 0)) + 1;
+    const rows = await cuCreateMany([{
+      course_id: course.id, position: pos, kind: 'unit', title: door.title,
+      one_line: door.one_line || null, parent_id: unit.id,
+    }]);
+    target = Array.isArray(rows) ? rows[0] : rows;
+    if (!target || !target.id || !target.course_id) throw new Error('could not save that step');
+    units.push(target);
+    door.unit_id = target.id;
+  }
+  const now = new Date().toISOString();
+  const doors = jrnyDoors(unit);
+  target.picked_at = now;
+  const mine = { doors };
+  if (first !== false) { unit.door_picked = door.role; mine.door_picked = door.role; }
+  unit.doors = doors;
+  await Promise.all([cuUpdate(unit.id, mine), cuUpdate(target.id, { picked_at: now })]);
+  coBuildUnit(course, target).catch(() => {});
+  return target;
+}
+
+// Put one more card right after the one on screen. Cards dealt ahead go back
+// to the buffer first; flowDropAhead drops markers, so a Five's ending card
+// is put back at the end.
+function jrnyDealNext(it, from) {
+  if (from && from.dataset.five != null && from.dataset.five !== '') it._five = Number(from.dataset.five);
+  const endMounted = feedItems().some(n => n._item && n._item.data && n._item.data.five);
+  flowDropAhead();
+  feedDueBuffer.unshift(it);
+  if (flowFive() && five && five.planned && endMounted && !feedDueBuffer.some(x => x.data && x.data.five)) {
+    feedDueBuffer.push({
+      slug: 'flow-mark', _five: five.total, key: 'flow-mark:five:' + Date.now(),
+      data: { five: true, _chip: 'Today', label: 'Today', text: fiveEndText(five.total), tomorrow: five.tomorrow },
+    });
+  }
+  feedFill();
+}
+
+document.addEventListener('click', async e => {
+  const doorBtn = e.target.closest('[data-jrny-door]');
+  if (doorBtn) {
+    const item = doorBtn.closest('.feed-item');
+    const d = item && item._chan;
+    if (!d || !d._jrny || d.unit.door_picked || item.dataset.jrnyBusy) return;
+    const door = jrnyDoors(d.unit)[Number(doorBtn.dataset.jrnyDoor)];
+    if (!door) return;
+    item.dataset.jrnyBusy = '1';
+    const btns = [...item.querySelectorAll('[data-jrny-door]')];
+    const note = item.querySelector('[data-jrny-note]');
+    btns.forEach(b => { b.disabled = true; b.classList.add(b === doorBtn ? 'picked' : 'unpicked'); });
+    try {
+      d._target = await jrnyTakeDoor(d.course, d.unit, door, d.units || []);
+      if (note) note.innerHTML = 'Ready next time. <button class="jrny-go" data-jrny-go="1">Keep going now</button>';
+      fiveSetTomorrow('Next time: ' + door.title + '.');
+      chanSignal(d.chan.id, 'deeper');
+    } catch (err) {
+      btns.forEach(b => { b.disabled = false; b.classList.remove('picked', 'unpicked'); });
+      showToast(navigator.onLine ? 'Couldn\'t save that door. Try again.' : 'Doors need a connection');
+    }
+    delete item.dataset.jrnyBusy;
+    return;
+  }
+
+  const go = e.target.closest('[data-jrny-go]');
+  if (go) {
+    const item = go.closest('.feed-item');
+    const d = item && item._chan;
+    if (!d || !d._target || go.disabled) return;
+    go.disabled = true; go.textContent = 'Writing it…';
+    const built = await jrnyWait(coBuildUnit(d.course, d._target).then(() => true).catch(() => false), JRNY_BUILD_WAIT);
+    if (!built || !d._target.built_at) {
+      const note = item.querySelector('[data-jrny-note]');
+      if (note) note.textContent = 'Still being written. It will be here next time.';
+      return;
+    }
+    await jrnyWait(jrnyEnsureDoors(d.course, d._target, d.units || []).catch(() => null), JRNY_DOORS_WAIT);
+    if (!item.isConnected) return;
+    go.remove();
+    jrnyDealNext(jrnyItem({ chan: d.chan, course: d.course, unit: d._target, units: d.units || [] }), item);
+    return;
+  }
+
+  const keep = e.target.closest('[data-jrny-cards]');
+  if (keep) {
+    const item = keep.closest('.feed-item');
+    const d = item && item._chan;
+    if (!d || !Array.isArray(d.unit.cards) || !d.unit.cards.length) return;
+    keep.remove();
+    jrnyDealNext({ slug: 'card-offer', key: 'card-offer:' + d.unit.id,
+      data: { from: d.chan.name, cards: d.unit.cards.slice(0, 3), unit: d.unit, course: d.course } }, item);
+    return;
+  }
+
+  const trail = e.target.closest('[data-ch-trail]');
+  if (trail) { trailOpen(trail.dataset.chTrail); return; }
+  if (e.target.closest('#trail-back')) { channelsOpen(false); return; }
+
+  const road = e.target.closest('[data-trail-road]');
+  if (road && !road.disabled) {
+    const t = trailState;
+    const [uid, idx] = road.dataset.trailRoad.split(':');
+    const unit = t && t.units.find(u => u.id === uid);
+    const door = unit && jrnyDoors(unit)[Number(idx)];
+    if (!door) return;
+    road.disabled = true;
+    try {
+      await jrnyTakeDoor(t.course, unit, door, t.units, false);
+      showToast('That road is next');
+      trailRender();
+    } catch (err) { road.disabled = false; showToast('Couldn\'t save that'); }
+  }
+});
+
+// ── The trail: where a journey has been ──
+let trailState = null;   // { chan, course, units }
+async function trailOpen(chanId) {
+  showScreen('trail');
+  const body = document.getElementById('trail-body');
+  const title = document.getElementById('trail-title');
+  if (body) body.innerHTML = '<div class="cu-note">Loading…</div>';
+  try {
+    const chan = (await chanLoad()).find(c => c.id === chanId);
+    if (!chan || !chan.course_id) throw new Error('gone');
+    if (title) title.textContent = chan.name;
+    const { byCourse, units } = await chanCourseData([chan]);
+    trailState = { chan, course: byCourse[chan.course_id], units: units.filter(u => u.kind === 'unit') };
+    trailRender();
+  } catch (e) {
+    if (body) body.innerHTML = '<div class="cu-note">Couldn\'t load this trail.</div>';
+  }
+}
+function trailRender() {
+  const body = document.getElementById('trail-body');
+  const t = trailState;
+  if (!body || !t) return;
+  const byId = new Map(t.units.map(u => [u.id, u]));
+  const walked = t.units.filter(u => u.state !== 'ready')
+    .sort((a, b) => String(a.taught_at || '').localeCompare(String(b.taught_at || '')) || Number(a.position) - Number(b.position));
+  const next = t.units.filter(u => u.picked_at && u.state === 'ready')
+    .sort((a, b) => String(b.picked_at).localeCompare(String(a.picked_at)))[0] || jrnySpine(t.units).find(u => u.state === 'ready');
+  let open = 0;
+  let html = walked.map(u => {
+    const roads = jrnyDoors(u).map((door, i) => {
+      const target = door.unit_id ? byId.get(door.unit_id) : null;
+      if (target && target.state !== 'ready') return '';              // already walked
+      if (target && next && target.id === next.id) return '';         // shown below as what is next
+      if (door.role === 'onward') return '';                          // the main road is not a road not taken
+      open++;
+      return '<button class="trail-row road" data-trail-road="' + u.id + ':' + i + '"><span>' + esc(door.title) + '</span><small>open</small></button>';
+    }).join('');
+    return '<div class="trail-row"><span>' + esc(u.title) + '</span><small>' + esc(provDate(u.taught_at) || 'walked') + '</small></div>' + roads;
+  }).join('');
+  if (next) html += '<div class="trail-row"><span>' + esc(next.title) + '</span><small>' + (walked.length ? 'next' : 'first step') + '</small></div>';
+  if (!walked.length && !next) html = '<div class="cu-note">Nothing on this trail yet.</div>';
+  body.innerHTML = html + '<div class="trail-foot">' + walked.length + ' step' + (walked.length === 1 ? '' : 's') + ' walked' +
+    (open ? ' · ' + open + ' road' + (open === 1 ? '' : 's') + ' still open' : '') + '</div>';
+}
+
 FEED_NAMES['chan-pick'] = 'Channels';
 FEED_NAMES['chan-more'] = 'Channel';
 
@@ -14450,6 +15181,7 @@ CARD_SPECS['chan-unit'] = {
         (h && h.kind !== 'choice' && h.answer ? '<div class="chan-answer">' + esc(h.answer) + '</div>' : '') +
         '<div class="chan-body">' + chanParas(u.body) + '</div>' +
         (u.why ? '<div class="chan-why">' + esc(u.why) + '</div>' : '') +
+        (d._jrny ? jrnyDoorsHtml(d) : '') +
       '</div>' +
     '</div>';
   },
@@ -14541,8 +15273,16 @@ function chanTeach(item, picked) {
   chanEngaged(item);
   chanCountNew(d.course.id);
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
-  u.state = 'taught'; u.next_review = localDateStr(tomorrow);
-  cuUpdate(u.id, { state: 'taught', next_review: u.next_review }).catch(() => {});
+  u.state = 'taught'; u.next_review = localDateStr(tomorrow); u.taught_at = new Date().toISOString();
+  cuUpdate(u.id, { state: 'taught', next_review: u.next_review, taught_at: u.taught_at }).catch(() => {});
+  if (d._jrny) {
+    // A step in the Five: flashcards are one tap away under the doors, never
+    // an extra card dealt on its own.
+    d.chan.last_shown_at = u.taught_at;
+    chanUpdate(d.chan.id, { last_shown_at: u.taught_at }).catch(() => {});
+    chanPickCache = null;
+    return;
+  }
   if (Array.isArray(u.cards) && u.cards.length) {
     const offer = { slug: 'card-offer', key: 'card-offer:' + u.id,
       data: { from: d.chan.name, cards: u.cards.slice(0, 3), unit: u, course: d.course, _run: d._run } };
@@ -14672,6 +15412,7 @@ async function channelsRender() {
     '<div class="ch-row' + (c.status === 'muted' ? ' is-muted' : '') + '">' +
       '<div class="ch-name">' + esc(c.name) + (c.status === 'muted' ? ' <span class="ch-tag">muted</span>' : '') + '</div>' +
       '<div class="ch-row-acts">' +
+        (c.course_id ? '<button class="ch-btn" data-ch-trail="' + c.id + '">Trail</button>' : '') +
         '<button class="ch-btn" data-ch-toggle="' + c.id + '">' + (c.status === 'muted' ? 'Unmute' : 'Mute') + '</button>' +
         '<button class="ch-btn" data-ch-unfollow="' + c.id + '">Unfollow</button>' +
       '</div>' +

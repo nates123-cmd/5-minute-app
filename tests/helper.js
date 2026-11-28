@@ -10,6 +10,18 @@ export async function boot(page, path = '/#home') {
   // surfaces as "Execution context was destroyed". Neutralise SW registration
   // before the app script runs so the page never navigates out from under us.
   // (Additive test-side stub — the shipped SW code is untouched.)
+  // Legacy defaults (2026-11-27). The app now opens on Today's Five and keeps
+  // the old home behind Wander; the suites written before that expect the
+  // mixed Flow and an open home. A test that wants the new behaviour sets
+  // `break_flow_order` to 'five' (or `break_home_wander` to '0') in its own
+  // init script, which runs before this one.
+  await page.addInitScript(() => {
+    try {
+      localStorage.setItem('break_five_migrated', '1');
+      if (!localStorage.getItem('break_flow_order')) localStorage.setItem('break_flow_order', 'mix');
+      if (!localStorage.getItem('break_home_wander')) localStorage.setItem('break_home_wander', '1');
+    } catch (e) {}
+  });
   await page.addInitScript(() => {
     if (navigator.serviceWorker) {
       navigator.serviceWorker.register = async () => ({
